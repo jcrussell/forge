@@ -198,6 +198,11 @@
             <summary>Only enable hover-to-focus when tiling mode is active</summary>
         </key>
 
+        <key type="s" name="launch-app-command">
+            <default>'gnome-terminal'</default>
+            <summary>Application to launch with hotkey</summary>
+        </key>
+
     </schema>
     <schema id="org.gnome.shell.extensions.forge.keybindings" path="/org/gnome/shell/extensions/forge/keybindings/">
         <!-- Keybinding Settings -->
@@ -424,6 +429,11 @@
         <key type="as" name="window-shrink">
             <default><![CDATA[['<Super>bracketleft']]]></default>
             <summary>Shrink focused window in all directions</summary>
+        </key>
+
+        <key type="as" name="prefs-app-launch">
+            <default><![CDATA[['<Super>semicolon']]]></default>
+            <summary>Launch application</summary>
         </key>
     </schema>
 </schemalist>
