@@ -287,22 +287,22 @@
         </key>
 
         <key type="as" name="window-focus-left">
-            <default><![CDATA[['<Super>h']]]></default>
+            <default><![CDATA[['<Super>h', '<Super>Left']]]></default>
             <summary>Move window left</summary>
         </key>
 
         <key type="as" name="window-focus-down">
-            <default><![CDATA[['<Super>j']]]></default>
+            <default><![CDATA[['<Super>j', '<Super>Down']]]></default>
             <summary>Move window down</summary>
         </key>
 
         <key type="as" name="window-focus-up">
-            <default><![CDATA[['<Super>k']]]></default>
+            <default><![CDATA[['<Super>k', '<Super>Up']]]></default>
             <summary>Move window up</summary>
         </key>
 
         <key type="as" name="window-focus-right">
-            <default><![CDATA[['<Super>l']]]></default>
+            <default><![CDATA[['<Super>l', '<Super>Right']]]></default>
             <summary>Move window right</summary>
         </key>
 
