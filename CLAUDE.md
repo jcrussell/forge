@@ -55,7 +55,13 @@ For Wayland nested testing, use `make test-open` to launch apps in the nested se
   - Node types: ROOT, MONITOR, WORKSPACE, CON (container), WINDOW
   - Layout types: HSPLIT, VSPLIT, STACKED, TABBED, PRESET
 
-- **window.js** - WindowManager class, handles window signals, grab operations, tiling logic, and focus management (~3000 lines)
+- **window.js** - WindowManager class, handles window signals, grab operations, tiling logic, and focus management
+
+- **command.js** - CommandHandler class, processes keyboard and action commands (extracted from window.js)
+
+- **workspace.js** - WorkspaceManager class, handles workspace nodes and signal lifecycle (extracted from tree.js/window.js)
+
+- **monitor.js** - MonitorManager class, handles monitor nodes per workspace (extracted from tree.js)
 
 - **keybindings.js** - Keyboard shortcut management (vim-like hjkl navigation)
 
@@ -100,7 +106,7 @@ npm test
 npm run test:coverage
 ```
 
-**Coverage**: 60.5% overall, 728 tests. See `tests/COVERAGE-GAPS.md` for detailed breakdown.
+**Coverage**: ~62% overall, 823 tests. See `tests/COVERAGE-GAPS.md` for detailed breakdown.
 
 Test structure:
 - `tests/setup.js` - Global test setup, loads mocks
