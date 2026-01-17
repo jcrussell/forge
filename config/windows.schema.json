@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Forge Window Overrides",
+  "description": "Configuration for window-specific tiling behavior in Forge GNOME extension",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "overrides": {
+      "type": "array",
+      "description": "List of window override rules",
+      "items": {
+        "type": "object",
+        "required": ["wmClass", "mode"],
+        "properties": {
+          "wmClass": {
+            "type": "string",
+            "description": "Window class to match. Use 'xprop WM_CLASS' or GNOME Looking Glass to find. Supports substring matching."
+          },
+          "wmTitle": {
+            "type": "string",
+            "description": "Window title to match (optional). Supports: substring matching, '!' prefix for negation, comma-separated values for multiple patterns."
+          },
+          "wmId": {
+            "type": "integer",
+            "description": "Specific window ID (runtime use only, added by keyboard shortcut - not for manual configuration)"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["float", "tile"],
+            "description": "float = window will not be tiled (stays floating), tile = force window to tile even if it would normally float"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["overrides"],
+  "additionalProperties": false
+}

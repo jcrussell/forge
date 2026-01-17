@@ -1,4 +1,5 @@
 {
+  "$schema": "./windows.schema.json",
   "overrides": [
     { "wmClass": "org.gnome.Shell.Extensions", "wmTitle": "Forge Settings", "mode": "float" },
     { "wmClass": "jetbrains-toolbox", "mode": "float" },
