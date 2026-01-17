@@ -2,10 +2,10 @@
 
 ## Summary
 
-**Total Test Files**: 20 unit test files + 1 integration test
-**Total Tests**: 728 (727 passing, 1 skipped)
-**Overall Coverage**: 60.5% statements
-**Source Code**: ~7,000 lines across 10 core files
+**Total Test Files**: 23 unit test files + 1 integration test
+**Total Tests**: 823 (822 passing, 1 skipped)
+**Overall Coverage**: ~62% statements
+**Source Code**: ~7,000 lines across 13 core files
 
 ---
 
@@ -14,7 +14,9 @@
 All tests passing as of latest run:
 
 ```
+✓ tests/unit/command/CommandHandler.test.js (44 tests)
 ✓ tests/unit/css/parser.test.js (32 tests)
+✓ tests/unit/monitor/MonitorManager.test.js (21 tests)
 ✓ tests/unit/shared/logger.test.js (35 tests)
 ✓ tests/unit/shared/settings.test.js (31 tests)
 ✓ tests/unit/shared/theme.test.js (56 tests)
@@ -33,6 +35,7 @@ All tests passing as of latest run:
 ✓ tests/unit/window/WindowManager-movement.test.js (27 tests)
 ✓ tests/unit/window/WindowManager-resize.test.js (22 tests)
 ✓ tests/unit/window/WindowManager-workspace.test.js (31 tests)
+✓ tests/unit/workspace/WorkspaceManager.test.js (30 tests)
 ✓ tests/integration/window-operations.test.js (18 tests)
 ```
 
@@ -48,6 +51,9 @@ All tests passing as of latest run:
 | `lib/extension/enum.js` | **100%** | ✅ Complete |
 | `lib/extension/utils.js` | **85%** | ✅ Good |
 | `lib/extension/tree.js` | **84%** | ✅ Good |
+| `lib/extension/command.js` | **~80%** | ✅ Good |
+| `lib/extension/workspace.js` | **~85%** | ✅ Good |
+| `lib/extension/monitor.js` | **~90%** | ✅ Good |
 | `lib/css/index.js` | **80%** | ✅ Good |
 | `lib/extension/window.js` | **44%** | ⚠️ Partial |
 | `lib/extension/keybindings.js` | **5%** | ⚪ Glue code |
@@ -76,6 +82,20 @@ All tests passing as of latest run:
 - ✅ Window operations: `move()`, `swap()`, `swapPairs()`, `split()`
 - ✅ Layout: `processNode()`, `processSplit()`, `computeSizes()`
 - ✅ Workspace: `addWorkspace()`, `removeWorkspace()`
+
+### Extracted Modules (Phase 2 Refactoring)
+
+These modules were extracted from window.js and tree.js during refactoring:
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `command.js` | 44 tests | ~80% |
+| `workspace.js` | 30 tests | ~85% |
+| `monitor.js` | 21 tests | ~90% |
+
+- **CommandHandler** (`command.js`): Processes keyboard/action commands
+- **WorkspaceManager** (`workspace.js`): Manages workspace nodes and signals
+- **MonitorManager** (`monitor.js`): Manages monitor nodes per workspace
 
 ### WindowManager (44% coverage)
 
@@ -176,6 +196,7 @@ Global mocks available in tests:
 | After fixes | 640/641 | 54.8% | All tests passing |
 | +theme.js | 696/697 | 58.6% | Added theme tests |
 | +settings.js | 727/728 | 60.5% | Added settings tests |
+| +extracted modules | 822/823 | ~62% | Added tests for command.js, monitor.js, workspace.js |
 
 ---
 

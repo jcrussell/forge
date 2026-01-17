@@ -406,6 +406,13 @@ export const GrabOp = {
   KEYBOARD_RESIZING_SW: 18
 };
 
+export const TabList = {
+  NORMAL: 0,
+  DOCKS: 1,
+  GROUP: 2,
+  NORMAL_ALL: 3
+};
+
 export default {
   Rectangle,
   Window,
@@ -417,5 +424,6 @@ export default {
   MotionDirection,
   Side,
   MaximizeFlags,
-  GrabOp
+  GrabOp,
+  TabList
 };
