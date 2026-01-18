@@ -55,6 +55,34 @@ export default class ForgeExtension extends Extension {
       Logger.warn(`Failed to disable GNOME conflicting features: ${e}`);
     }
 
+    // Disable GNOME keybindings that conflict with Forge
+    try {
+      this._mutterKeybindings = new Gio.Settings({ schema_id: 'org.gnome.mutter.keybindings' });
+      this._wmKeybindings = new Gio.Settings({ schema_id: 'org.gnome.desktop.wm.keybindings' });
+      this._shellKeybindings = new Gio.Settings({ schema_id: 'org.gnome.shell.keybindings' });
+
+      // Save originals and disable
+      this._originalToggleTiledLeft = this._mutterKeybindings.get_strv('toggle-tiled-left');
+      this._mutterKeybindings.set_strv('toggle-tiled-left', []);
+
+      this._originalToggleTiledRight = this._mutterKeybindings.get_strv('toggle-tiled-right');
+      this._mutterKeybindings.set_strv('toggle-tiled-right', []);
+
+      this._originalMaximize = this._wmKeybindings.get_strv('maximize');
+      this._wmKeybindings.set_strv('maximize', []);
+
+      this._originalUnmaximize = this._wmKeybindings.get_strv('unmaximize');
+      this._wmKeybindings.set_strv('unmaximize', []);
+
+      // Super+V conflicts with con-split-vertical
+      this._originalToggleMessageTray = this._shellKeybindings.get_strv('toggle-message-tray');
+      this._shellKeybindings.set_strv('toggle-message-tray', []);
+
+      Logger.info("Disabled conflicting GNOME keybindings");
+    } catch (e) {
+      Logger.warn(`Failed to disable GNOME keybindings: ${e}`);
+    }
+
     this.configMgr = new ConfigManager(this);
     this.theme = new ExtensionThemeManager(this);
     this.extWm = new WindowManager(this);
@@ -95,6 +123,54 @@ export default class ForgeExtension extends Extension {
       this._mutterSettings = null;
       this._originalEdgeTiling = undefined;
       this._originalAutoMaximize = undefined;
+    }
+
+    // Restore GNOME keybindings
+    if (this._mutterKeybindings) {
+      try {
+        if (this._originalToggleTiledLeft !== undefined) {
+          this._mutterKeybindings.set_strv('toggle-tiled-left', this._originalToggleTiledLeft);
+        }
+        if (this._originalToggleTiledRight !== undefined) {
+          this._mutterKeybindings.set_strv('toggle-tiled-right', this._originalToggleTiledRight);
+        }
+        Logger.info("Restored GNOME mutter keybindings");
+      } catch (e) {
+        Logger.warn(`Failed to restore mutter keybindings: ${e}`);
+      }
+      this._mutterKeybindings = null;
+      this._originalToggleTiledLeft = undefined;
+      this._originalToggleTiledRight = undefined;
+    }
+
+    if (this._wmKeybindings) {
+      try {
+        if (this._originalMaximize !== undefined) {
+          this._wmKeybindings.set_strv('maximize', this._originalMaximize);
+        }
+        if (this._originalUnmaximize !== undefined) {
+          this._wmKeybindings.set_strv('unmaximize', this._originalUnmaximize);
+        }
+        Logger.info("Restored GNOME wm keybindings");
+      } catch (e) {
+        Logger.warn(`Failed to restore wm keybindings: ${e}`);
+      }
+      this._wmKeybindings = null;
+      this._originalMaximize = undefined;
+      this._originalUnmaximize = undefined;
+    }
+
+    if (this._shellKeybindings) {
+      try {
+        if (this._originalToggleMessageTray !== undefined) {
+          this._shellKeybindings.set_strv('toggle-message-tray', this._originalToggleMessageTray);
+        }
+        Logger.info("Restored GNOME shell keybindings");
+      } catch (e) {
+        Logger.warn(`Failed to restore shell keybindings: ${e}`);
+      }
+      this._shellKeybindings = null;
+      this._originalToggleMessageTray = undefined;
     }
 
     this._removeIndicator();
