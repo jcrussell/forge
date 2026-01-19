@@ -26,6 +26,7 @@ import { Logger } from "./lib/shared/logger.js";
 import { ConfigManager } from "./lib/shared/settings.js";
 
 // Application imports
+import { Cheatsheet } from "./lib/extension/cheatsheet.js";
 import { Keybindings } from "./lib/extension/keybindings.js";
 import { WindowManager } from "./lib/extension/window.js";
 import { FeatureIndicator, FeatureMenuToggle } from "./lib/extension/indicator.js";
@@ -87,6 +88,8 @@ export default class ForgeExtension extends Extension {
     this.theme = new ExtensionThemeManager(this);
     this.extWm = new WindowManager(this);
     this.keybindings = new Keybindings(this);
+    this.cheatsheet = new Cheatsheet(this);
+    this.keybindings.cheatsheet = this.cheatsheet;
 
     this._onSessionModeChanged(Main.sessionMode);
     this._sessionId = Main.sessionMode.connect("updated", this._onSessionModeChanged.bind(this));
@@ -176,7 +179,9 @@ export default class ForgeExtension extends Extension {
     this._removeIndicator();
     this.extWm?.disable();
     this.keybindings?.disable();
+    this.cheatsheet?.destroy();
     this.keybindings = null;
+    this.cheatsheet = null;
     this.extWm = null;
     this.themeWm = null;
     this.configMgr = null;

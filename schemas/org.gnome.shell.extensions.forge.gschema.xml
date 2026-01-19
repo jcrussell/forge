@@ -435,5 +435,10 @@
             <default><![CDATA[['<Super>semicolon']]]></default>
             <summary>Launch application</summary>
         </key>
+
+        <key type="as" name="prefs-cheatsheet-toggle">
+            <default><![CDATA[['<Shift><Super>slash']]]></default>
+            <summary>Toggle keybindings cheatsheet</summary>
+        </key>
     </schema>
 </schemalist>

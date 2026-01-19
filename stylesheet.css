@@ -138,3 +138,46 @@
   border-radius: 14px;
   background-color: rgba(17, 199, 224, 0.3);
 }
+
+/* Keybindings Cheatsheet Overlay */
+.forge-cheatsheet {
+  background-color: #2d2d2d;
+  border-radius: 16px;
+  padding: 24px 32px;
+  border: 1px solid #4d4d4d;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.forge-cheatsheet-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.forge-cheatsheet-category {
+  font-size: 13px;
+  font-weight: bold;
+  color: #78aeed;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.forge-cheatsheet-row {
+  font-size: 12px;
+  color: #eeeeec;
+  margin: 4px 0;
+  padding: 2px 0;
+}
+
+.forge-cheatsheet-key {
+  font-family: monospace;
+  font-weight: bold;
+  color: #f5c211;
+  min-width: 180px;
+}
+
+.forge-cheatsheet-desc {
+  color: #d0cfcc;
+}
