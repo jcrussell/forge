@@ -48,6 +48,26 @@
             </summary>
         </key>
 
+        <key type="u" name="window-margin-top">
+            <default>0</default>
+            <summary>Extra margin at top of screen (for auto-hide panels)</summary>
+        </key>
+
+        <key type="u" name="window-margin-bottom">
+            <default>0</default>
+            <summary>Extra margin at bottom of screen (for auto-hide docks)</summary>
+        </key>
+
+        <key type="u" name="window-margin-left">
+            <default>0</default>
+            <summary>Extra margin at left of screen</summary>
+        </key>
+
+        <key type="u" name="window-margin-right">
+            <default>0</default>
+            <summary>Extra margin at right of screen</summary>
+        </key>
+
         <key type="b" name="window-gap-hidden-on-single">
             <default>false</default>
             <summary>Hide gap when single window toggle</summary>
@@ -99,12 +119,12 @@
         </key>
 
         <key type="b" name="stacked-tiling-mode-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Stacked tiling mode on/off</summary>
         </key>
 
         <key type="b" name="tabbed-tiling-mode-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Tabbed tiling mode on/off</summary>
         </key>
 
@@ -153,7 +173,7 @@
             <summary>Focus switches to the window under the pointer.</summary>
         </key>
         <key type="b" name="float-always-on-top-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Floating windows toggle always-on-top</summary>
         </key>
         <key type="b" name="auto-exit-tabbed">
@@ -161,11 +181,11 @@
             <summary>Exit tabbed tiling mode when only a single tab remains</summary>
         </key>
         <key type="b" name="auto-split-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Enable auto split or quarter-tiling based based on smaller side</summary>
         </key>
         <key type="b" name="preview-hint-enabled">
-            <default>true</default>
+            <default>false</default>
             <summary>Whether to show preview hint DND</summary>
         </key>
         <key type="b" name="showtab-decoration-enabled">
