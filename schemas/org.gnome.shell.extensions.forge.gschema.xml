@@ -460,5 +460,10 @@
             <default><![CDATA[['<Shift><Super>slash']]]></default>
             <summary>Toggle keybindings cheatsheet</summary>
         </key>
+
+        <key type="as" name="prefs-lock-screen">
+            <default><![CDATA[['<Super>q']]]></default>
+            <summary>Lock the screen</summary>
+        </key>
     </schema>
 </schemalist>
