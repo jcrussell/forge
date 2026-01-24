@@ -41,16 +41,16 @@ export default class ForgeExtension extends Extension {
 
     // Disable GNOME features that conflict with Forge (#461, #288)
     try {
-      this._mutterSettings = new Gio.Settings({ schema_id: 'org.gnome.mutter' });
+      this._mutterSettings = new Gio.Settings({ schema_id: "org.gnome.mutter" });
 
       // Disable edge-tiling (#461)
-      this._originalEdgeTiling = this._mutterSettings.get_boolean('edge-tiling');
-      this._mutterSettings.set_boolean('edge-tiling', false);
+      this._originalEdgeTiling = this._mutterSettings.get_boolean("edge-tiling");
+      this._mutterSettings.set_boolean("edge-tiling", false);
       Logger.info("Disabled GNOME edge-tiling");
 
       // Disable auto-maximize (#288)
-      this._originalAutoMaximize = this._mutterSettings.get_boolean('auto-maximize');
-      this._mutterSettings.set_boolean('auto-maximize', false);
+      this._originalAutoMaximize = this._mutterSettings.get_boolean("auto-maximize");
+      this._mutterSettings.set_boolean("auto-maximize", false);
       Logger.info("Disabled GNOME auto-maximize");
     } catch (e) {
       Logger.warn(`Failed to disable GNOME conflicting features: ${e}`);
@@ -58,26 +58,26 @@ export default class ForgeExtension extends Extension {
 
     // Disable GNOME keybindings that conflict with Forge
     try {
-      this._mutterKeybindings = new Gio.Settings({ schema_id: 'org.gnome.mutter.keybindings' });
-      this._wmKeybindings = new Gio.Settings({ schema_id: 'org.gnome.desktop.wm.keybindings' });
-      this._shellKeybindings = new Gio.Settings({ schema_id: 'org.gnome.shell.keybindings' });
+      this._mutterKeybindings = new Gio.Settings({ schema_id: "org.gnome.mutter.keybindings" });
+      this._wmKeybindings = new Gio.Settings({ schema_id: "org.gnome.desktop.wm.keybindings" });
+      this._shellKeybindings = new Gio.Settings({ schema_id: "org.gnome.shell.keybindings" });
 
       // Save originals and disable
-      this._originalToggleTiledLeft = this._mutterKeybindings.get_strv('toggle-tiled-left');
-      this._mutterKeybindings.set_strv('toggle-tiled-left', []);
+      this._originalToggleTiledLeft = this._mutterKeybindings.get_strv("toggle-tiled-left");
+      this._mutterKeybindings.set_strv("toggle-tiled-left", []);
 
-      this._originalToggleTiledRight = this._mutterKeybindings.get_strv('toggle-tiled-right');
-      this._mutterKeybindings.set_strv('toggle-tiled-right', []);
+      this._originalToggleTiledRight = this._mutterKeybindings.get_strv("toggle-tiled-right");
+      this._mutterKeybindings.set_strv("toggle-tiled-right", []);
 
-      this._originalMaximize = this._wmKeybindings.get_strv('maximize');
-      this._wmKeybindings.set_strv('maximize', []);
+      this._originalMaximize = this._wmKeybindings.get_strv("maximize");
+      this._wmKeybindings.set_strv("maximize", []);
 
-      this._originalUnmaximize = this._wmKeybindings.get_strv('unmaximize');
-      this._wmKeybindings.set_strv('unmaximize', []);
+      this._originalUnmaximize = this._wmKeybindings.get_strv("unmaximize");
+      this._wmKeybindings.set_strv("unmaximize", []);
 
       // Super+V conflicts with con-split-vertical
-      this._originalToggleMessageTray = this._shellKeybindings.get_strv('toggle-message-tray');
-      this._shellKeybindings.set_strv('toggle-message-tray', []);
+      this._originalToggleMessageTray = this._shellKeybindings.get_strv("toggle-message-tray");
+      this._shellKeybindings.set_strv("toggle-message-tray", []);
 
       Logger.info("Disabled conflicting GNOME keybindings");
     } catch (e) {
@@ -113,11 +113,11 @@ export default class ForgeExtension extends Extension {
     if (this._mutterSettings) {
       try {
         if (this._originalEdgeTiling !== undefined) {
-          this._mutterSettings.set_boolean('edge-tiling', this._originalEdgeTiling);
+          this._mutterSettings.set_boolean("edge-tiling", this._originalEdgeTiling);
           Logger.info("Restored GNOME edge-tiling setting");
         }
         if (this._originalAutoMaximize !== undefined) {
-          this._mutterSettings.set_boolean('auto-maximize', this._originalAutoMaximize);
+          this._mutterSettings.set_boolean("auto-maximize", this._originalAutoMaximize);
           Logger.info("Restored GNOME auto-maximize setting");
         }
       } catch (e) {
@@ -132,10 +132,10 @@ export default class ForgeExtension extends Extension {
     if (this._mutterKeybindings) {
       try {
         if (this._originalToggleTiledLeft !== undefined) {
-          this._mutterKeybindings.set_strv('toggle-tiled-left', this._originalToggleTiledLeft);
+          this._mutterKeybindings.set_strv("toggle-tiled-left", this._originalToggleTiledLeft);
         }
         if (this._originalToggleTiledRight !== undefined) {
-          this._mutterKeybindings.set_strv('toggle-tiled-right', this._originalToggleTiledRight);
+          this._mutterKeybindings.set_strv("toggle-tiled-right", this._originalToggleTiledRight);
         }
         Logger.info("Restored GNOME mutter keybindings");
       } catch (e) {
@@ -149,10 +149,10 @@ export default class ForgeExtension extends Extension {
     if (this._wmKeybindings) {
       try {
         if (this._originalMaximize !== undefined) {
-          this._wmKeybindings.set_strv('maximize', this._originalMaximize);
+          this._wmKeybindings.set_strv("maximize", this._originalMaximize);
         }
         if (this._originalUnmaximize !== undefined) {
-          this._wmKeybindings.set_strv('unmaximize', this._originalUnmaximize);
+          this._wmKeybindings.set_strv("unmaximize", this._originalUnmaximize);
         }
         Logger.info("Restored GNOME wm keybindings");
       } catch (e) {
@@ -166,7 +166,7 @@ export default class ForgeExtension extends Extension {
     if (this._shellKeybindings) {
       try {
         if (this._originalToggleMessageTray !== undefined) {
-          this._shellKeybindings.set_strv('toggle-message-tray', this._originalToggleMessageTray);
+          this._shellKeybindings.set_strv("toggle-message-tray", this._originalToggleMessageTray);
         }
         Logger.info("Restored GNOME shell keybindings");
       } catch (e) {

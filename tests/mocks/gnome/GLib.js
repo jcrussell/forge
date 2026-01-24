@@ -3,27 +3,27 @@
 export function getenv(variable) {
   // Return mock environment variables
   const mockEnv = {
-    'HOME': '/home/test',
-    'USER': 'testuser',
-    'SHELL': '/bin/bash',
+    HOME: "/home/test",
+    USER: "testuser",
+    SHELL: "/bin/bash",
   };
   return mockEnv[variable] || null;
 }
 
 export function get_home_dir() {
-  return '/home/test';
+  return "/home/test";
 }
 
 export function get_user_data_dir() {
-  return '/home/test/.local/share';
+  return "/home/test/.local/share";
 }
 
 export function get_user_config_dir() {
-  return '/home/test/.config';
+  return "/home/test/.config";
 }
 
 export function build_filenamev(paths) {
-  return paths.join('/');
+  return paths.join("/");
 }
 
 export function file_test(file, test) {
@@ -36,7 +36,7 @@ export const FileTest = {
   IS_REGULAR: 1 << 1,
   IS_SYMLINK: 1 << 2,
   IS_DIR: 1 << 3,
-  IS_EXECUTABLE: 1 << 4
+  IS_EXECUTABLE: 1 << 4,
 };
 
 export const PRIORITY_DEFAULT = 0;
@@ -50,7 +50,7 @@ export function timeout_add(priority, interval, callback) {
 
 export function idle_add(priority, callback) {
   // Mock idle_add - execute callback immediately in tests
-  if (typeof callback === 'function') {
+  if (typeof callback === "function") {
     callback();
   }
   return Math.random();
@@ -80,5 +80,5 @@ export default {
   timeout_add,
   idle_add,
   source_remove,
-  mkdir_with_parents
+  mkdir_with_parents,
 };

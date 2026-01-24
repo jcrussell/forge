@@ -11,13 +11,13 @@ export function signal_connect(object, signal, callback) {
 export function signal_disconnect(object, id) {
   if (!object._signals) return;
   for (const signal in object._signals) {
-    object._signals[signal] = object._signals[signal].filter(s => s.id !== id);
+    object._signals[signal] = object._signals[signal].filter((s) => s.id !== id);
   }
 }
 
 export function signal_emit(object, signal, ...args) {
   if (!object._signals || !object._signals[signal]) return;
-  object._signals[signal].forEach(s => s.callback(...args));
+  object._signals[signal].forEach((s) => s.callback(...args));
 }
 
 export const SignalFlags = {
@@ -27,7 +27,7 @@ export const SignalFlags = {
   NO_RECURSE: 1 << 3,
   DETAILED: 1 << 4,
   ACTION: 1 << 5,
-  NO_HOOKS: 1 << 6
+  NO_HOOKS: 1 << 6,
 };
 
 class GObjectBase {
@@ -63,5 +63,5 @@ export default {
   signal_emit,
   SignalFlags,
   Object: GObjectBase,
-  registerClass
+  registerClass,
 };

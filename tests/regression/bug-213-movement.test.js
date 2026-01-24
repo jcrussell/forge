@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from '../../lib/extension/tree.js';
-import { WINDOW_MODES } from '../../lib/extension/window.js';
-import { createMockWindow } from '../mocks/helpers/mockWindow.js';
-import { MotionDirection } from '../mocks/gnome/Meta.js';
-import { Bin } from '../mocks/gnome/St.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  Tree,
+  Node,
+  NODE_TYPES,
+  LAYOUT_TYPES,
+  ORIENTATION_TYPES,
+} from "../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { MotionDirection } from "../mocks/gnome/Meta.js";
+import { Bin } from "../mocks/gnome/St.js";
 
 /**
  * Bug #213: Moving windows via keyboard shortcuts is janky
@@ -15,7 +21,7 @@ import { Bin } from '../mocks/gnome/St.js';
  * may be inverted, and the next() function can return unexpected targets when
  * movement direction doesn't match container orientation.
  */
-describe('Bug #213: Window movement directions', () => {
+describe("Bug #213: Window movement directions", () => {
   let tree;
   let mockExtWm;
   let mockWorkspaceManager;
@@ -30,13 +36,13 @@ describe('Bug #213: Window movement directions', () => {
       get_current_monitor: vi.fn(() => 0),
       get_current_time: vi.fn(() => 12345),
       get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      get_monitor_neighbor_index: vi.fn(() => -1)
+      get_monitor_neighbor_index: vi.fn(() => -1),
     };
 
     global.window_group = {
       contains: vi.fn(() => false),
       add_child: vi.fn(),
-      remove_child: vi.fn()
+      remove_child: vi.fn(),
     };
 
     global.get_current_time = vi.fn(() => 12345);
@@ -45,8 +51,8 @@ describe('Bug #213: Window movement directions', () => {
     mockWorkspaceManager = {
       get_n_workspaces: vi.fn(() => 1),
       get_workspace_by_index: vi.fn((i) => ({
-        index: () => i
-      }))
+        index: () => i,
+      })),
     };
 
     global.display.get_workspace_manager.mockReturnValue(mockWorkspaceManager);
@@ -56,11 +62,11 @@ describe('Bug #213: Window movement directions', () => {
       ext: {
         settings: {
           get_boolean: vi.fn((key) => {
-            if (key === 'move-pointer-focus-enabled') return false;
+            if (key === "move-pointer-focus-enabled") return false;
             return false;
           }),
-          get_uint: vi.fn(() => 0)
-        }
+          get_uint: vi.fn(() => 0),
+        },
       },
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       bindWorkspaceSignals: vi.fn(),
@@ -68,7 +74,7 @@ describe('Bug #213: Window movement directions', () => {
       move: vi.fn(),
       currentMonWsNode: null,
       rectForMonitor: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      floatingWindow: vi.fn(() => false)
+      floatingWindow: vi.fn(() => false),
     };
 
     // Create tree
@@ -84,11 +90,11 @@ describe('Bug #213: Window movement directions', () => {
     mockExtWm.currentMonWsNode = monitorNode;
   });
 
-  describe('Swap with adjacent sibling', () => {
-    it('should swap with adjacent sibling when moving right', () => {
+  describe("Swap with adjacent sibling", () => {
+    it("should swap with adjacent sibling when moving right", () => {
       // Setup: [ A ] [ B ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -106,10 +112,10 @@ describe('Bug #213: Window movement directions', () => {
       expect(monitorNode.childNodes[1]).toBe(nodeA);
     });
 
-    it('should swap with adjacent sibling when moving left', () => {
+    it("should swap with adjacent sibling when moving left", () => {
       // Setup: [ A ] [ B ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -128,12 +134,12 @@ describe('Bug #213: Window movement directions', () => {
     });
   });
 
-  describe('Move across container boundaries', () => {
-    it('should move window into container when moving right', () => {
+  describe("Move across container boundaries", () => {
+    it("should move window into container when moving right", () => {
       // Setup: [ A ] [ container[ B, C ] ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
@@ -162,13 +168,13 @@ describe('Bug #213: Window movement directions', () => {
       expect(nodeA.parentNode).toBe(container);
     });
 
-    it('should move window out of container when moving up', () => {
+    it("should move window out of container when moving up", () => {
       // Setup: [ container[ A, B ] ]
       // Layout: VSPLIT (vertical), so A is on top of B
       monitorNode.layout = LAYOUT_TYPES.VSPLIT;
 
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       // Create container with vertical layout
       const container = new Node(NODE_TYPES.CON, new Bin());
@@ -189,19 +195,19 @@ describe('Bug #213: Window movement directions', () => {
 
       // The result depends on how next() handles edge cases
       // At minimum, the move should complete without error
-      expect(typeof result).toBe('boolean');
+      expect(typeof result).toBe("boolean");
     });
   });
 
-  describe('Move in different orientations', () => {
-    it('should handle horizontal movement in vertical container', () => {
+  describe("Move in different orientations", () => {
+    it("should handle horizontal movement in vertical container", () => {
       // Setup: Monitor with HSPLIT, containing container with VSPLIT
       // [ container_vsplit[ A, B ] ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const container = new Node(NODE_TYPES.CON, new Bin());
-      container.layout = LAYOUT_TYPES.VSPLIT;  // A above B
+      container.layout = LAYOUT_TYPES.VSPLIT; // A above B
       monitorNode.appendChild(container);
 
       const nodeA = new Node(NODE_TYPES.WINDOW, windowA);
@@ -215,13 +221,13 @@ describe('Bug #213: Window movement directions', () => {
       const result = tree.move(nodeA, MotionDirection.RIGHT);
 
       // Should not error and should return boolean
-      expect(typeof result).toBe('boolean');
+      expect(typeof result).toBe("boolean");
     });
 
-    it('should handle vertical movement in horizontal container', () => {
+    it("should handle vertical movement in horizontal container", () => {
       // Setup: [ A ] [ B ] in HSPLIT
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -232,13 +238,13 @@ describe('Bug #213: Window movement directions', () => {
       const result = tree.move(nodeA, MotionDirection.UP);
 
       // Should not error and should return boolean
-      expect(typeof result).toBe('boolean');
+      expect(typeof result).toBe("boolean");
     });
   });
 
-  describe('Edge cases', () => {
-    it('should not move floating windows', () => {
-      const windowA = createMockWindow({ id: 'A' });
+  describe("Edge cases", () => {
+    it("should not move floating windows", () => {
+      const windowA = createMockWindow({ id: "A" });
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
 
       // Make it float
@@ -249,8 +255,8 @@ describe('Bug #213: Window movement directions', () => {
       expect(result).toBe(false);
     });
 
-    it('should not move minimized windows', () => {
-      const windowA = createMockWindow({ id: 'A' });
+    it("should not move minimized windows", () => {
+      const windowA = createMockWindow({ id: "A" });
       windowA.minimized = true;
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
@@ -260,18 +266,18 @@ describe('Bug #213: Window movement directions', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle null node gracefully', () => {
+    it("should handle null node gracefully", () => {
       const result = tree.move(null, MotionDirection.RIGHT);
 
       expect(result).toBe(false);
     });
   });
 
-  describe('next() function', () => {
-    it('should return adjacent sibling for matching orientation', () => {
+  describe("next() function", () => {
+    it("should return adjacent sibling for matching orientation", () => {
       // HSPLIT with [ A ] [ B ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -284,10 +290,10 @@ describe('Bug #213: Window movement directions', () => {
       expect(next).toBe(nodeB);
     });
 
-    it('should return null for perpendicular orientation with no parent sibling', () => {
+    it("should return null for perpendicular orientation with no parent sibling", () => {
       // HSPLIT with [ A ] [ B ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -303,12 +309,12 @@ describe('Bug #213: Window movement directions', () => {
     });
   });
 
-  describe('Three window layout', () => {
-    it('should correctly swap windows in 3-window horizontal layout', () => {
+  describe("Three window layout", () => {
+    it("should correctly swap windows in 3-window horizontal layout", () => {
       // Setup: [ A ] [ B ] [ C ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -330,11 +336,11 @@ describe('Bug #213: Window movement directions', () => {
       expect(monitorNode.childNodes[2]).toBe(nodeB);
     });
 
-    it('should correctly move middle window up in 3-window horizontal layout', () => {
+    it("should correctly move middle window up in 3-window horizontal layout", () => {
       // Setup: [ A ] [ B ] [ C ] in HSPLIT
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);

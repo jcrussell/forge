@@ -32,8 +32,8 @@ export class Global {
 
 export class App {
   constructor(params = {}) {
-    this.id = params.id || 'mock.app';
-    this.name = params.name || 'Mock App';
+    this.id = params.id || "mock.app";
+    this.name = params.name || "Mock App";
   }
 
   get_id() {
@@ -53,7 +53,7 @@ export class App {
       width: size,
       height: size,
       set_size: () => {},
-      destroy: () => {}
+      destroy: () => {},
     };
   }
 }
@@ -86,5 +86,5 @@ export default {
   Global,
   App,
   AppSystem,
-  WindowTracker
+  WindowTracker,
 };

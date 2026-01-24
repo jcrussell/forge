@@ -14,9 +14,9 @@ export class File {
   }
 
   get_parent() {
-    const parts = this.path.split('/');
+    const parts = this.path.split("/");
     parts.pop();
-    return new File(parts.join('/'));
+    return new File(parts.join("/"));
   }
 
   get_child(name) {
@@ -35,7 +35,7 @@ export class File {
 
   load_contents(cancellable) {
     // Mock file loading - return empty content
-    return [true, '', null];
+    return [true, "", null];
   }
 
   replace_contents(contents, etag, make_backup, flags, cancellable) {
@@ -55,7 +55,7 @@ export class File {
         // Mock write operation
         return [true, contents.length];
       },
-      close: (cancellable) => true
+      close: (cancellable) => true,
     };
   }
 }
@@ -88,7 +88,7 @@ export class Settings {
   }
 
   get_string(key) {
-    return this._settings.get(key) || '';
+    return this._settings.get(key) || "";
   }
 
   set_string(key, value) {
@@ -128,7 +128,7 @@ export class Settings {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 }
@@ -136,7 +136,7 @@ export class Settings {
 export const FileCreateFlags = {
   NONE: 0,
   PRIVATE: 1 << 0,
-  REPLACE_DESTINATION: 1 << 1
+  REPLACE_DESTINATION: 1 << 1,
 };
 
 export const FileCopyFlags = {
@@ -146,12 +146,12 @@ export const FileCopyFlags = {
   NOFOLLOW_SYMLINKS: 1 << 2,
   ALL_METADATA: 1 << 3,
   NO_FALLBACK_FOR_MOVE: 1 << 4,
-  TARGET_DEFAULT_PERMS: 1 << 5
+  TARGET_DEFAULT_PERMS: 1 << 5,
 };
 
 export default {
   File,
   Settings,
   FileCreateFlags,
-  FileCopyFlags
+  FileCopyFlags,
 };

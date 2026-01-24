@@ -9,21 +9,30 @@ export class Rectangle {
   }
 
   equal(other) {
-    return this.x === other.x && this.y === other.y &&
-           this.width === other.width && this.height === other.height;
+    return (
+      this.x === other.x &&
+      this.y === other.y &&
+      this.width === other.width &&
+      this.height === other.height
+    );
   }
 
   contains_rect(other) {
-    return this.x <= other.x && this.y <= other.y &&
-           this.x + this.width >= other.x + other.width &&
-           this.y + this.height >= other.y + other.height;
+    return (
+      this.x <= other.x &&
+      this.y <= other.y &&
+      this.x + this.width >= other.x + other.width &&
+      this.y + this.height >= other.y + other.height
+    );
   }
 
   overlap(other) {
-    return !(this.x + this.width <= other.x ||
-             other.x + other.width <= this.x ||
-             this.y + this.height <= other.y ||
-             other.y + other.height <= this.y);
+    return !(
+      this.x + this.width <= other.x ||
+      other.x + other.width <= this.x ||
+      this.y + this.height <= other.y ||
+      other.y + other.height <= this.y
+    );
   }
 
   copy() {
@@ -31,7 +40,7 @@ export class Rectangle {
       x: this.x,
       y: this.y,
       width: this.width,
-      height: this.height
+      height: this.height,
     });
   }
 }
@@ -41,15 +50,15 @@ export class Window {
     this.id = params.id ?? Math.random();
     this._rect = params.rect ?? new Rectangle();
     // Use 'in' operator to allow null/empty values to be explicitly set
-    this.wm_class = 'wm_class' in params ? params.wm_class : 'MockApp';
-    this.title = 'title' in params ? params.title : 'Mock Window';
+    this.wm_class = "wm_class" in params ? params.wm_class : "MockApp";
+    this.title = "title" in params ? params.title : "Mock Window";
     this.maximized_horizontally = params.maximized_horizontally ?? false;
     this.maximized_vertically = params.maximized_vertically ?? false;
     this.minimized = params.minimized ?? false;
     this.fullscreen = params.fullscreen ?? false;
-    this._window_type = 'window_type' in params ? params.window_type : WindowType.NORMAL;
-    this._transient_for = 'transient_for' in params ? params.transient_for : null;
-    this._allows_resize = 'allows_resize' in params ? params.allows_resize : true;
+    this._window_type = "window_type" in params ? params.window_type : WindowType.NORMAL;
+    this._transient_for = "transient_for" in params ? params.transient_for : null;
+    this._allows_resize = "allows_resize" in params ? params.allows_resize : true;
     this._signals = {};
     this._workspace = params.workspace ?? null;
     this._monitor = params.monitor ?? 0;
@@ -190,13 +199,13 @@ export class Window {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 
   emit(signal, ...args) {
     if (this._signals[signal]) {
-      this._signals[signal].forEach(s => s.callback(...args));
+      this._signals[signal].forEach((s) => s.callback(...args));
     }
   }
 
@@ -232,7 +241,7 @@ export class Window {
         },
         disconnect: (id) => {
           // Mock signal disconnection
-        }
+        },
       };
     }
     return this._actor;
@@ -291,7 +300,7 @@ export class Workspace {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 }
@@ -306,7 +315,7 @@ export class Display {
     return {
       get_n_workspaces: () => this._workspaces.length,
       get_workspace_by_index: (index) => this._workspaces[index] || null,
-      get_workspaces: () => this._workspaces
+      get_workspaces: () => this._workspaces,
     };
   }
 
@@ -319,7 +328,7 @@ export class Display {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 }
@@ -341,21 +350,21 @@ export const WindowType = {
   NOTIFICATION: 12,
   COMBO: 13,
   DND: 14,
-  OVERRIDE_OTHER: 15
+  OVERRIDE_OTHER: 15,
 };
 
 export const DisplayCorner = {
   TOPLEFT: 0,
   TOPRIGHT: 1,
   BOTTOMLEFT: 2,
-  BOTTOMRIGHT: 3
+  BOTTOMRIGHT: 3,
 };
 
 export const DisplayDirection = {
   UP: 0,
   DOWN: 1,
   LEFT: 2,
-  RIGHT: 3
+  RIGHT: 3,
 };
 
 export const MotionDirection = {
@@ -366,20 +375,20 @@ export const MotionDirection = {
   UP_LEFT: 4,
   UP_RIGHT: 5,
   DOWN_LEFT: 6,
-  DOWN_RIGHT: 7
+  DOWN_RIGHT: 7,
 };
 
 export const Side = {
   LEFT: 1 << 0,
   RIGHT: 1 << 1,
   TOP: 1 << 2,
-  BOTTOM: 1 << 3
+  BOTTOM: 1 << 3,
 };
 
 export const MaximizeFlags = {
   HORIZONTAL: 1 << 0,
   VERTICAL: 1 << 1,
-  BOTH: (1 << 0) | (1 << 1)
+  BOTH: (1 << 0) | (1 << 1),
 };
 
 export const GrabOp = {
@@ -403,14 +412,14 @@ export const GrabOp = {
   KEYBOARD_RESIZING_NW: 15,
   KEYBOARD_RESIZING_NE: 16,
   KEYBOARD_RESIZING_SE: 17,
-  KEYBOARD_RESIZING_SW: 18
+  KEYBOARD_RESIZING_SW: 18,
 };
 
 export const TabList = {
   NORMAL: 0,
   DOCKS: 1,
   GROUP: 2,
-  NORMAL_ALL: 3
+  NORMAL_ALL: 3,
 };
 
 export default {
@@ -425,5 +434,5 @@ export default {
   Side,
   MaximizeFlags,
   GrabOp,
-  TabList
+  TabList,
 };

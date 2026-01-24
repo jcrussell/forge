@@ -2,7 +2,7 @@
 
 export class Actor {
   constructor(params = {}) {
-    this.name = params.name || '';
+    this.name = params.name || "";
     this.x = params.x || 0;
     this.y = params.y || 0;
     this.width = params.width || 0;
@@ -75,7 +75,7 @@ export class Actor {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 }
@@ -84,16 +84,16 @@ export const ActorAlign = {
   FILL: 0,
   START: 1,
   CENTER: 2,
-  END: 3
+  END: 3,
 };
 
 export const Orientation = {
   HORIZONTAL: 0,
-  VERTICAL: 1
+  VERTICAL: 1,
 };
 
 // Import vi from vitest for spying
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock Clutter backend and seat for pointer warping
 export class Seat {
@@ -129,5 +129,5 @@ export default {
   Seat,
   Backend,
   get_default_backend,
-  mockSeat: _defaultSeat
+  mockSeat: _defaultSeat,
 };

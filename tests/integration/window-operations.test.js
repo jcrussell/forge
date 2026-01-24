@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockWindow, createMockWindowArray } from '../mocks/helpers/mockWindow.js';
-import { Rectangle } from '../mocks/gnome/Meta.js';
+import { describe, it, expect, beforeEach } from "vitest";
+import { createMockWindow, createMockWindowArray } from "../mocks/helpers/mockWindow.js";
+import { Rectangle } from "../mocks/gnome/Meta.js";
 
 /**
  * Integration tests demonstrating how to test window operations
@@ -8,17 +8,17 @@ import { Rectangle } from '../mocks/gnome/Meta.js';
  *
  * These tests show realistic scenarios that would occur in the extension.
  */
-describe('Window Operations Integration', () => {
-  describe('Window Creation and Manipulation', () => {
-    it('should create window with custom properties', () => {
+describe("Window Operations Integration", () => {
+  describe("Window Creation and Manipulation", () => {
+    it("should create window with custom properties", () => {
       const window = createMockWindow({
-        wm_class: 'Firefox',
-        title: 'Mozilla Firefox',
-        rect: { x: 100, y: 100, width: 800, height: 600 }
+        wm_class: "Firefox",
+        title: "Mozilla Firefox",
+        rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      expect(window.get_wm_class()).toBe('Firefox');
-      expect(window.get_title()).toBe('Mozilla Firefox');
+      expect(window.get_wm_class()).toBe("Firefox");
+      expect(window.get_title()).toBe("Mozilla Firefox");
 
       const rect = window.get_frame_rect();
       expect(rect.x).toBe(100);
@@ -27,9 +27,9 @@ describe('Window Operations Integration', () => {
       expect(rect.height).toBe(600);
     });
 
-    it('should resize and move window', () => {
+    it("should resize and move window", () => {
       const window = createMockWindow({
-        rect: { x: 0, y: 0, width: 400, height: 300 }
+        rect: { x: 0, y: 0, width: 400, height: 300 },
       });
 
       // Resize and move
@@ -42,7 +42,7 @@ describe('Window Operations Integration', () => {
       expect(newRect.height).toBe(450);
     });
 
-    it('should maximize and unmaximize window', () => {
+    it("should maximize and unmaximize window", () => {
       const window = createMockWindow();
 
       expect(window.maximized_horizontally).toBe(false);
@@ -59,7 +59,7 @@ describe('Window Operations Integration', () => {
       expect(window.maximized_vertically).toBe(false);
     });
 
-    it('should handle fullscreen toggling', () => {
+    it("should handle fullscreen toggling", () => {
       const window = createMockWindow();
 
       expect(window.is_fullscreen()).toBe(false);
@@ -71,7 +71,7 @@ describe('Window Operations Integration', () => {
       expect(window.is_fullscreen()).toBe(false);
     });
 
-    it('should minimize and unminimize window', () => {
+    it("should minimize and unminimize window", () => {
       const window = createMockWindow();
 
       expect(window.minimized).toBe(false);
@@ -84,13 +84,13 @@ describe('Window Operations Integration', () => {
     });
   });
 
-  describe('Window Signals', () => {
-    it('should connect and trigger signal handlers', () => {
+  describe("Window Signals", () => {
+    it("should connect and trigger signal handlers", () => {
       const window = createMockWindow();
       let callbackCalled = false;
       let callbackArg = null;
 
-      const signalId = window.connect('size-changed', (arg) => {
+      const signalId = window.connect("size-changed", (arg) => {
         callbackCalled = true;
         callbackArg = arg;
       });
@@ -98,48 +98,48 @@ describe('Window Operations Integration', () => {
       expect(signalId).toBeDefined();
 
       // Emit the signal
-      window.emit('size-changed', 'test-arg');
+      window.emit("size-changed", "test-arg");
 
       expect(callbackCalled).toBe(true);
-      expect(callbackArg).toBe('test-arg');
+      expect(callbackArg).toBe("test-arg");
     });
 
-    it('should disconnect signal handlers', () => {
+    it("should disconnect signal handlers", () => {
       const window = createMockWindow();
       let callCount = 0;
 
-      const signalId = window.connect('size-changed', () => {
+      const signalId = window.connect("size-changed", () => {
         callCount++;
       });
 
-      window.emit('size-changed');
+      window.emit("size-changed");
       expect(callCount).toBe(1);
 
       window.disconnect(signalId);
 
-      window.emit('size-changed');
+      window.emit("size-changed");
       expect(callCount).toBe(1); // Should not increment
     });
 
-    it('should handle multiple signals on same window', () => {
+    it("should handle multiple signals on same window", () => {
       const window = createMockWindow();
       let sizeChanges = 0;
       let focusChanges = 0;
 
-      window.connect('size-changed', () => sizeChanges++);
-      window.connect('focus', () => focusChanges++);
+      window.connect("size-changed", () => sizeChanges++);
+      window.connect("focus", () => focusChanges++);
 
-      window.emit('size-changed');
-      window.emit('focus');
-      window.emit('size-changed');
+      window.emit("size-changed");
+      window.emit("focus");
+      window.emit("size-changed");
 
       expect(sizeChanges).toBe(2);
       expect(focusChanges).toBe(1);
     });
   });
 
-  describe('Rectangle Operations', () => {
-    it('should check if rectangles are equal', () => {
+  describe("Rectangle Operations", () => {
+    it("should check if rectangles are equal", () => {
       const rect1 = new Rectangle({ x: 0, y: 0, width: 100, height: 100 });
       const rect2 = new Rectangle({ x: 0, y: 0, width: 100, height: 100 });
       const rect3 = new Rectangle({ x: 10, y: 10, width: 100, height: 100 });
@@ -148,7 +148,7 @@ describe('Window Operations Integration', () => {
       expect(rect1.equal(rect3)).toBe(false);
     });
 
-    it('should check if rectangle contains another', () => {
+    it("should check if rectangle contains another", () => {
       const outer = new Rectangle({ x: 0, y: 0, width: 200, height: 200 });
       const inner = new Rectangle({ x: 50, y: 50, width: 50, height: 50 });
       const outside = new Rectangle({ x: 250, y: 250, width: 50, height: 50 });
@@ -157,7 +157,7 @@ describe('Window Operations Integration', () => {
       expect(outer.contains_rect(outside)).toBe(false);
     });
 
-    it('should check if rectangles overlap', () => {
+    it("should check if rectangles overlap", () => {
       const rect1 = new Rectangle({ x: 0, y: 0, width: 100, height: 100 });
       const rect2 = new Rectangle({ x: 50, y: 50, width: 100, height: 100 });
       const rect3 = new Rectangle({ x: 200, y: 200, width: 100, height: 100 });
@@ -166,7 +166,7 @@ describe('Window Operations Integration', () => {
       expect(rect1.overlap(rect3)).toBe(false);
     });
 
-    it('should copy rectangle', () => {
+    it("should copy rectangle", () => {
       const original = new Rectangle({ x: 10, y: 20, width: 100, height: 200 });
       const copy = original.copy();
 
@@ -179,21 +179,21 @@ describe('Window Operations Integration', () => {
     });
   });
 
-  describe('Multiple Windows Scenario', () => {
-    it('should manage multiple windows independently', () => {
+  describe("Multiple Windows Scenario", () => {
+    it("should manage multiple windows independently", () => {
       const windows = createMockWindowArray(3, {
-        rect: { x: 0, y: 0, width: 640, height: 480 }
+        rect: { x: 0, y: 0, width: 640, height: 480 },
       });
 
       expect(windows).toHaveLength(3);
 
       // Each window should have unique ID
-      const ids = windows.map(w => w.id);
+      const ids = windows.map((w) => w.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(3);
 
       // Each window should have same initial rect
-      windows.forEach(w => {
+      windows.forEach((w) => {
         const rect = w.get_frame_rect();
         expect(rect.width).toBe(640);
         expect(rect.height).toBe(480);
@@ -208,7 +208,7 @@ describe('Window Operations Integration', () => {
       expect(windows[0].get_frame_rect().width).toBe(800);
     });
 
-    it('should track window states independently', () => {
+    it("should track window states independently", () => {
       const windows = createMockWindowArray(2);
 
       windows[0].maximize();
@@ -222,21 +222,15 @@ describe('Window Operations Integration', () => {
     });
   });
 
-  describe('Realistic Tiling Scenario', () => {
-    it('should tile two windows side by side', () => {
+  describe("Realistic Tiling Scenario", () => {
+    it("should tile two windows side by side", () => {
       const monitor = new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 });
 
-      const window1 = createMockWindow({ wm_class: 'Terminal' });
-      const window2 = createMockWindow({ wm_class: 'Browser' });
+      const window1 = createMockWindow({ wm_class: "Terminal" });
+      const window2 = createMockWindow({ wm_class: "Browser" });
 
       // Tile left half
-      window1.move_resize_frame(
-        false,
-        monitor.x,
-        monitor.y,
-        monitor.width / 2,
-        monitor.height
-      );
+      window1.move_resize_frame(false, monitor.x, monitor.y, monitor.width / 2, monitor.height);
 
       // Tile right half
       window2.move_resize_frame(
@@ -244,7 +238,7 @@ describe('Window Operations Integration', () => {
         monitor.x + monitor.width / 2,
         monitor.y,
         monitor.width / 2,
-        monitor.height
+        monitor.height,
       );
 
       const rect1 = window1.get_frame_rect();
@@ -264,7 +258,7 @@ describe('Window Operations Integration', () => {
       expect(rect1.overlap(rect2)).toBe(false);
     });
 
-    it('should tile four windows in a grid', () => {
+    it("should tile four windows in a grid", () => {
       const monitor = new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 });
       const windows = createMockWindowArray(4);
 
@@ -284,7 +278,7 @@ describe('Window Operations Integration', () => {
       windows[3].move_resize_frame(false, halfWidth, halfHeight, halfWidth, halfHeight);
 
       // Verify each window occupies exactly 1/4 of the screen
-      windows.forEach(window => {
+      windows.forEach((window) => {
         const rect = window.get_frame_rect();
         expect(rect.width).toBe(960);
         expect(rect.height).toBe(540);
@@ -293,7 +287,7 @@ describe('Window Operations Integration', () => {
       // Verify total coverage
       const totalArea = windows.reduce((sum, window) => {
         const rect = window.get_frame_rect();
-        return sum + (rect.width * rect.height);
+        return sum + rect.width * rect.height;
       }, 0);
 
       const monitorArea = monitor.width * monitor.height;
@@ -301,8 +295,8 @@ describe('Window Operations Integration', () => {
     });
   });
 
-  describe('Window Work Area Calculations', () => {
-    it('should get work area for current monitor', () => {
+  describe("Window Work Area Calculations", () => {
+    it("should get work area for current monitor", () => {
       const window = createMockWindow();
       const workArea = window.get_work_area_current_monitor();
 
@@ -310,9 +304,9 @@ describe('Window Operations Integration', () => {
       expect(workArea.height).toBe(1080);
     });
 
-    it('should calculate window position relative to monitor', () => {
+    it("should calculate window position relative to monitor", () => {
       const window = createMockWindow({
-        rect: { x: 100, y: 50, width: 800, height: 600 }
+        rect: { x: 100, y: 50, width: 800, height: 600 },
       });
 
       const workArea = window.get_work_area_current_monitor();

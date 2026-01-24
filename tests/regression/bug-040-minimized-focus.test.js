@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from '../../lib/extension/tree.js';
-import { WINDOW_MODES } from '../../lib/extension/window.js';
-import { createMockWindow } from '../mocks/helpers/mockWindow.js';
-import { MotionDirection } from '../mocks/gnome/Meta.js';
-import { Bin } from '../mocks/gnome/St.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
+import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { MotionDirection } from "../mocks/gnome/Meta.js";
+import { Bin } from "../mocks/gnome/St.js";
 
 /**
  * Bug #40: Deeply nested nodes with minimized windows cause focus issues
@@ -16,7 +16,7 @@ import { Bin } from '../mocks/gnome/St.js';
  *
  * Fix: Added !w.nodeValue.minimized filter in focus() at lines 795-797 and 823-826.
  */
-describe('Bug #40: Minimized windows in focus navigation', () => {
+describe("Bug #40: Minimized windows in focus navigation", () => {
   let tree;
   let mockExtWm;
   let mockWorkspaceManager;
@@ -57,7 +57,7 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       ext: {
         settings: {
           get_boolean: vi.fn((key) => {
-            if (key === 'move-pointer-focus-enabled') return false;
+            if (key === "move-pointer-focus-enabled") return false;
             return false;
           }),
           get_uint: vi.fn(() => 0),
@@ -86,12 +86,12 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
     mockExtWm.currentMonWsNode = monitorNode;
   });
 
-  describe('Focus should skip minimized windows in containers', () => {
-    it('should skip minimized window when navigating right in HSPLIT', () => {
+  describe("Focus should skip minimized windows in containers", () => {
+    it("should skip minimized window when navigating right in HSPLIT", () => {
       // Setup: [ A ] [ B(minimized) ] [ C ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -108,11 +108,11 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       expect(result).toBe(nodeC);
     });
 
-    it('should skip minimized window when navigating left in HSPLIT', () => {
+    it("should skip minimized window when navigating left in HSPLIT", () => {
       // Setup: [ A ] [ B(minimized) ] [ C ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -130,12 +130,12 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
     });
   });
 
-  describe('Focus into container with minimized windows', () => {
-    it('should skip minimized windows when focusing into a container', () => {
+  describe("Focus into container with minimized windows", () => {
+    it("should skip minimized windows when focusing into a container", () => {
       // Setup: [ A ] [ container[ B(minimized), C ] ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -160,11 +160,11 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       expect(result).toBe(nodeC);
     });
 
-    it('should select last non-minimized window when focusing backward into container', () => {
+    it("should select last non-minimized window when focusing backward into container", () => {
       // Setup: [ container[ A, B(minimized) ] ] [ C ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -190,12 +190,12 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
     });
   });
 
-  describe('Container with all windows minimized', () => {
-    it('should return null when all windows in container are minimized', () => {
+  describe("Container with all windows minimized", () => {
+    it("should return null when all windows in container are minimized", () => {
       // Setup: [ A ] [ container[ B(minimized), C(minimized) ] ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
       windowC.minimized = true;
@@ -223,16 +223,16 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
     });
   });
 
-  describe('Vertical layout with minimized windows', () => {
-    it('should skip minimized window when navigating down in VSPLIT', () => {
+  describe("Vertical layout with minimized windows", () => {
+    it("should skip minimized window when navigating down in VSPLIT", () => {
       // Setup: [ A ]
       //        [ B(minimized) ]
       //        [ C ]
       monitorNode.layout = LAYOUT_TYPES.VSPLIT;
 
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -249,15 +249,15 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       expect(result).toBe(nodeC);
     });
 
-    it('should skip minimized window when navigating up in VSPLIT', () => {
+    it("should skip minimized window when navigating up in VSPLIT", () => {
       // Setup: [ A ]
       //        [ B(minimized) ]
       //        [ C ]
       monitorNode.layout = LAYOUT_TYPES.VSPLIT;
 
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowB.minimized = true;
 
@@ -275,12 +275,12 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
     });
   });
 
-  describe('Edge cases', () => {
-    it('should handle non-minimized windows normally', () => {
+  describe("Edge cases", () => {
+    it("should handle non-minimized windows normally", () => {
       // Setup: [ A ] [ B ] [ C ] - none minimized
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
@@ -295,11 +295,11 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       expect(result).toBe(nodeB);
     });
 
-    it('should handle first window minimized', () => {
+    it("should handle first window minimized", () => {
       // Setup: [ A(minimized) ] [ B ] [ C ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowA.minimized = true;
 
@@ -316,11 +316,11 @@ describe('Bug #40: Minimized windows in focus navigation', () => {
       expect(result).toBe(nodeB);
     });
 
-    it('should handle last window minimized', () => {
+    it("should handle last window minimized", () => {
       // Setup: [ A ] [ B ] [ C(minimized) ]
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
-      const windowC = createMockWindow({ id: 'C' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
+      const windowC = createMockWindow({ id: "C" });
 
       windowC.minimized = true;
 

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WindowManager, WINDOW_MODES } from '../../../lib/extension/window.js';
-import { Tree, NODE_TYPES } from '../../../lib/extension/tree.js';
-import { createMockWindow } from '../../mocks/helpers/mockWindow.js';
-import { Workspace } from '../../mocks/gnome/Meta.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
+import { Tree, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
+import { Workspace } from "../../mocks/gnome/Meta.js";
 
 /**
  * WindowManager batch float/unfloat operations tests
@@ -15,7 +15,7 @@ import { Workspace } from '../../mocks/gnome/Meta.js';
  * - cleanupAlwaysFloat(): Remove always-on-top from floating windows
  * - restoreAlwaysFloat(): Restore always-on-top for floating windows
  */
-describe('WindowManager - Batch Float Operations', () => {
+describe("WindowManager - Batch Float Operations", () => {
   let windowManager;
   let mockExtension;
   let mockSettings;
@@ -31,7 +31,7 @@ describe('WindowManager - Batch Float Operations', () => {
       get_focus_window: vi.fn(() => null),
       get_current_monitor: vi.fn(() => 0),
       get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 }))
+      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
     };
 
     workspace0 = new Workspace({ index: 0 });
@@ -45,7 +45,7 @@ describe('WindowManager - Batch Float Operations', () => {
         return new Workspace({ index: i });
       }),
       get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0)
+      get_active_workspace: vi.fn(() => workspace0),
     };
 
     global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
@@ -53,7 +53,7 @@ describe('WindowManager - Batch Float Operations', () => {
     global.window_group = {
       contains: vi.fn(() => false),
       add_child: vi.fn(),
-      remove_child: vi.fn()
+      remove_child: vi.fn(),
     };
 
     global.get_current_time = vi.fn(() => 12345);
@@ -61,42 +61,42 @@ describe('WindowManager - Batch Float Operations', () => {
     // Mock settings
     mockSettings = {
       get_boolean: vi.fn((key) => {
-        if (key === 'tiling-mode-enabled') return true;
-        if (key === 'focus-on-hover-enabled') return false;
-        if (key === 'float-always-on-top-enabled') return true;
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "focus-on-hover-enabled") return false;
+        if (key === "float-always-on-top-enabled") return true;
         return false;
       }),
       get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ''),
+      get_string: vi.fn(() => ""),
       set_boolean: vi.fn(),
       set_uint: vi.fn(),
-      set_string: vi.fn()
+      set_string: vi.fn(),
     };
 
     // Mock config manager
     mockConfigMgr = {
       windowProps: {
-        overrides: []
-      }
+        overrides: [],
+      },
     };
 
     // Mock extension
     mockExtension = {
-      metadata: { version: '1.0.0' },
+      metadata: { version: "1.0.0" },
       settings: mockSettings,
       configMgr: mockConfigMgr,
       keybindings: null,
       theme: {
-        loadStylesheet: vi.fn()
-      }
+        loadStylesheet: vi.fn(),
+      },
     };
 
     // Create WindowManager
     windowManager = new WindowManager(mockExtension);
   });
 
-  describe('floatAllWindows()', () => {
-    it('should float all windows in the tree', () => {
+  describe("floatAllWindows()", () => {
+    it("should float all windows in the tree", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
@@ -104,9 +104,21 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow2 = createMockWindow({ id: 2 });
       const metaWindow3 = createMockWindow({ id: 3 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
-      const nodeWindow3 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow3);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
+      const nodeWindow3 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow3,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -119,15 +131,23 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow3.mode).toBe(WINDOW_MODES.FLOAT);
     });
 
-    it('should mark already-floating windows with prevFloat', () => {
+    it("should mark already-floating windows with prevFloat", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT; // Already floating
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -138,13 +158,13 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.prevFloat).toBeUndefined();
     });
 
-    it('should handle empty tree gracefully', () => {
+    it("should handle empty tree gracefully", () => {
       expect(() => {
         windowManager.floatAllWindows();
       }).not.toThrow();
     });
 
-    it('should float windows across multiple workspaces', () => {
+    it("should float windows across multiple workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -153,8 +173,16 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace1 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -166,16 +194,24 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('unfloatAllWindows()', () => {
-    it('should unfloat all windows that were not previously floating', () => {
+  describe("unfloatAllWindows()", () => {
+    it("should unfloat all windows that were not previously floating", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -193,15 +229,23 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE);
     });
 
-    it('should keep previously-floating windows as floating', () => {
+    it("should keep previously-floating windows as floating", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT; // Already floating
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -220,13 +264,13 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE);
     });
 
-    it('should handle empty tree gracefully', () => {
+    it("should handle empty tree gracefully", () => {
       expect(() => {
         windowManager.unfloatAllWindows();
       }).not.toThrow();
     });
 
-    it('should unfloat windows across multiple workspaces', () => {
+    it("should unfloat windows across multiple workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -235,8 +279,16 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace1 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
@@ -249,22 +301,30 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('floatWorkspace()', () => {
-    it('should float all windows on specified workspace', () => {
+  describe("floatWorkspace()", () => {
+    it("should float all windows on specified workspace", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace0 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
       // Mock getWindowsOnWorkspace to return our test windows
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([nodeWindow1, nodeWindow2]);
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([nodeWindow1, nodeWindow2]);
 
       windowManager.floatWorkspace(0);
 
@@ -272,7 +332,7 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.FLOAT);
     });
 
-    it('should not affect windows on other workspaces', () => {
+    it("should not affect windows on other workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -281,14 +341,22 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace1 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
       // Mock getWindowsOnWorkspace
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockImplementation((wsIndex) => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockImplementation((wsIndex) => {
         if (wsIndex === 0) return [nodeWindow1];
         if (wsIndex === 1) return [nodeWindow2];
         return [];
@@ -300,38 +368,42 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE); // Unchanged
     });
 
-    it('should handle empty workspace gracefully', () => {
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([]);
+    it("should handle empty workspace gracefully", () => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([]);
 
       expect(() => {
         windowManager.floatWorkspace(0);
       }).not.toThrow();
     });
 
-    it('should handle null workspace gracefully', () => {
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue(null);
+    it("should handle null workspace gracefully", () => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue(null);
 
       expect(() => {
         windowManager.floatWorkspace(999);
       }).not.toThrow();
     });
 
-    it('should enable always-on-top for floated windows when setting enabled', () => {
+    it("should enable always-on-top for floated windows when setting enabled", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
       mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === 'float-always-on-top-enabled') return true;
+        if (key === "float-always-on-top-enabled") return true;
         return false;
       });
 
-      const makeAboveSpy = vi.spyOn(metaWindow1, 'make_above');
+      const makeAboveSpy = vi.spyOn(metaWindow1, "make_above");
 
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([nodeWindow1]);
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([nodeWindow1]);
 
       windowManager.floatWorkspace(0);
 
@@ -340,21 +412,29 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('unfloatWorkspace()', () => {
-    it('should unfloat all windows on specified workspace', () => {
+  describe("unfloatWorkspace()", () => {
+    it("should unfloat all windows on specified workspace", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace0 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
 
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([nodeWindow1, nodeWindow2]);
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([nodeWindow1, nodeWindow2]);
 
       windowManager.unfloatWorkspace(0);
 
@@ -362,7 +442,7 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE);
     });
 
-    it('should not affect windows on other workspaces', () => {
+    it("should not affect windows on other workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -371,13 +451,21 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace1 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
 
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockImplementation((wsIndex) => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockImplementation((wsIndex) => {
         if (wsIndex === 0) return [nodeWindow1];
         if (wsIndex === 1) return [nodeWindow2];
         return [];
@@ -389,31 +477,35 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.FLOAT); // Unchanged
     });
 
-    it('should handle empty workspace gracefully', () => {
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([]);
+    it("should handle empty workspace gracefully", () => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([]);
 
       expect(() => {
         windowManager.unfloatWorkspace(0);
       }).not.toThrow();
     });
 
-    it('should handle null workspace gracefully', () => {
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue(null);
+    it("should handle null workspace gracefully", () => {
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue(null);
 
       expect(() => {
         windowManager.unfloatWorkspace(999);
       }).not.toThrow();
     });
 
-    it('should change mode to TILE when unfloating', () => {
+    it("should change mode to TILE when unfloating", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
 
-      vi.spyOn(windowManager, 'getWindowsOnWorkspace').mockReturnValue([nodeWindow1]);
+      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([nodeWindow1]);
 
       windowManager.unfloatWorkspace(0);
 
@@ -421,24 +513,32 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('cleanupAlwaysFloat()', () => {
-    it('should remove always-on-top from floating windows', () => {
+  describe("cleanupAlwaysFloat()", () => {
+    it("should remove always-on-top from floating windows", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
       metaWindow1.above = true;
 
-      const unmakeAbove1 = vi.spyOn(metaWindow1, 'unmake_above');
-      const unmakeAbove2 = vi.spyOn(metaWindow2, 'unmake_above');
+      const unmakeAbove1 = vi.spyOn(metaWindow1, "unmake_above");
+      const unmakeAbove2 = vi.spyOn(metaWindow2, "unmake_above");
 
       windowManager.cleanupAlwaysFloat();
 
@@ -446,30 +546,34 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(unmakeAbove2).not.toHaveBeenCalled();
     });
 
-    it('should not unmake_above if window is not above', () => {
+    it("should not unmake_above if window is not above", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       metaWindow1.above = false;
 
-      const unmakeAboveSpy = vi.spyOn(metaWindow1, 'unmake_above');
+      const unmakeAboveSpy = vi.spyOn(metaWindow1, "unmake_above");
 
       windowManager.cleanupAlwaysFloat();
 
       expect(unmakeAboveSpy).not.toHaveBeenCalled();
     });
 
-    it('should handle empty tree gracefully', () => {
+    it("should handle empty tree gracefully", () => {
       expect(() => {
         windowManager.cleanupAlwaysFloat();
       }).not.toThrow();
     });
 
-    it('should process all floating windows across workspaces', () => {
+    it("should process all floating windows across workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -478,8 +582,16 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
@@ -487,8 +599,8 @@ describe('WindowManager - Batch Float Operations', () => {
       metaWindow1.above = true;
       metaWindow2.above = true;
 
-      const unmakeAbove1 = vi.spyOn(metaWindow1, 'unmake_above');
-      const unmakeAbove2 = vi.spyOn(metaWindow2, 'unmake_above');
+      const unmakeAbove1 = vi.spyOn(metaWindow1, "unmake_above");
+      const unmakeAbove2 = vi.spyOn(metaWindow2, "unmake_above");
 
       windowManager.cleanupAlwaysFloat();
 
@@ -497,24 +609,32 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('restoreAlwaysFloat()', () => {
-    it('should restore always-on-top for floating windows', () => {
+  describe("restoreAlwaysFloat()", () => {
+    it("should restore always-on-top for floating windows", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
       metaWindow1.above = false;
 
-      const makeAbove1 = vi.spyOn(metaWindow1, 'make_above');
-      const makeAbove2 = vi.spyOn(metaWindow2, 'make_above');
+      const makeAbove1 = vi.spyOn(metaWindow1, "make_above");
+      const makeAbove2 = vi.spyOn(metaWindow2, "make_above");
 
       windowManager.restoreAlwaysFloat();
 
@@ -522,30 +642,34 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(makeAbove2).not.toHaveBeenCalled();
     });
 
-    it('should not make_above if window is already above', () => {
+    it("should not make_above if window is already above", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       metaWindow1.above = true;
 
-      const makeAboveSpy = vi.spyOn(metaWindow1, 'make_above');
+      const makeAboveSpy = vi.spyOn(metaWindow1, "make_above");
 
       windowManager.restoreAlwaysFloat();
 
       expect(makeAboveSpy).not.toHaveBeenCalled();
     });
 
-    it('should handle empty tree gracefully', () => {
+    it("should handle empty tree gracefully", () => {
       expect(() => {
         windowManager.restoreAlwaysFloat();
       }).not.toThrow();
     });
 
-    it('should process all floating windows across workspaces', () => {
+    it("should process all floating windows across workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
       const monitor0 = workspace0.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -554,8 +678,16 @@ describe('WindowManager - Batch Float Operations', () => {
       const metaWindow1 = createMockWindow({ id: 1 });
       const metaWindow2 = createMockWindow({ id: 2 });
 
-      const nodeWindow1 = windowManager.tree.createNode(monitor0.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = windowManager.tree.createNode(monitor1.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor0.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
+      const nodeWindow2 = windowManager.tree.createNode(
+        monitor1.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow2,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
@@ -563,8 +695,8 @@ describe('WindowManager - Batch Float Operations', () => {
       metaWindow1.above = false;
       metaWindow2.above = false;
 
-      const makeAbove1 = vi.spyOn(metaWindow1, 'make_above');
-      const makeAbove2 = vi.spyOn(metaWindow2, 'make_above');
+      const makeAbove1 = vi.spyOn(metaWindow1, "make_above");
+      const makeAbove2 = vi.spyOn(metaWindow2, "make_above");
 
       windowManager.restoreAlwaysFloat();
 
@@ -572,18 +704,22 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(makeAbove2).toHaveBeenCalled();
     });
 
-    it('should work correctly after cleanupAlwaysFloat', () => {
+    it("should work correctly after cleanupAlwaysFloat", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
       metaWindow1.above = true;
 
-      const unmakeAboveSpy = vi.spyOn(metaWindow1, 'unmake_above');
-      const makeAboveSpy = vi.spyOn(metaWindow1, 'make_above');
+      const unmakeAboveSpy = vi.spyOn(metaWindow1, "unmake_above");
+      const makeAboveSpy = vi.spyOn(metaWindow1, "make_above");
 
       // Cleanup removes above
       windowManager.cleanupAlwaysFloat();
@@ -595,13 +731,17 @@ describe('WindowManager - Batch Float Operations', () => {
     });
   });
 
-  describe('Integration: Float/Unfloat Cycle', () => {
-    it('should correctly handle float -> unfloat -> float cycle', () => {
+  describe("Integration: Float/Unfloat Cycle", () => {
+    it("should correctly handle float -> unfloat -> float cycle", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
 
       // Start as tiled
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -621,12 +761,16 @@ describe('WindowManager - Batch Float Operations', () => {
       expect(nodeWindow1.prevFloat).toBeUndefined(); // Was not floating before
     });
 
-    it('should preserve original floating state through cycle', () => {
+    it("should preserve original floating state through cycle", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
       const metaWindow1 = createMockWindow({ id: 1 });
-      const nodeWindow1 = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      const nodeWindow1 = windowManager.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        metaWindow1,
+      );
 
       // Start as floating
       nodeWindow1.mode = WINDOW_MODES.FLOAT;

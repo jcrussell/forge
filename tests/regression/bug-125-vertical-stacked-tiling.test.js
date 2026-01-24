@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WindowManager, WINDOW_MODES } from '../../lib/extension/window.js';
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from '../../lib/extension/tree.js';
-import { createMockWindow } from '../mocks/helpers/mockWindow.js';
-import { Workspace } from '../mocks/gnome/Meta.js';
-import { Bin } from '../mocks/gnome/St.js';
-import * as Utils from '../../lib/extension/utils.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
+import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { Workspace } from "../mocks/gnome/Meta.js";
+import { Bin } from "../mocks/gnome/St.js";
+import * as Utils from "../../lib/extension/utils.js";
 
 /**
  * Bug #125: Impossible to tile large windows vertically when in stacked mode
@@ -18,7 +18,7 @@ import * as Utils from '../../lib/extension/utils.js';
  * Fix: Added childNode.detachWindow = true for isTop and isBottom cases when
  * dropping on stacked/tabbed containers, matching the behavior of isLeft/isRight.
  */
-describe('Bug #125: Vertical tiling from stacked containers', () => {
+describe("Bug #125: Vertical tiling from stacked containers", () => {
   let windowManager;
   let mockExtension;
   let mockSettings;
@@ -58,14 +58,14 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
     // Mock settings
     mockSettings = {
       get_boolean: vi.fn((key) => {
-        if (key === 'tiling-mode-enabled') return true;
-        if (key === 'focus-on-hover-enabled') return false;
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "focus-on-hover-enabled") return false;
         return false;
       }),
       get_uint: vi.fn(() => 0),
       get_string: vi.fn((key) => {
-        if (key === 'dnd-center-layout') return 'STACKED';
-        return '';
+        if (key === "dnd-center-layout") return "STACKED";
+        return "";
       }),
       set_boolean: vi.fn(),
       set_uint: vi.fn(),
@@ -81,7 +81,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
 
     // Mock extension
     mockExtension = {
-      metadata: { version: '1.0.0' },
+      metadata: { version: "1.0.0" },
       settings: mockSettings,
       configMgr: mockConfigMgr,
       keybindings: null,
@@ -94,8 +94,8 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
     windowManager = new WindowManager(mockExtension);
   });
 
-  describe('Detach behavior for stacked containers', () => {
-    it('should set detachWindow=true for top drop on stacked container', () => {
+  describe("Detach behavior for stacked containers", () => {
+    it("should set detachWindow=true for top drop on stacked container", () => {
       // This test verifies the core fix: when dropping on top of a stacked
       // container, we should detach the window (create a vertical split)
       // rather than adding it to the stack
@@ -110,8 +110,8 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
       monitorNode.appendChild(container);
 
-      const windowA = createMockWindow({ id: 'A' });
-      const windowB = createMockWindow({ id: 'B' });
+      const windowA = createMockWindow({ id: "A" });
+      const windowB = createMockWindow({ id: "B" });
 
       const nodeA = new Node(NODE_TYPES.WINDOW, windowA);
       const nodeB = new Node(NODE_TYPES.WINDOW, windowB);
@@ -121,7 +121,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       container.appendChild(nodeB);
 
       // Create a window to drag
-      const windowC = createMockWindow({ id: 'C' });
+      const windowC = createMockWindow({ id: "C" });
       const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeC.mode = WINDOW_MODES.TILE;
 
@@ -134,10 +134,12 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       // container's layout type is correctly identified
 
       expect(container.layout).toBe(LAYOUT_TYPES.STACKED);
-      expect(container.layout === LAYOUT_TYPES.STACKED || container.layout === LAYOUT_TYPES.TABBED).toBe(true);
+      expect(
+        container.layout === LAYOUT_TYPES.STACKED || container.layout === LAYOUT_TYPES.TABBED,
+      ).toBe(true);
     });
 
-    it('should recognize stacked and tabbed layouts', () => {
+    it("should recognize stacked and tabbed layouts", () => {
       const tree = windowManager.tree;
       const workspace = tree.nodeWorkpaces[0];
       const monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -163,15 +165,15 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
     });
   });
 
-  describe('Preview class for edge drops', () => {
-    it('should use tiled preview class for all edge drops on stacked containers', () => {
+  describe("Preview class for edge drops", () => {
+    it("should use tiled preview class for all edge drops on stacked containers", () => {
       // After the fix, all edge drops (left/right/top/bottom) should use
       // "window-tilepreview-tiled" class instead of stacked/tabbed class
       // for top/bottom drops
 
-      const tiledPreviewClass = 'window-tilepreview-tiled';
-      const stackedPreviewClass = 'window-tilepreview-stacked';
-      const tabbedPreviewClass = 'window-tilepreview-tabbed';
+      const tiledPreviewClass = "window-tilepreview-tiled";
+      const stackedPreviewClass = "window-tilepreview-stacked";
+      const tabbedPreviewClass = "window-tilepreview-tabbed";
 
       // The fix changed the behavior so that:
       // - isLeft on stackedOrTabbed -> tiled preview
@@ -180,14 +182,14 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       // - isBottom on stackedOrTabbed -> NOW tiled preview (was stacked/tabbed)
 
       // All edge cases now produce tiled preview
-      expect(tiledPreviewClass).toBe('window-tilepreview-tiled');
+      expect(tiledPreviewClass).toBe("window-tilepreview-tiled");
       expect(tiledPreviewClass).not.toBe(stackedPreviewClass);
       expect(tiledPreviewClass).not.toBe(tabbedPreviewClass);
     });
   });
 
-  describe('Container insertion for vertical splits', () => {
-    it('should insert window as sibling for top drop on stacked container', () => {
+  describe("Container insertion for vertical splits", () => {
+    it("should insert window as sibling for top drop on stacked container", () => {
       const tree = windowManager.tree;
       const workspace = tree.nodeWorkpaces[0];
       const monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -198,7 +200,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       container.layout = LAYOUT_TYPES.STACKED;
       monitorNode.appendChild(container);
 
-      const windowA = createMockWindow({ id: 'A' });
+      const windowA = createMockWindow({ id: "A" });
       const nodeA = new Node(NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
       container.appendChild(nodeA);
@@ -216,7 +218,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       expect(monitorNode.childNodes).toContain(container);
 
       // Simulate what the fix does: insert window as sibling
-      const windowB = createMockWindow({ id: 'B' });
+      const windowB = createMockWindow({ id: "B" });
       const nodeB = new Node(NODE_TYPES.WINDOW, windowB);
       nodeB.mode = WINDOW_MODES.TILE;
 
@@ -231,7 +233,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       expect(container.childNodes).not.toContain(nodeB);
     });
 
-    it('should insert window as sibling for bottom drop on stacked container', () => {
+    it("should insert window as sibling for bottom drop on stacked container", () => {
       const tree = windowManager.tree;
       const workspace = tree.nodeWorkpaces[0];
       const monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -242,7 +244,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       container.layout = LAYOUT_TYPES.STACKED;
       monitorNode.appendChild(container);
 
-      const windowA = createMockWindow({ id: 'A' });
+      const windowA = createMockWindow({ id: "A" });
       const nodeA = new Node(NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
       container.appendChild(nodeA);
@@ -256,7 +258,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       // Instead of: [ container[ A, newWindow ] ]
 
       // Simulate what the fix does: insert window as sibling after container
-      const windowB = createMockWindow({ id: 'B' });
+      const windowB = createMockWindow({ id: "B" });
       const nodeB = new Node(NODE_TYPES.WINDOW, windowB);
       nodeB.mode = WINDOW_MODES.TILE;
 
@@ -272,8 +274,8 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
     });
   });
 
-  describe('Consistent behavior across all edge directions', () => {
-    it('should treat all edge drops (left/right/top/bottom) consistently for stacked containers', () => {
+  describe("Consistent behavior across all edge directions", () => {
+    it("should treat all edge drops (left/right/top/bottom) consistently for stacked containers", () => {
       const tree = windowManager.tree;
       const workspace = tree.nodeWorkpaces[0];
       const monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -283,7 +285,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       container.layout = LAYOUT_TYPES.STACKED;
       monitorNode.appendChild(container);
 
-      const windowA = createMockWindow({ id: 'A' });
+      const windowA = createMockWindow({ id: "A" });
       const nodeA = new Node(NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
       container.appendChild(nodeA);
@@ -305,7 +307,7 @@ describe('Bug #125: Vertical tiling from stacked containers', () => {
       // 3. They use tiled preview class
 
       // This test verifies the structure supports the fix
-      expect(typeof container.parentNode).toBe('object');
+      expect(typeof container.parentNode).toBe("object");
       expect(container.parentNode.nodeType).toBe(NODE_TYPES.MONITOR);
     });
   });

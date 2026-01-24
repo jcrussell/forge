@@ -2,8 +2,8 @@
 
 export class Widget {
   constructor(params = {}) {
-    this.name = params.name || '';
-    this.style_class = params.style_class || '';
+    this.name = params.name || "";
+    this.style_class = params.style_class || "";
     this.visible = params.visible !== false;
     this._signals = {};
   }
@@ -23,7 +23,7 @@ export class Widget {
   }
 
   remove_style_class_name(name) {
-    this.style_class = this.style_class.replace(name, '').trim();
+    this.style_class = this.style_class.replace(name, "").trim();
   }
 
   show() {
@@ -57,7 +57,7 @@ export class Widget {
 
   disconnect(id) {
     for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter(s => s.id !== id);
+      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
     }
   }
 }
@@ -99,7 +99,7 @@ export class BoxLayout extends Widget {
 export class Label extends Widget {
   constructor(params = {}) {
     super(params);
-    this.text = params.text || '';
+    this.text = params.text || "";
   }
 
   get_text() {
@@ -114,7 +114,7 @@ export class Label extends Widget {
 export class Button extends Widget {
   constructor(params = {}) {
     super(params);
-    this.label = params.label || '';
+    this.label = params.label || "";
   }
 }
 
@@ -126,7 +126,7 @@ export class ThemeContext {
   get_theme() {
     return {
       load_stylesheet: () => {},
-      unload_stylesheet: () => {}
+      unload_stylesheet: () => {},
     };
   }
 
@@ -139,7 +139,7 @@ export class Icon extends Widget {
   constructor(params = {}) {
     super(params);
     this.gicon = params.gicon || null;
-    this.icon_name = params.icon_name || '';
+    this.icon_name = params.icon_name || "";
     this.icon_size = params.icon_size || 16;
   }
 
@@ -163,5 +163,5 @@ export default {
   Label,
   Button,
   ThemeContext,
-  Icon
+  Icon,
 };

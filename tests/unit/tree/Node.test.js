@@ -1,47 +1,47 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Node, NODE_TYPES, LAYOUT_TYPES } from '../../../lib/extension/tree.js';
-import { WINDOW_MODES } from '../../../lib/extension/window.js';
-import St from 'gi://St';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import St from "gi://St";
 
-describe('Node', () => {
-  describe('Constructor and Basic Properties', () => {
-    it('should create node with type and data', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root-data');
+describe("Node", () => {
+  describe("Constructor and Basic Properties", () => {
+    it("should create node with type and data", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root-data");
 
       expect(node.nodeType).toBe(NODE_TYPES.ROOT);
-      expect(node.nodeValue).toBe('root-data');
+      expect(node.nodeValue).toBe("root-data");
     });
 
-    it('should initialize with empty child nodes', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should initialize with empty child nodes", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
 
       expect(node.childNodes).toEqual([]);
       expect(node.firstChild).toBeNull();
       expect(node.lastChild).toBeNull();
     });
 
-    it('should have no parent initially', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should have no parent initially", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
 
       expect(node.parentNode).toBeNull();
     });
 
-    it('should initialize with default mode', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should initialize with default mode", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
 
       expect(node.mode).toBe(WINDOW_MODES.DEFAULT);
     });
 
-    it('should initialize with zero percent', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should initialize with zero percent", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
 
       expect(node.percent).toBe(0.0);
     });
   });
 
-  describe('Type Checking Methods', () => {
-    it('should correctly identify ROOT type', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+  describe("Type Checking Methods", () => {
+    it("should correctly identify ROOT type", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
 
       expect(node.isRoot()).toBe(true);
       expect(node.isWindow()).toBe(false);
@@ -50,15 +50,15 @@ describe('Node', () => {
       expect(node.isWorkspace()).toBe(false);
     });
 
-    it('should correctly identify MONITOR type', () => {
-      const node = new Node(NODE_TYPES.MONITOR, 'monitor-0');
+    it("should correctly identify MONITOR type", () => {
+      const node = new Node(NODE_TYPES.MONITOR, "monitor-0");
 
       expect(node.isMonitor()).toBe(true);
       expect(node.isRoot()).toBe(false);
       expect(node.isWindow()).toBe(false);
     });
 
-    it('should correctly identify CON type', () => {
+    it("should correctly identify CON type", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
 
       expect(node.isCon()).toBe(true);
@@ -66,15 +66,15 @@ describe('Node', () => {
       expect(node.isWindow()).toBe(false);
     });
 
-    it('should correctly identify WORKSPACE type', () => {
-      const node = new Node(NODE_TYPES.WORKSPACE, 'ws-0');
+    it("should correctly identify WORKSPACE type", () => {
+      const node = new Node(NODE_TYPES.WORKSPACE, "ws-0");
 
       expect(node.isWorkspace()).toBe(true);
       expect(node.isRoot()).toBe(false);
       expect(node.isWindow()).toBe(false);
     });
 
-    it('should check type by name', () => {
+    it("should check type by name", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
 
       expect(node.isType(NODE_TYPES.CON)).toBe(true);
@@ -82,32 +82,32 @@ describe('Node', () => {
     });
   });
 
-  describe('Mode Checking Methods', () => {
-    it('should check if node is floating', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+  describe("Mode Checking Methods", () => {
+    it("should check if node is floating", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
       node.mode = WINDOW_MODES.FLOAT;
 
       expect(node.isFloat()).toBe(true);
       expect(node.isTile()).toBe(false);
     });
 
-    it('should check if node is tiled', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should check if node is tiled", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
       node.mode = WINDOW_MODES.TILE;
 
       expect(node.isTile()).toBe(true);
       expect(node.isFloat()).toBe(false);
     });
 
-    it('should check if node is grab-tile', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should check if node is grab-tile", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
       node.mode = WINDOW_MODES.GRAB_TILE;
 
       expect(node.isGrabTile()).toBe(true);
     });
 
-    it('should check mode by name', () => {
-      const node = new Node(NODE_TYPES.ROOT, 'root');
+    it("should check mode by name", () => {
+      const node = new Node(NODE_TYPES.ROOT, "root");
       node.mode = WINDOW_MODES.TILE;
 
       expect(node.isMode(WINDOW_MODES.TILE)).toBe(true);
@@ -115,8 +115,8 @@ describe('Node', () => {
     });
   });
 
-  describe('Layout Checking Methods', () => {
-    it('should check horizontal split layout', () => {
+  describe("Layout Checking Methods", () => {
+    it("should check horizontal split layout", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       node.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -125,7 +125,7 @@ describe('Node', () => {
       expect(node.isStacked()).toBe(false);
     });
 
-    it('should check vertical split layout', () => {
+    it("should check vertical split layout", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       node.layout = LAYOUT_TYPES.VSPLIT;
 
@@ -133,7 +133,7 @@ describe('Node', () => {
       expect(node.isHSplit()).toBe(false);
     });
 
-    it('should check stacked layout', () => {
+    it("should check stacked layout", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       node.layout = LAYOUT_TYPES.STACKED;
 
@@ -141,7 +141,7 @@ describe('Node', () => {
       expect(node.isTabbed()).toBe(false);
     });
 
-    it('should check tabbed layout', () => {
+    it("should check tabbed layout", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       node.layout = LAYOUT_TYPES.TABBED;
 
@@ -149,7 +149,7 @@ describe('Node', () => {
       expect(node.isStacked()).toBe(false);
     });
 
-    it('should check layout by name', () => {
+    it("should check layout by name", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       node.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -158,16 +158,16 @@ describe('Node', () => {
     });
   });
 
-  describe('appendChild', () => {
+  describe("appendChild", () => {
     let parent, child1, child2;
 
     beforeEach(() => {
-      parent = new Node(NODE_TYPES.ROOT, 'parent');
+      parent = new Node(NODE_TYPES.ROOT, "parent");
       child1 = new Node(NODE_TYPES.CON, new St.Bin());
       child2 = new Node(NODE_TYPES.CON, new St.Bin());
     });
 
-    it('should add child to empty parent', () => {
+    it("should add child to empty parent", () => {
       parent.appendChild(child1);
 
       expect(parent.firstChild).toBe(child1);
@@ -176,7 +176,7 @@ describe('Node', () => {
       expect(child1.parentNode).toBe(parent);
     });
 
-    it('should add multiple children in order', () => {
+    it("should add multiple children in order", () => {
       parent.appendChild(child1);
       parent.appendChild(child2);
 
@@ -185,14 +185,14 @@ describe('Node', () => {
       expect(parent.childNodes).toHaveLength(2);
     });
 
-    it('should set parent reference on child', () => {
+    it("should set parent reference on child", () => {
       parent.appendChild(child1);
 
       expect(child1.parentNode).toBe(parent);
     });
 
-    it('should move child if already has different parent', () => {
-      const otherParent = new Node(NODE_TYPES.ROOT, 'other');
+    it("should move child if already has different parent", () => {
+      const otherParent = new Node(NODE_TYPES.ROOT, "other");
 
       parent.appendChild(child1);
       otherParent.appendChild(child1);
@@ -202,25 +202,25 @@ describe('Node', () => {
       expect(child1.parentNode).toBe(otherParent);
     });
 
-    it('should return null for null node', () => {
+    it("should return null for null node", () => {
       const result = parent.appendChild(null);
 
       expect(result).toBeNull();
       expect(parent.childNodes).toHaveLength(0);
     });
 
-    it('should return the appended node', () => {
+    it("should return the appended node", () => {
       const result = parent.appendChild(child1);
 
       expect(result).toBe(child1);
     });
   });
 
-  describe('removeChild', () => {
+  describe("removeChild", () => {
     let parent, child1, child2, child3;
 
     beforeEach(() => {
-      parent = new Node(NODE_TYPES.ROOT, 'parent');
+      parent = new Node(NODE_TYPES.ROOT, "parent");
       child1 = new Node(NODE_TYPES.CON, new St.Bin());
       child2 = new Node(NODE_TYPES.CON, new St.Bin());
       child3 = new Node(NODE_TYPES.CON, new St.Bin());
@@ -230,40 +230,40 @@ describe('Node', () => {
       parent.appendChild(child3);
     });
 
-    it('should remove child from parent', () => {
+    it("should remove child from parent", () => {
       parent.removeChild(child2);
 
       expect(parent.childNodes).toHaveLength(2);
       expect(parent.childNodes).not.toContain(child2);
     });
 
-    it('should clear parent reference', () => {
+    it("should clear parent reference", () => {
       parent.removeChild(child1);
 
       expect(child1.parentNode).toBeNull();
     });
 
-    it('should update siblings when removing middle child', () => {
+    it("should update siblings when removing middle child", () => {
       parent.removeChild(child2);
 
       expect(child1.nextSibling).toBe(child3);
       expect(child3.previousSibling).toBe(child1);
     });
 
-    it('should update firstChild when removing first child', () => {
+    it("should update firstChild when removing first child", () => {
       parent.removeChild(child1);
 
       expect(parent.firstChild).toBe(child2);
     });
 
-    it('should update lastChild when removing last child', () => {
+    it("should update lastChild when removing last child", () => {
       parent.removeChild(child3);
 
       expect(parent.lastChild).toBe(child2);
     });
 
-    it('should handle removing only child', () => {
-      const singleParent = new Node(NODE_TYPES.ROOT, 'single');
+    it("should handle removing only child", () => {
+      const singleParent = new Node(NODE_TYPES.ROOT, "single");
       const onlyChild = new Node(NODE_TYPES.CON, new St.Bin());
       singleParent.appendChild(onlyChild);
 
@@ -275,11 +275,11 @@ describe('Node', () => {
     });
   });
 
-  describe('insertBefore', () => {
+  describe("insertBefore", () => {
     let parent, child1, child2, newChild;
 
     beforeEach(() => {
-      parent = new Node(NODE_TYPES.ROOT, 'parent');
+      parent = new Node(NODE_TYPES.ROOT, "parent");
       child1 = new Node(NODE_TYPES.CON, new St.Bin());
       child2 = new Node(NODE_TYPES.CON, new St.Bin());
       newChild = new Node(NODE_TYPES.CON, new St.Bin());
@@ -288,7 +288,7 @@ describe('Node', () => {
       parent.appendChild(child2);
     });
 
-    it('should insert before specified child', () => {
+    it("should insert before specified child", () => {
       parent.insertBefore(newChild, child2);
 
       expect(parent.childNodes[0]).toBe(child1);
@@ -296,39 +296,39 @@ describe('Node', () => {
       expect(parent.childNodes[2]).toBe(child2);
     });
 
-    it('should insert at beginning', () => {
+    it("should insert at beginning", () => {
       parent.insertBefore(newChild, child1);
 
       expect(parent.firstChild).toBe(newChild);
       expect(newChild.nextSibling).toBe(child1);
     });
 
-    it('should set parent reference', () => {
+    it("should set parent reference", () => {
       parent.insertBefore(newChild, child2);
 
       expect(newChild.parentNode).toBe(parent);
     });
 
-    it('should append if childNode is null', () => {
+    it("should append if childNode is null", () => {
       parent.insertBefore(newChild, null);
 
       expect(parent.lastChild).toBe(newChild);
     });
 
-    it('should return null if newNode is null', () => {
+    it("should return null if newNode is null", () => {
       const result = parent.insertBefore(null, child1);
 
       expect(result).toBeNull();
     });
 
-    it('should return null if newNode same as childNode', () => {
+    it("should return null if newNode same as childNode", () => {
       const result = parent.insertBefore(child1, child1);
 
       expect(result).toBeNull();
     });
 
-    it('should return null if childNode parent is not this', () => {
-      const otherParent = new Node(NODE_TYPES.ROOT, 'other');
+    it("should return null if childNode parent is not this", () => {
+      const otherParent = new Node(NODE_TYPES.ROOT, "other");
       const otherChild = new Node(NODE_TYPES.CON, new St.Bin());
       otherParent.appendChild(otherChild);
 
@@ -337,8 +337,8 @@ describe('Node', () => {
       expect(result).toBeNull();
     });
 
-    it('should move node if already has parent', () => {
-      const otherParent = new Node(NODE_TYPES.ROOT, 'other');
+    it("should move node if already has parent", () => {
+      const otherParent = new Node(NODE_TYPES.ROOT, "other");
       otherParent.appendChild(newChild);
 
       parent.insertBefore(newChild, child2);
@@ -348,11 +348,11 @@ describe('Node', () => {
     });
   });
 
-  describe('Navigation Properties', () => {
+  describe("Navigation Properties", () => {
     let parent, child1, child2, child3;
 
     beforeEach(() => {
-      parent = new Node(NODE_TYPES.ROOT, 'parent');
+      parent = new Node(NODE_TYPES.ROOT, "parent");
       child1 = new Node(NODE_TYPES.CON, new St.Bin());
       child2 = new Node(NODE_TYPES.CON, new St.Bin());
       child3 = new Node(NODE_TYPES.CON, new St.Bin());
@@ -362,43 +362,43 @@ describe('Node', () => {
       parent.appendChild(child3);
     });
 
-    describe('firstChild and lastChild', () => {
-      it('should return first child', () => {
+    describe("firstChild and lastChild", () => {
+      it("should return first child", () => {
         expect(parent.firstChild).toBe(child1);
       });
 
-      it('should return last child', () => {
+      it("should return last child", () => {
         expect(parent.lastChild).toBe(child3);
       });
 
-      it('should return null for empty node', () => {
-        const empty = new Node(NODE_TYPES.ROOT, 'empty');
+      it("should return null for empty node", () => {
+        const empty = new Node(NODE_TYPES.ROOT, "empty");
 
         expect(empty.firstChild).toBeNull();
         expect(empty.lastChild).toBeNull();
       });
     });
 
-    describe('nextSibling and previousSibling', () => {
-      it('should return next sibling', () => {
+    describe("nextSibling and previousSibling", () => {
+      it("should return next sibling", () => {
         expect(child1.nextSibling).toBe(child2);
         expect(child2.nextSibling).toBe(child3);
       });
 
-      it('should return null for last child', () => {
+      it("should return null for last child", () => {
         expect(child3.nextSibling).toBeNull();
       });
 
-      it('should return previous sibling', () => {
+      it("should return previous sibling", () => {
         expect(child3.previousSibling).toBe(child2);
         expect(child2.previousSibling).toBe(child1);
       });
 
-      it('should return null for first child', () => {
+      it("should return null for first child", () => {
         expect(child1.previousSibling).toBeNull();
       });
 
-      it('should return null when no parent', () => {
+      it("should return null when no parent", () => {
         const orphan = new Node(NODE_TYPES.CON, new St.Bin());
 
         expect(orphan.nextSibling).toBeNull();
@@ -406,26 +406,26 @@ describe('Node', () => {
       });
     });
 
-    describe('index', () => {
-      it('should return correct index for each child', () => {
+    describe("index", () => {
+      it("should return correct index for each child", () => {
         expect(child1.index).toBe(0);
         expect(child2.index).toBe(1);
         expect(child3.index).toBe(2);
       });
 
-      it('should return null when no parent', () => {
+      it("should return null when no parent", () => {
         const orphan = new Node(NODE_TYPES.CON, new St.Bin());
 
         expect(orphan.index).toBeNull();
       });
     });
 
-    describe('level', () => {
-      it('should return 0 for root node', () => {
+    describe("level", () => {
+      it("should return 0 for root node", () => {
         expect(parent.level).toBe(0);
       });
 
-      it('should return correct level for nested nodes', () => {
+      it("should return correct level for nested nodes", () => {
         expect(child1.level).toBe(1);
 
         const grandchild = new Node(NODE_TYPES.CON, new St.Bin());
@@ -436,11 +436,11 @@ describe('Node', () => {
     });
   });
 
-  describe('contains', () => {
+  describe("contains", () => {
     let root, child, grandchild;
 
     beforeEach(() => {
-      root = new Node(NODE_TYPES.ROOT, 'root');
+      root = new Node(NODE_TYPES.ROOT, "root");
       child = new Node(NODE_TYPES.CON, new St.Bin());
       grandchild = new Node(NODE_TYPES.CON, new St.Bin());
 
@@ -448,26 +448,26 @@ describe('Node', () => {
       child.appendChild(grandchild);
     });
 
-    it('should return true for direct child', () => {
+    it("should return true for direct child", () => {
       expect(root.contains(child)).toBe(true);
     });
 
-    it('should return true for grandchild', () => {
+    it("should return true for grandchild", () => {
       expect(root.contains(grandchild)).toBe(true);
     });
 
-    it('should return false for unrelated node', () => {
+    it("should return false for unrelated node", () => {
       const other = new Node(NODE_TYPES.CON, new St.Bin());
 
       expect(root.contains(other)).toBe(false);
     });
 
-    it('should return false for null', () => {
+    it("should return false for null", () => {
       expect(root.contains(null)).toBe(false);
     });
   });
 
-  describe('getNodeByValue', () => {
+  describe("getNodeByValue", () => {
     let root, child1, child2, grandchild;
     let child1Bin, child2Bin, grandchildBin;
 
@@ -477,7 +477,7 @@ describe('Node', () => {
       child2Bin = new St.Bin();
       grandchildBin = new St.Bin();
 
-      root = new Node(NODE_TYPES.ROOT, 'root');
+      root = new Node(NODE_TYPES.ROOT, "root");
       child1 = new Node(NODE_TYPES.CON, child1Bin);
       child2 = new Node(NODE_TYPES.CON, child2Bin);
       grandchild = new Node(NODE_TYPES.CON, grandchildBin);
@@ -487,42 +487,42 @@ describe('Node', () => {
       child1.appendChild(grandchild);
     });
 
-    it('should find direct child by value', () => {
+    it("should find direct child by value", () => {
       // Search by the actual nodeValue (the St.Bin instance)
       const found = root.getNodeByValue(child1Bin);
 
       expect(found).toBe(child1);
     });
 
-    it('should find grandchild by value', () => {
+    it("should find grandchild by value", () => {
       // Search by the actual nodeValue (the St.Bin instance)
       const found = root.getNodeByValue(grandchildBin);
 
       expect(found).toBe(grandchild);
     });
 
-    it('should return null for non-existent value', () => {
-      const found = root.getNodeByValue('nonexistent');
+    it("should return null for non-existent value", () => {
+      const found = root.getNodeByValue("nonexistent");
 
       expect(found).toBeNull();
     });
   });
 
-  describe('getNodeByType', () => {
+  describe("getNodeByType", () => {
     let root, con1, con2, workspace;
 
     beforeEach(() => {
-      root = new Node(NODE_TYPES.ROOT, 'root');
+      root = new Node(NODE_TYPES.ROOT, "root");
       con1 = new Node(NODE_TYPES.CON, new St.Bin());
       con2 = new Node(NODE_TYPES.CON, new St.Bin());
-      workspace = new Node(NODE_TYPES.WORKSPACE, 'ws0');
+      workspace = new Node(NODE_TYPES.WORKSPACE, "ws0");
 
       root.appendChild(con1);
       root.appendChild(con2);
       root.appendChild(workspace);
     });
 
-    it('should find all nodes of given type', () => {
+    it("should find all nodes of given type", () => {
       const cons = root.getNodeByType(NODE_TYPES.CON);
 
       expect(cons).toHaveLength(2);
@@ -530,22 +530,22 @@ describe('Node', () => {
       expect(cons).toContain(con2);
     });
 
-    it('should find single node of unique type', () => {
+    it("should find single node of unique type", () => {
       const workspaces = root.getNodeByType(NODE_TYPES.WORKSPACE);
 
       expect(workspaces).toHaveLength(1);
       expect(workspaces[0]).toBe(workspace);
     });
 
-    it('should return empty array for non-existent type', () => {
+    it("should return empty array for non-existent type", () => {
       const monitors = root.getNodeByType(NODE_TYPES.MONITOR);
 
       expect(monitors).toEqual([]);
     });
   });
 
-  describe('rect property', () => {
-    it('should get and set rect', () => {
+  describe("rect property", () => {
+    it("should get and set rect", () => {
       // Use St.Bin for ROOT type since actor getter returns nodeValue for ROOT/CON types
       const node = new Node(NODE_TYPES.CON, new St.Bin());
       const rect = { x: 10, y: 20, width: 100, height: 200 };
