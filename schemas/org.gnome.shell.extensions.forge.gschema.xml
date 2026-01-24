@@ -223,6 +223,22 @@
             <summary>Application to launch with hotkey</summary>
         </key>
 
+        <!-- Portable Config Sync Settings -->
+        <key type="t" name="config-last-import">
+            <default>0</default>
+            <summary>Timestamp of last config file import (Unix epoch in seconds)</summary>
+        </key>
+
+        <key type="t" name="config-last-export">
+            <default>0</default>
+            <summary>Timestamp of last config file export (Unix epoch in seconds)</summary>
+        </key>
+
+        <key type="b" name="config-file-sync-enabled">
+            <default>false</default>
+            <summary>Whether to automatically sync changes to config files</summary>
+        </key>
+
     </schema>
     <schema id="org.gnome.shell.extensions.forge.keybindings" path="/org/gnome/shell/extensions/forge/keybindings/">
         <!-- Keybinding Settings -->
@@ -464,6 +480,11 @@
         <key type="as" name="prefs-lock-screen">
             <default><![CDATA[['<Super>q']]]></default>
             <summary>Lock the screen</summary>
+        </key>
+
+        <key type="as" name="prefs-config-export">
+            <default><![CDATA[[]]]></default>
+            <summary>Export current settings to portable config files</summary>
         </key>
     </schema>
 </schemalist>

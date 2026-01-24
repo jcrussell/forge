@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/forge-ext/forge/config/settings.schema.json",
+  "title": "Forge Settings",
+  "description": "Portable settings configuration for the Forge GNOME Shell extension",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Schema version number",
+      "minimum": 1
+    },
+    "behavior": {
+      "type": "object",
+      "description": "Tiling behavior settings",
+      "properties": {
+        "tiling-mode-enabled": {
+          "type": "boolean",
+          "description": "Whether tiling mode is enabled",
+          "default": true
+        },
+        "focus-on-hover-enabled": {
+          "type": "boolean",
+          "description": "Window focus follows the pointer",
+          "default": false
+        },
+        "move-pointer-focus-enabled": {
+          "type": "boolean",
+          "description": "Move pointer when focusing or swapping via keyboard",
+          "default": false
+        },
+        "auto-split-enabled": {
+          "type": "boolean",
+          "description": "Enable quarter-tiling based on smaller side",
+          "default": false
+        },
+        "stacked-tiling-mode-enabled": {
+          "type": "boolean",
+          "description": "Enable stacked tiling layout",
+          "default": false
+        },
+        "tabbed-tiling-mode-enabled": {
+          "type": "boolean",
+          "description": "Enable tabbed tiling layout",
+          "default": false
+        },
+        "auto-exit-tabbed": {
+          "type": "boolean",
+          "description": "Exit tabbed mode when only single tab remains",
+          "default": true
+        },
+        "default-window-layout": {
+          "type": "string",
+          "description": "Default layout for new containers",
+          "enum": ["tiled", "tabbed", "stacked"],
+          "default": "tiled"
+        },
+        "dnd-center-layout": {
+          "type": "string",
+          "description": "Layout when dragging one window on top of another",
+          "enum": ["swap", "tabbed", "stacked"],
+          "default": "tabbed"
+        },
+        "float-always-on-top-enabled": {
+          "type": "boolean",
+          "description": "Floating windows appear above tiled windows",
+          "default": false
+        },
+        "auto-unmaximize-for-tiling": {
+          "type": "boolean",
+          "description": "Automatically unmaximize windows when tiling alongside",
+          "default": true
+        },
+        "focus-on-hover-tiling-only": {
+          "type": "boolean",
+          "description": "Only enable hover-to-focus when tiling mode is active",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "appearance": {
+      "type": "object",
+      "description": "Visual appearance settings",
+      "properties": {
+        "focus-border-toggle": {
+          "type": "boolean",
+          "description": "Show border on focused window",
+          "default": true
+        },
+        "focus-border-size": {
+          "type": "integer",
+          "description": "Focused border thickness in pixels",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        },
+        "focus-border-color": {
+          "type": "string",
+          "description": "Focused border color (CSS rgba format)",
+          "default": "rgba(236, 94, 94, 1)"
+        },
+        "focus-border-radius": {
+          "type": "integer",
+          "description": "Border corner radius in pixels",
+          "minimum": 0,
+          "maximum": 30,
+          "default": 14
+        },
+        "split-border-toggle": {
+          "type": "boolean",
+          "description": "Show split direction border on focused window",
+          "default": true
+        },
+        "split-border-color": {
+          "type": "string",
+          "description": "Split direction border color (CSS rgba format)",
+          "default": "rgba(255, 246, 108, 1)"
+        },
+        "window-gap-size": {
+          "type": "integer",
+          "description": "Gap size between windows in pixels",
+          "minimum": 0,
+          "maximum": 32,
+          "default": 4
+        },
+        "window-gap-size-increment": {
+          "type": "integer",
+          "description": "Gap size multiplier",
+          "minimum": 0,
+          "maximum": 32,
+          "default": 1
+        },
+        "window-gap-hidden-on-single": {
+          "type": "boolean",
+          "description": "Hide gaps when single window present",
+          "default": false
+        },
+        "window-maximize-on-single": {
+          "type": "boolean",
+          "description": "Maximize when only one window present",
+          "default": false
+        },
+        "focus-border-hidden-on-single": {
+          "type": "boolean",
+          "description": "Hide focus border when single window present",
+          "default": false
+        },
+        "window-margin-top": {
+          "type": "integer",
+          "description": "Extra margin at top of screen (pixels)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "window-margin-bottom": {
+          "type": "integer",
+          "description": "Extra margin at bottom of screen (pixels)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "window-margin-left": {
+          "type": "integer",
+          "description": "Extra margin at left of screen (pixels)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "window-margin-right": {
+          "type": "integer",
+          "description": "Extra margin at right of screen (pixels)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "preview-hint-enabled": {
+          "type": "boolean",
+          "description": "Show preview hint during drag-and-drop",
+          "default": false
+        },
+        "showtab-decoration-enabled": {
+          "type": "boolean",
+          "description": "Show tab decoration in tabbed mode",
+          "default": true
+        },
+        "tabbed-tab-margin": {
+          "type": "integer",
+          "description": "Margin between tabs in pixels",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        },
+        "quick-settings-enabled": {
+          "type": "boolean",
+          "description": "Show Forge in quick settings",
+          "default": true
+        },
+        "tray-icon-enabled": {
+          "type": "boolean",
+          "description": "Show Forge icon in top bar",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "workspaces": {
+      "type": "object",
+      "description": "Workspace configuration",
+      "properties": {
+        "workspace-skip-tile": {
+          "type": "string",
+          "description": "Comma-separated workspace indices to skip tiling (e.g., '0,1,2')",
+          "default": ""
+        },
+        "monitor-skip-tile": {
+          "type": "string",
+          "description": "Comma-separated monitor indices to skip tiling (e.g., '0,1')",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "development": {
+      "type": "object",
+      "description": "Development and debugging settings",
+      "properties": {
+        "log-level": {
+          "type": "integer",
+          "description": "Log level (0=OFF, 1=FATAL, 2=ERROR, 3=WARN, 4=INFO, 5=DEBUG, 6=TRACE, 7=ALL)",
+          "minimum": 0,
+          "maximum": 7,
+          "default": 0
+        },
+        "logging-enabled": {
+          "type": "boolean",
+          "description": "Enable logging",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "other": {
+      "type": "object",
+      "description": "Miscellaneous settings",
+      "properties": {
+        "primary-layout-mode": {
+          "type": "string",
+          "description": "Primary layout mode",
+          "enum": ["stacking", "tiling"],
+          "default": "tiling"
+        },
+        "resize-amount": {
+          "type": "integer",
+          "description": "Window resize increment/decrement in pixels",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 15
+        },
+        "launch-app-command": {
+          "type": "string",
+          "description": "Application to launch with hotkey",
+          "default": "gnome-terminal"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["version"],
+  "additionalProperties": false
+}

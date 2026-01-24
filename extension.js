@@ -24,6 +24,7 @@ import Gio from "gi://Gio";
 // Shared state
 import { Logger } from "./lib/shared/logger.js";
 import { ConfigManager } from "./lib/shared/settings.js";
+import { ConfigSync } from "./lib/shared/config-sync.js";
 
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
@@ -85,6 +86,15 @@ export default class ForgeExtension extends Extension {
     }
 
     this.configMgr = new ConfigManager(this);
+
+    // Initialize config sync - imports from files if they exist
+    this.configSync = new ConfigSync({
+      configMgr: this.configMgr,
+      settings: this.settings,
+      kbdSettings: this.kbdSettings,
+    });
+    this.configSync.init();
+
     this.theme = new ExtensionThemeManager(this);
     this.extWm = new WindowManager(this);
     this.keybindings = new Keybindings(this);
@@ -180,11 +190,13 @@ export default class ForgeExtension extends Extension {
     this.extWm?.disable();
     this.keybindings?.disable();
     this.cheatsheet?.destroy();
+    this.configSync?.destroy();
     this.keybindings = null;
     this.cheatsheet = null;
     this.extWm = null;
     this.themeWm = null;
     this.configMgr = null;
+    this.configSync = null;
     this.settings = null;
     this.kbdSettings = null;
   }

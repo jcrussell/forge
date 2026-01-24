@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/forge-ext/forge/config/keybindings.schema.json",
+  "title": "Forge Keybindings",
+  "description": "Portable keybindings configuration for the Forge GNOME Shell extension",
+  "type": "object",
+  "definitions": {
+    "keybinding": {
+      "type": "array",
+      "description": "Array of keyboard shortcuts (e.g., ['<Super>h', '<Super>Left'])",
+      "items": {
+        "type": "string",
+        "pattern": "^(<(Super|Ctrl|Alt|Shift|Meta|Hyper)>)*[a-zA-Z0-9_]+$|^$"
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Schema version number",
+      "minimum": 1
+    },
+    "mod-mask-mouse-tile": {
+      "type": "string",
+      "description": "Modifier key for drag-drop tiling (Super, Alt, Ctrl, Shift, None)",
+      "enum": ["Super", "Alt", "Ctrl", "Shift", "None"],
+      "default": "None"
+    },
+    "bindings": {
+      "type": "object",
+      "description": "Keyboard shortcut bindings",
+      "properties": {
+        "focus-border-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle focused window border"
+        },
+        "window-gap-size-increase": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Increase gap size between windows"
+        },
+        "window-gap-size-decrease": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Decrease gap size between windows"
+        },
+        "con-split-layout-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle split layout (horizontal/vertical)"
+        },
+        "con-split-horizontal": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Split container horizontally"
+        },
+        "con-split-vertical": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Split container vertically"
+        },
+        "con-stacked-layout-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle stacked layout"
+        },
+        "con-tabbed-layout-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle tabbed layout"
+        },
+        "con-tabbed-showtab-decoration-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle tab decoration visibility"
+        },
+        "window-swap-left": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap window left"
+        },
+        "window-swap-down": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap window down"
+        },
+        "window-swap-up": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap window up"
+        },
+        "window-swap-right": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap window right"
+        },
+        "window-move-left": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move window left"
+        },
+        "window-move-down": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move window down"
+        },
+        "window-move-up": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move window up"
+        },
+        "window-move-right": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move window right"
+        },
+        "window-focus-left": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus window left"
+        },
+        "window-focus-down": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus window down"
+        },
+        "window-focus-up": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus window up"
+        },
+        "window-focus-right": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus window right"
+        },
+        "window-toggle-float": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle window float mode"
+        },
+        "window-toggle-always-float": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle always-float for window class"
+        },
+        "workspace-active-tile-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle tiling for active workspace"
+        },
+        "prefs-open": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Open Forge preferences"
+        },
+        "prefs-tiling-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle tiling mode on/off"
+        },
+        "window-swap-last-active": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap with last active window"
+        },
+        "window-snap-one-third-right": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Snap window to right third"
+        },
+        "window-snap-two-third-right": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Snap window to right two-thirds"
+        },
+        "window-snap-one-third-left": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Snap window to left third"
+        },
+        "window-snap-two-third-left": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Snap window to left two-thirds"
+        },
+        "window-snap-center": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Center window on screen"
+        },
+        "window-resize-left-increase": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Increase window size from left"
+        },
+        "window-resize-left-decrease": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Decrease window size from left"
+        },
+        "window-resize-bottom-increase": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Increase window size from bottom"
+        },
+        "window-resize-bottom-decrease": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Decrease window size from bottom"
+        },
+        "window-resize-top-increase": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Increase window size from top"
+        },
+        "window-resize-top-decrease": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Decrease window size from top"
+        },
+        "window-resize-right-increase": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Increase window size from right"
+        },
+        "window-resize-right-decrease": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Decrease window size from right"
+        },
+        "window-reset-sizes": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Reset window sizes to equal distribution"
+        },
+        "prefs-config-reload": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Reload configuration from files"
+        },
+        "prefs-config-export": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Export settings to config files"
+        },
+        "window-pointer-to-focus": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Move pointer to focused window"
+        },
+        "workspace-monocle-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle monocle mode (tab all windows)"
+        },
+        "window-expand": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Expand window in all directions"
+        },
+        "window-shrink": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Shrink window in all directions"
+        },
+        "prefs-app-launch": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Launch configured application"
+        },
+        "prefs-cheatsheet-toggle": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Toggle keybindings cheatsheet"
+        },
+        "prefs-lock-screen": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Lock the screen"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["version", "bindings"],
+  "additionalProperties": false
+}
