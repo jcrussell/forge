@@ -9,7 +9,7 @@ Forge is a GNOME Shell extension providing i3/sway-style tiling window managemen
 ## Build & Development Commands
 
 ```bash
-# Install dependencies (Node.js 16+ and gettext required)
+# Install dependencies (Node.js 20+ and gettext required)
 npm install
 
 # Development build: compile, set debug mode, install to ~/.local/share/gnome-shell/extensions/
