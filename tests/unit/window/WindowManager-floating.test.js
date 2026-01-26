@@ -493,7 +493,7 @@ describe("WindowManager - Floating Mode", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const found = windowManager.findNodeWindow(metaWindow);

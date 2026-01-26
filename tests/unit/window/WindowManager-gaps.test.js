@@ -113,7 +113,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -135,7 +135,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -157,7 +157,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -181,7 +181,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -203,7 +203,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -225,7 +225,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -247,7 +247,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -271,7 +271,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -293,7 +293,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -315,7 +315,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -337,7 +337,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -366,7 +366,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -395,7 +395,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -404,7 +404,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
@@ -431,7 +431,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -460,7 +460,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -469,7 +469,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
@@ -499,7 +499,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -508,7 +508,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
 
@@ -538,7 +538,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -547,7 +547,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
 
@@ -556,7 +556,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow3,
+        metaWindow3
       );
       nodeWindow3.mode = WINDOW_MODES.TILE;
 
@@ -565,7 +565,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow4 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow4,
+        metaWindow4
       );
       nodeWindow4.mode = WINDOW_MODES.FLOAT;
 
@@ -626,7 +626,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -649,7 +649,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -671,7 +671,7 @@ describe("WindowManager - Gap Calculations", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 

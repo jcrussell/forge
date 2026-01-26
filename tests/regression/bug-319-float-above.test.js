@@ -102,7 +102,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -131,7 +131,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
 
       // Float the window (sets _forgeSetAbove)
@@ -162,7 +162,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
 
       // Simulate user setting always-on-top manually BEFORE floating
@@ -198,7 +198,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -226,7 +226,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
 
       // Float the window first
@@ -261,7 +261,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        nautilus,
+        nautilus
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
 

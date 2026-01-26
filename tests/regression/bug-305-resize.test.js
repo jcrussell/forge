@@ -128,17 +128,17 @@ describe("Bug #305: Resize boundary behavior", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // Set unbalanced percentages that sum to > 1.0 (simulating resize drift)
@@ -173,7 +173,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       nodeWindow1.percent = 1.0;
 
@@ -209,12 +209,12 @@ describe("Bug #305: Resize boundary behavior", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
 
       nodeWindow1.percent = 0.5;
@@ -269,17 +269,17 @@ describe("Bug #305: Resize boundary behavior", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // Initial equal split
@@ -341,17 +341,17 @@ describe("Bug #305: Resize boundary behavior", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // Set initial percentages based on widths

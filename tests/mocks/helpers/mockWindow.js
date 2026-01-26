@@ -18,7 +18,7 @@ export function createMockWindow(overrides = {}) {
 
 export function createMockWindowArray(count, baseOverrides = {}) {
   return Array.from({ length: count }, (_, i) =>
-    createMockWindow({ ...baseOverrides, id: `win-${i}` }),
+    createMockWindow({ ...baseOverrides, id: `win-${i}` })
   );
 }
 

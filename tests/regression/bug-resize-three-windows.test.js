@@ -134,17 +134,17 @@ describe("Bug: Three-window resize overflow", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // Simulate bug scenario: after resize, only 2 windows have percentages
@@ -199,17 +199,17 @@ describe("Bug: Three-window resize overflow", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // window1 uninitialized, others have percentages from resize
@@ -257,12 +257,12 @@ describe("Bug: Three-window resize overflow", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
 
       // Simulate resize: window1 uninitialized
@@ -308,17 +308,17 @@ describe("Bug: Three-window resize overflow", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // All windows uninitialized, no rects
@@ -360,7 +360,7 @@ describe("Bug: Three-window resize overflow", () => {
         const nodeWindow = windowManager.tree.createNode(
           monitor.nodeValue,
           NODE_TYPES.WINDOW,
-          window,
+          window
         );
         nodeWindow.percent = 1.0 / 3;
         nodeWindow.rect = { x: i * 300, y: 0, width: 300, height: 600 };
@@ -401,17 +401,17 @@ describe("Bug: Three-window resize overflow", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window1,
+        window1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window2,
+        window2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        window3,
+        window3
       );
 
       // Bug scenario: percent=0 on one window

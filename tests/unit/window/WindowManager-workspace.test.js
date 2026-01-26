@@ -157,12 +157,12 @@ describe("WindowManager - Workspace Management", () => {
       const node1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        normalWindow,
+        normalWindow
       );
       const node2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        dialogWindow,
+        dialogWindow
       );
 
       node1.mode = WINDOW_MODES.TILE;
@@ -502,12 +502,12 @@ describe("WindowManager - Workspace Management", () => {
       const node1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        tiledWindow,
+        tiledWindow
       );
       const node2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        floatWindow,
+        floatWindow
       );
 
       node1.mode = WINDOW_MODES.TILE;

@@ -135,7 +135,7 @@ describe("Bug #125: Vertical tiling from stacked containers", () => {
 
       expect(container.layout).toBe(LAYOUT_TYPES.STACKED);
       expect(
-        container.layout === LAYOUT_TYPES.STACKED || container.layout === LAYOUT_TYPES.TABBED,
+        container.layout === LAYOUT_TYPES.STACKED || container.layout === LAYOUT_TYPES.TABBED
       ).toBe(true);
     });
 

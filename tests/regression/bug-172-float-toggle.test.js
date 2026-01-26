@@ -110,12 +110,12 @@ describe("Bug #172: Per-window float toggle", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        terminal1,
+        terminal1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        terminal2,
+        terminal2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -154,12 +154,12 @@ describe("Bug #172: Per-window float toggle", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        terminal1,
+        terminal1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        terminal2,
+        terminal2
       );
 
       // Float both windows initially using per-window toggle

@@ -218,7 +218,7 @@ describe("WindowManager - Movement & Positioning", () => {
         expect.objectContaining({
           width: 800,
           height: 600,
-        }),
+        })
       );
     });
 
@@ -298,7 +298,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
@@ -329,7 +329,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
@@ -362,7 +362,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 960, height: 540 };
@@ -397,7 +397,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 1280, height: 720 };
@@ -432,7 +432,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
@@ -466,7 +466,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
@@ -501,7 +501,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.FLOAT;
       // No rect set on node, should use frame_rect from metaWindow
@@ -531,7 +531,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
@@ -562,7 +562,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 600, y: 400, width: 800, height: 600 };

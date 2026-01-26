@@ -120,7 +120,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const result = windowManager.minimizedWindow(nodeWindow);
@@ -135,7 +135,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const result = windowManager.minimizedWindow(nodeWindow);
@@ -163,7 +163,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Initially not minimized
@@ -195,7 +195,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const movePointerSpy = vi.spyOn(windowManager, "movePointerWith");
@@ -218,7 +218,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const moveCenterSpy = vi.spyOn(windowManager, "moveCenter");
@@ -242,7 +242,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const movePointerSpy = vi.spyOn(windowManager, "movePointerWith");
@@ -378,7 +378,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const actor = metaWindow.get_compositor_private();
@@ -402,7 +402,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const actor = metaWindow.get_compositor_private();
@@ -444,7 +444,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const actor = metaWindow.get_compositor_private();
@@ -465,7 +465,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const actor = metaWindow.get_compositor_private();
@@ -487,7 +487,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const actor = metaWindow.get_compositor_private();

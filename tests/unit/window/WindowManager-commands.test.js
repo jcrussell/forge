@@ -175,7 +175,7 @@ describe("WindowManager - Command System", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
@@ -219,7 +219,7 @@ describe("WindowManager - Command System", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
@@ -258,7 +258,7 @@ describe("WindowManager - Command System", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });

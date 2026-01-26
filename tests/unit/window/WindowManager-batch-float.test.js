@@ -107,17 +107,17 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
       const nodeWindow3 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow3,
+        metaWindow3
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -141,12 +141,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT; // Already floating
@@ -176,12 +176,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -205,12 +205,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -239,12 +239,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT; // Already floating
@@ -282,12 +282,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -312,12 +312,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -344,12 +344,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -392,7 +392,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.TILE;
 
@@ -423,12 +423,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -454,12 +454,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -501,7 +501,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
 
@@ -524,12 +524,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -554,7 +554,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -585,12 +585,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -620,12 +620,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -650,7 +650,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -681,12 +681,12 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor0.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor1.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -712,7 +712,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
 
       nodeWindow1.mode = WINDOW_MODES.FLOAT;
@@ -740,7 +740,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
 
       // Start as tiled
@@ -769,7 +769,7 @@ describe("WindowManager - Batch Float Operations", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
 
       // Start as floating

@@ -238,7 +238,7 @@ describe("Window Operations Integration", () => {
         monitor.x + monitor.width / 2,
         monitor.y,
         monitor.width / 2,
-        monitor.height,
+        monitor.height
       );
 
       const rect1 = window1.get_frame_rect();

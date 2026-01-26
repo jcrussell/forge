@@ -80,7 +80,7 @@ describe("Tree Operations", () => {
 
     // Setup currentMonWsNode for tests
     mockWindowManager.currentMonWsNode = tree.nodeWorkpaces[0]?.getNodeByType(
-      NODE_TYPES.MONITOR,
+      NODE_TYPES.MONITOR
     )[0];
   });
 

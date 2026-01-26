@@ -135,12 +135,12 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow1,
+        metaWindow1
       );
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       // Mock sortedWindows
@@ -168,7 +168,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Mock sortedWindows
@@ -201,7 +201,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow2,
+        metaWindow2
       );
 
       // Mock sortedWindows (window2 is on top)
@@ -233,7 +233,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -256,7 +256,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer inside window
@@ -279,7 +279,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -302,7 +302,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -325,7 +325,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -351,7 +351,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -380,7 +380,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer in parent decoration area (above window, but in parent rect)
@@ -407,7 +407,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer in parent decoration area
@@ -432,7 +432,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer in parent decoration area
@@ -457,7 +457,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer anywhere
@@ -482,7 +482,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         container.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside parent rect
@@ -504,7 +504,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const result = windowManager.pointerIsOverParentDecoration(nodeWindow, null);
@@ -525,14 +525,14 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       windowManager.warpPointerToNodeWindow(nodeWindow);
 
       expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
         480, // x: 0 + 960/2
-        8, // y: 0 + 8 (titlebar)
+        8 // y: 0 + 8 (titlebar)
       );
     });
 
@@ -547,7 +547,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Store pointer position
@@ -557,7 +557,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
       expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
         300, // x: 100 + 200
-        400, // y: 100 + 300
+        400 // y: 100 + 300
       );
     });
 
@@ -572,7 +572,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Store pointer position beyond window width
@@ -582,7 +582,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
       expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
         952, // x: 0 + (960 - 8) clamped
-        100, // y: 0 + 100
+        100 // y: 0 + 100
       );
     });
 
@@ -597,7 +597,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Store pointer position beyond window height
@@ -607,7 +607,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
       expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
         100, // x: 0 + 100
-        1072, // y: 0 + (1080 - 8) clamped
+        1072 // y: 0 + (1080 - 8) clamped
       );
     });
   });
@@ -629,7 +629,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -656,7 +656,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -683,7 +683,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -710,7 +710,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer inside window
@@ -732,7 +732,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       windowManager.movePointerWith(nodeWindow);
@@ -855,7 +855,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer inside window
@@ -877,7 +877,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       // Pointer outside window
@@ -907,7 +907,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       const result = windowManager.getPointerPositionInside(nodeWindow);
@@ -929,7 +929,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
       const nodeWindow = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow,
+        metaWindow
       );
 
       nodeWindow.pointer = { x: 200, y: 300 };

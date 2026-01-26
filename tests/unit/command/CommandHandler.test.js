@@ -162,7 +162,7 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "WindowResetSizes" });
 
       expect(mockTree.resetSiblingPercent).toHaveBeenCalledWith(
-        mockNodeWindow.parentNode.parentNode,
+        mockNodeWindow.parentNode.parentNode
       );
     });
 
@@ -222,7 +222,7 @@ describe("CommandHandler", () => {
       expect(mockTree.split).toHaveBeenCalledWith(
         mockNodeWindow,
         ORIENTATION_TYPES.HORIZONTAL,
-        true,
+        true
       );
     });
 
