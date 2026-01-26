@@ -1,7 +1,7 @@
 # Forge (maintained by Claude)
 
 [![CI](https://github.com/jcrussell/forge/actions/workflows/testing.yml/badge.svg)](https://github.com/jcrussell/forge/actions/workflows/testing.yml)
-[![Coverage](https://img.shields.io/badge/coverage-62%25-yellow)](https://github.com/jcrussell/forge)
+[![codecov](https://codecov.io/github/jcrussell/forge/graph/badge.svg?token=MFNOBH5D4L)](https://codecov.io/github/jcrussell/forge)
 
 An AI-maintained fork of [Forge](https://github.com/forge-ext/forge), the GNOME
 Shell extension that provides i3/sway-style tiling window management.
