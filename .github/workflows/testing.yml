@@ -48,7 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gettext make zip
-      
+
       - name: Set up Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v4
         with:
@@ -69,13 +69,10 @@ jobs:
       - name: Generate coverage report
         run: npm run test:coverage --verbose
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          name: coverage-report-node-${{ matrix.node_version }}
-          path: coverage/
-          retention-days: 30
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Test Packaging
         run: make dist
