@@ -448,15 +448,17 @@ describe("ThemeManagerBase edge cases", () => {
     expect(rule.selectors).toContain(".extra");
   });
 
-  it("should throw when rule lacks selectors property (code limitation)", () => {
+  it("should handle rules without selectors property (comments, @-rules)", () => {
     const configMgr = createMockConfigMgr(minimalCss);
     const settings = createMockSettings();
     const tm = new ThemeManagerBase({ configMgr, settings });
 
-    // Manually add a malformed rule (like a comment node)
+    // Add nodes without selectors property (like comment or @-rule nodes)
     tm.cssAst.stylesheet.rules.push({ type: "comment", comment: "test" });
+    tm.cssAst.stylesheet.rules.push({ type: "media", media: "screen" });
 
-    // Current code doesn't handle rules without selectors property
-    expect(() => tm.getCssRule(".tiled")).toThrow();
+    // Should not throw and should still find the correct rule
+    const rule = tm.getCssRule(".tiled");
+    expect(rule.selectors).toContain(".tiled");
   });
 });
