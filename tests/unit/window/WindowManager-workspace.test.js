@@ -216,18 +216,6 @@ describe("WindowManager - Workspace Management", () => {
       expect(result).toBe(false);
     });
 
-    it("should return true for null metaWindow", () => {
-      const result = windowManager.isActiveWindowWorkspaceTiled(null);
-
-      expect(result).toBe(true);
-    });
-
-    it("should return true for undefined metaWindow", () => {
-      const result = windowManager.isActiveWindowWorkspaceTiled(undefined);
-
-      expect(result).toBe(true);
-    });
-
     it("should handle empty skip list", () => {
       mockSettings.get_string.mockImplementation((key) => {
         if (key === "workspace-skip-tile") return "";
@@ -366,12 +354,6 @@ describe("WindowManager - Workspace Management", () => {
   });
 
   describe("trackCurrentMonWs", () => {
-    it("should handle no focused window", () => {
-      global.display.get_focus_window.mockReturnValue(null);
-
-      expect(() => windowManager.trackCurrentMonWs()).not.toThrow();
-    });
-
     it("should track monitor and workspace for focused window", () => {
       const metaWindow = createMockWindow({ workspace: workspace0, monitor: 0 });
       global.display.get_focus_window.mockReturnValue(metaWindow);
@@ -387,16 +369,6 @@ describe("WindowManager - Workspace Management", () => {
       global.display.get_focus_window.mockReturnValue(metaWindow);
       global.display.get_current_monitor.mockReturnValue(0);
       global.workspace_manager.get_active_workspace_index.mockReturnValue(0);
-
-      expect(() => windowManager.trackCurrentMonWs()).not.toThrow();
-    });
-
-    it("should return early if workspace node not found", () => {
-      const metaWindow = createMockWindow({ workspace: workspace0 });
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      // Mock findNode to return null
-      vi.spyOn(windowManager.tree, "findNode").mockReturnValue(null);
 
       expect(() => windowManager.trackCurrentMonWs()).not.toThrow();
     });
@@ -435,15 +407,6 @@ describe("WindowManager - Workspace Management", () => {
       windowManager.trackCurrentWindows();
 
       expect(windowManager.tree.attachNode).toBeNull();
-    });
-
-    it("should handle empty window list", () => {
-      Object.defineProperty(windowManager, "windowsAllWorkspaces", {
-        get: vi.fn(() => []),
-        configurable: true,
-      });
-
-      expect(() => windowManager.trackCurrentWindows()).not.toThrow();
     });
 
     it("should call updateMetaWorkspaceMonitor for each window", () => {

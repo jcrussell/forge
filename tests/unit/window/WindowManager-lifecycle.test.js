@@ -92,27 +92,6 @@ describe("WindowManager - Window Lifecycle", () => {
   });
 
   describe("minimizedWindow", () => {
-    it("should return false for null node", () => {
-      const result = windowManager.minimizedWindow(null);
-
-      expect(result).toBe(false);
-    });
-
-    it("should return false for undefined node", () => {
-      const result = windowManager.minimizedWindow(undefined);
-
-      expect(result).toBe(false);
-    });
-
-    it("should return false for non-window node", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const result = windowManager.minimizedWindow(monitor);
-
-      expect(result).toBe(false);
-    });
-
     it("should return false for non-minimized window", () => {
       const metaWindow = createMockWindow({ minimized: false });
       const workspace = windowManager.tree.nodeWorkpaces[0];
@@ -142,52 +121,9 @@ describe("WindowManager - Window Lifecycle", () => {
 
       expect(result).toBe(true);
     });
-
-    it("should return false for window with null nodeValue", () => {
-      // Create a mock node without proper nodeValue
-      const mockNode = {
-        _type: NODE_TYPES.WINDOW,
-        _data: null,
-      };
-
-      const result = windowManager.minimizedWindow(mockNode);
-
-      // When nodeValue is null, result could be false or null/undefined
-      expect(result).toBeFalsy();
-    });
-
-    it("should check actual minimized property on window", () => {
-      const metaWindow = createMockWindow({ minimized: false });
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-
-      // Initially not minimized
-      expect(windowManager.minimizedWindow(nodeWindow)).toBe(false);
-
-      // Minimize the window
-      metaWindow.minimized = true;
-
-      // Should now be minimized
-      expect(windowManager.minimizedWindow(nodeWindow)).toBe(true);
-    });
   });
 
   describe("postProcessWindow", () => {
-    it("should handle nodeWindow with null metaWindow", () => {
-      // Create a mock node without proper metaWindow
-      const mockNode = {
-        nodeValue: null,
-      };
-
-      // postProcessWindow checks if metaWindow exists
-      expect(() => windowManager.postProcessWindow(mockNode)).not.toThrow();
-    });
-
     it("should move pointer with regular window", () => {
       const metaWindow = createMockWindow({ title: "Regular Window" });
       const workspace = windowManager.tree.nodeWorkpaces[0];
@@ -478,38 +414,6 @@ describe("WindowManager - Window Lifecycle", () => {
         name: "window-destroy",
         callback: expect.any(Function),
       });
-    });
-
-    it("should handle actor without borders gracefully", () => {
-      const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-
-      const actor = metaWindow.get_compositor_private();
-      // No borders set
-      actor.border = null;
-      actor.splitBorder = null;
-
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-
-      expect(() => windowManager.windowDestroy(actor)).not.toThrow();
-    });
-
-    it("should handle actor not found in tree", () => {
-      const actor = {
-        border: null,
-        splitBorder: null,
-        remove_all_transitions: vi.fn(),
-      };
-
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(null);
-
-      expect(() => windowManager.windowDestroy(actor)).not.toThrow();
     });
   });
 

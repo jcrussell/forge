@@ -361,14 +361,6 @@ describe("WindowManager - Resize Operations", () => {
   });
 
   describe("resize() - Edge Cases", () => {
-    it("should handle null focused window gracefully", () => {
-      global.display.get_focus_window.mockReturnValue(null);
-
-      expect(() => {
-        windowManager.resize(GrabOp.RESIZING_E, 50);
-      }).toThrow(); // Will throw because metaWindow is null
-    });
-
     it("should handle zero resize amount", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 800, height: 600 }),

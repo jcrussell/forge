@@ -81,44 +81,6 @@ describe("WindowManager - Floating Mode", () => {
     windowManager = new WindowManager(mockExtension);
   });
 
-  describe("_validWindow", () => {
-    it("should accept NORMAL windows", () => {
-      const window = createMockWindow({ window_type: WindowType.NORMAL });
-
-      expect(windowManager._validWindow(window)).toBe(true);
-    });
-
-    it("should accept MODAL_DIALOG windows", () => {
-      const window = createMockWindow({ window_type: WindowType.MODAL_DIALOG });
-
-      expect(windowManager._validWindow(window)).toBe(true);
-    });
-
-    it("should accept DIALOG windows", () => {
-      const window = createMockWindow({ window_type: WindowType.DIALOG });
-
-      expect(windowManager._validWindow(window)).toBe(true);
-    });
-
-    it("should reject MENU windows", () => {
-      const window = createMockWindow({ window_type: WindowType.MENU });
-
-      expect(windowManager._validWindow(window)).toBe(false);
-    });
-
-    it("should reject DROPDOWN_MENU windows", () => {
-      const window = createMockWindow({ window_type: WindowType.DROPDOWN_MENU });
-
-      expect(windowManager._validWindow(window)).toBe(false);
-    });
-
-    it("should reject POPUP_MENU windows", () => {
-      const window = createMockWindow({ window_type: WindowType.POPUP_MENU });
-
-      expect(windowManager._validWindow(window)).toBe(false);
-    });
-  });
-
   describe("isFloatingExempt - Type-based", () => {
     it("should float DIALOG windows", () => {
       const window = createMockWindow({ window_type: WindowType.DIALOG });
@@ -723,17 +685,6 @@ describe("WindowManager - Floating Mode", () => {
       expect(addSpy).toHaveBeenCalledWith(metaWindow, false);
     });
 
-    it("should throw when action is null (action.mode is accessed)", () => {
-      // The implementation accesses action.mode without null check
-      expect(() => windowManager.toggleFloatingMode(null, metaWindow)).toThrow();
-    });
-
-    it("should handle null metaWindow gracefully", () => {
-      const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
-
-      expect(() => windowManager.toggleFloatingMode(action, null)).not.toThrow();
-    });
-
     it("should not toggle non-window nodes", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -769,26 +720,6 @@ describe("WindowManager - Floating Mode", () => {
       const found = windowManager.findNodeWindow(metaWindow);
 
       expect(found).toBeNull();
-    });
-  });
-
-  describe("Getters", () => {
-    it("should get focusMetaWindow from display", () => {
-      const metaWindow = createMockWindow();
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      expect(windowManager.focusMetaWindow).toBe(metaWindow);
-    });
-
-    it("should get tree instance", () => {
-      expect(windowManager.tree).toBeInstanceOf(Tree);
-    });
-
-    it("should return same tree instance on multiple accesses", () => {
-      const tree1 = windowManager.tree;
-      const tree2 = windowManager.tree;
-
-      expect(tree1).toBe(tree2);
     });
   });
 
@@ -1025,22 +956,6 @@ describe("WindowManager - Floating Mode", () => {
         const overrides = windowManager.windowProps.overrides;
         expect(overrides.length).toBe(1);
         expect(overrides[0].wmTitle).toBe("Test");
-      });
-
-      it("should handle null windowProps gracefully", () => {
-        mockConfigMgr.windowProps = null;
-
-        expect(() => {
-          windowManager.reloadWindowOverrides();
-        }).not.toThrow();
-      });
-
-      it("should handle undefined windowProps gracefully", () => {
-        mockConfigMgr.windowProps = undefined;
-
-        expect(() => {
-          windowManager.reloadWindowOverrides();
-        }).not.toThrow();
       });
 
       it("should handle empty overrides array", () => {

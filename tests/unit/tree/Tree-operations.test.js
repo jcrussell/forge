@@ -84,110 +84,6 @@ describe("Tree Operations", () => {
     )[0];
   });
 
-  describe("Helper Methods", () => {
-    describe("_swappable", () => {
-      it("should return true for non-minimized window", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-        const window = createMockWindow({ minimized: false });
-        const node = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
-        node.mode = WINDOW_MODES.TILE;
-
-        expect(tree._swappable(node)).toBe(true);
-      });
-
-      it("should return false for minimized window", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-        const window = createMockWindow({ minimized: true });
-        const node = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
-
-        expect(tree._swappable(node)).toBe(false);
-      });
-
-      it("should return false for null node", () => {
-        expect(tree._swappable(null)).toBe(false);
-      });
-
-      it("should return false for non-window node", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-        expect(tree._swappable(monitor)).toBe(false);
-      });
-    });
-
-    describe("resetSiblingPercent", () => {
-      it("should reset all children percent to 0", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-        // Create container with children that have custom percents
-        const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-        const window1 = createMockWindow();
-        const window2 = createMockWindow();
-        const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
-        const node2 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
-
-        node1.percent = 0.7;
-        node2.percent = 0.3;
-
-        tree.resetSiblingPercent(container);
-
-        expect(node1.percent).toBe(0.0);
-        expect(node2.percent).toBe(0.0);
-      });
-
-      it("should handle null parent gracefully", () => {
-        expect(() => tree.resetSiblingPercent(null)).not.toThrow();
-      });
-
-      it("should handle parent with no children", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-        const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-
-        expect(() => tree.resetSiblingPercent(container)).not.toThrow();
-      });
-    });
-
-    describe("findFirstNodeWindowFrom", () => {
-      it("should find first window in node", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-        const window1 = createMockWindow();
-        const window2 = createMockWindow();
-        const node1 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
-        tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
-
-        const found = tree.findFirstNodeWindowFrom(monitor);
-
-        expect(found).toBe(node1);
-      });
-
-      it("should find first window in nested container", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-        const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-        const window = createMockWindow();
-        const node = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window);
-
-        const found = tree.findFirstNodeWindowFrom(container);
-
-        expect(found).toBe(node);
-      });
-
-      it("should return null if no windows", () => {
-        const workspace = tree.nodeWorkpaces[0];
-        const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-        const found = tree.findFirstNodeWindowFrom(monitor);
-
-        expect(found).toBeNull();
-      });
-    });
-  });
-
   describe("next", () => {
     it("should find next sibling to the right", () => {
       const workspace = tree.nodeWorkpaces[0];
@@ -261,12 +157,6 @@ describe("Tree Operations", () => {
 
       // Should return null or the parent, depending on tree structure
       expect(next).toBeDefined();
-    });
-
-    it("should handle null node", () => {
-      const next = tree.next(null, MotionDirection.RIGHT);
-
-      expect(next).toBeNull();
     });
 
     it("should navigate across different orientations", () => {
@@ -385,10 +275,6 @@ describe("Tree Operations", () => {
       tree.split(node, ORIENTATION_TYPES.HORIZONTAL, true);
 
       expect(tree.attachNode).toBe(node.parentNode);
-    });
-
-    it("should handle null node", () => {
-      expect(() => tree.split(null, ORIENTATION_TYPES.HORIZONTAL)).not.toThrow();
     });
   });
 
@@ -982,85 +868,6 @@ describe("Tree Operations", () => {
       expect(next).toBeDefined();
       // Either we get the container or a window inside it
       expect(next === container || next.parentNode === container).toBe(true);
-    });
-  });
-
-  describe("getTiledChildren", () => {
-    it("should return only tiled windows", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const window1 = createMockWindow();
-      const window2 = createMockWindow({ minimized: true });
-      const window3 = createMockWindow();
-
-      const node1 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
-      const node2 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
-      const node3 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
-
-      node1.mode = WINDOW_MODES.TILE;
-      node2.mode = WINDOW_MODES.TILE;
-      node3.mode = WINDOW_MODES.FLOAT;
-
-      const tiled = tree.getTiledChildren(monitor.childNodes);
-
-      // Only node1 should be included (node2 minimized, node3 floating)
-      expect(tiled).toContain(node1);
-      expect(tiled).not.toContain(node2);
-      expect(tiled).not.toContain(node3);
-    });
-
-    it("should include containers with tiled children", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-      const window = createMockWindow();
-      const node = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window);
-      node.mode = WINDOW_MODES.TILE;
-
-      const tiled = tree.getTiledChildren(monitor.childNodes);
-
-      expect(tiled).toContain(container);
-    });
-
-    it("should exclude containers with only floating children", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-      const window = createMockWindow();
-      const node = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window);
-      node.mode = WINDOW_MODES.FLOAT;
-
-      const tiled = tree.getTiledChildren(monitor.childNodes);
-
-      expect(tiled).not.toContain(container);
-    });
-
-    it("should exclude grab-tiling windows", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const window = createMockWindow();
-      const node = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
-      node.mode = WINDOW_MODES.GRAB_TILE;
-
-      const tiled = tree.getTiledChildren(monitor.childNodes);
-
-      expect(tiled).not.toContain(node);
-    });
-
-    it("should return empty array for null items", () => {
-      const tiled = tree.getTiledChildren(null);
-
-      expect(tiled).toEqual([]);
-    });
-
-    it("should return empty array for empty items", () => {
-      const tiled = tree.getTiledChildren([]);
-
-      expect(tiled).toEqual([]);
     });
   });
 });

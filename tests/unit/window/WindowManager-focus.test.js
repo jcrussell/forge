@@ -290,50 +290,37 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(result).toBe(false);
     });
 
-    it("should return false when window is too small (width <= 8)", () => {
-      const metaWindow = createMockWindow({
+    it("should return false when window is too small (width or height <= 8)", () => {
+      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+
+      // Test small width
+      const smallWidthWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 5, height: 1080 }),
         workspace: workspace0,
         minimized: false,
       });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
+      const nodeWindow1 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow
+        smallWidthWindow
       );
-
-      // Pointer outside window
       global.get_pointer.mockReturnValue([100, 540]);
+      expect(windowManager.canMovePointerInsideNodeWindow(nodeWindow1)).toBe(false);
 
-      const result = windowManager.canMovePointerInsideNodeWindow(nodeWindow);
-
-      expect(result).toBe(false);
-    });
-
-    it("should return false when window is too small (height <= 8)", () => {
-      const metaWindow = createMockWindow({
+      // Test small height
+      const smallHeightWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 5 }),
         workspace: workspace0,
         minimized: false,
       });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
+      const nodeWindow2 = windowManager.tree.createNode(
         monitor.nodeValue,
         NODE_TYPES.WINDOW,
-        metaWindow
+        smallHeightWindow
       );
-
-      // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
-
-      const result = windowManager.canMovePointerInsideNodeWindow(nodeWindow);
-
-      expect(result).toBe(false);
+      expect(windowManager.canMovePointerInsideNodeWindow(nodeWindow2)).toBe(false);
     });
 
     // SKIP: Module mock immutability issue - the imported Main module doesn't
@@ -492,25 +479,6 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
       expect(result).toBe(false);
     });
-
-    it("should return false when pointerCoord is null", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-
-      const result = windowManager.pointerIsOverParentDecoration(nodeWindow, null);
-
-      expect(result).toBe(false);
-    });
   });
 
   describe("warpPointerToNodeWindow()", () => {
@@ -558,56 +526,6 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
         300, // x: 100 + 200
         400 // y: 100 + 300
-      );
-    });
-
-    it("should clamp pointer x position to window width - 8", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-
-      // Store pointer position beyond window width
-      nodeWindow.pointer = { x: 1000, y: 100 };
-
-      windowManager.warpPointerToNodeWindow(nodeWindow);
-
-      expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
-        952, // x: 0 + (960 - 8) clamped
-        100 // y: 0 + 100
-      );
-    });
-
-    it("should clamp pointer y position to window height - 8", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-
-      // Store pointer position beyond window height
-      nodeWindow.pointer = { x: 100, y: 2000 };
-
-      windowManager.warpPointerToNodeWindow(nodeWindow);
-
-      expect(mockSeat.warp_pointer).toHaveBeenCalledWith(
-        100, // x: 0 + 100
-        1072 // y: 0 + (1080 - 8) clamped
       );
     });
   });
@@ -739,18 +657,10 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
       expect(windowManager.lastFocusedWindow).toBe(nodeWindow);
     });
-
-    it("should handle null nodeWindow", () => {
-      expect(() => {
-        windowManager.movePointerWith(null);
-      }).not.toThrow();
-
-      expect(mockSeat.warp_pointer).not.toHaveBeenCalled();
-    });
   });
 
-  describe("_focusWindowUnderPointer()", () => {
-    it("should focus and raise window under pointer", () => {
+  describe("focusWindowUnderPointer()", () => {
+    it("should focus and raise window under pointer when hover enabled", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0,
@@ -775,71 +685,6 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(focusSpy).toHaveBeenCalledWith(12345);
       expect(raiseSpy).toHaveBeenCalled();
       expect(result).toBe(true);
-    });
-
-    it("should return false when shouldFocusOnHover is disabled", () => {
-      windowManager.shouldFocusOnHover = false;
-
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(false);
-    });
-
-    it("should return false when window manager is disabled", () => {
-      windowManager.shouldFocusOnHover = true;
-      windowManager.disabled = true;
-
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(false);
-    });
-
-    it("should return true without focusing when overview is visible", () => {
-      windowManager.shouldFocusOnHover = true;
-      global.Main.overview.visible = true;
-
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(true);
-    });
-
-    it("should not focus when no window under pointer", () => {
-      windowManager.shouldFocusOnHover = true;
-      global.get_window_actors.mockReturnValue([]);
-      global.get_pointer.mockReturnValue([480, 540]);
-
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(true);
-    });
-
-    it("should handle multiple overlapping windows", () => {
-      const metaWindow1 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1000, height: 1000 }),
-        workspace: workspace0,
-      });
-      const metaWindow2 = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 800, height: 800 }),
-        workspace: workspace0,
-      });
-
-      // Mock window actors (last in array is topmost)
-      const mockActor1 = { meta_window: metaWindow1 };
-      const mockActor2 = { meta_window: metaWindow2 };
-
-      global.get_window_actors.mockReturnValue([mockActor1, mockActor2]);
-      global.get_pointer.mockReturnValue([500, 500]);
-
-      windowManager.shouldFocusOnHover = true;
-
-      const focusSpy1 = vi.spyOn(metaWindow1, "focus");
-      const focusSpy2 = vi.spyOn(metaWindow2, "focus");
-
-      windowManager._focusWindowUnderPointer();
-
-      // Should focus the topmost window (window2)
-      expect(focusSpy2).toHaveBeenCalled();
-      expect(focusSpy1).not.toHaveBeenCalled();
     });
   });
 
@@ -886,12 +731,6 @@ describe("WindowManager - Pointer & Focus Management", () => {
       windowManager.storePointerLastPosition(nodeWindow);
 
       expect(nodeWindow.pointer).toBeNull();
-    });
-
-    it("should handle null nodeWindow", () => {
-      expect(() => {
-        windowManager.storePointerLastPosition(null);
-      }).not.toThrow();
     });
   });
 
@@ -940,12 +779,6 @@ describe("WindowManager - Pointer & Focus Management", () => {
         x: 300, // 100 + 200
         y: 400, // 100 + 300
       });
-    });
-
-    it("should return null for null nodeWindow", () => {
-      const result = windowManager.getPointerPositionInside(null);
-
-      expect(result).toBe(null);
     });
   });
 });

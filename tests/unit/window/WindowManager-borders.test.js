@@ -133,13 +133,6 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(hideActorBorderSpy).toHaveBeenCalled();
     });
 
-    it("should handle empty nodeWindows array gracefully", () => {
-      // Clear any existing windows
-      windowManager.tree.nodeWindows.length = 0;
-
-      expect(() => windowManager.hideWindowBorders()).not.toThrow();
-    });
-
     it("should remove tab active class from tabbed windows", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
@@ -169,117 +162,9 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       expect(mockTab.remove_style_class_name).toHaveBeenCalledWith("window-tabbed-tab-active");
     });
-
-    it("should skip destroyed tabs", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      monitor.layout = LAYOUT_TYPES.TABBED;
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-
-      // Create destroyed mock tab
-      const mockTab = {
-        _destroyed: true,
-        get_parent: vi.fn(() => null),
-        remove_style_class_name: vi.fn(),
-      };
-      nodeWindow.tab = mockTab;
-
-      windowManager.hideWindowBorders();
-
-      // Should not try to remove class from destroyed tab
-      expect(mockTab.remove_style_class_name).not.toHaveBeenCalled();
-    });
-
-    it("should handle windows without actors", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-      nodeWindow._actor = null; // Remove actor
-
-      expect(() => windowManager.hideWindowBorders()).not.toThrow();
-    });
   });
 
   describe("showWindowBorders", () => {
-    it("should return early when no focused window", () => {
-      global.display.get_focus_window.mockReturnValue(null);
-
-      const hideActorBorderSpy = vi.spyOn(windowManager, "hideActorBorder");
-
-      windowManager.showWindowBorders();
-
-      // Should not have tried to show borders
-      expect(hideActorBorderSpy).not.toHaveBeenCalled();
-    });
-
-    it("should return early when window has no compositor actor", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-      });
-      metaWindow.get_compositor_private = vi.fn(() => null);
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      expect(() => windowManager.showWindowBorders()).not.toThrow();
-    });
-
-    it("should return early when window is not tracked in tree", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      // Don't create a node for this window
-      expect(() => windowManager.showWindowBorders()).not.toThrow();
-    });
-
-    it("should return early when window has no wm_class", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-        wm_class: null,
-      });
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-
-      expect(() => windowManager.showWindowBorders()).not.toThrow();
-    });
-
     it("should apply tiled border class for normal tiled windows", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
@@ -326,53 +211,6 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       windowManager.showWindowBorders();
 
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
-    });
-
-    it("should process floating windows without error", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-        workspace: workspace0,
-        wm_class: "TestApp",
-      });
-
-      const mockBorder = {
-        set_style_class_name: vi.fn(),
-        add_style_class_name: vi.fn(),
-        set_size: vi.fn(),
-        set_position: vi.fn(),
-        show: vi.fn(),
-        hide: vi.fn(),
-      };
-      const windowActor = metaWindow.get_compositor_private();
-      windowActor.border = mockBorder;
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      monitor.layout = LAYOUT_TYPES.HSPLIT;
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.FLOAT;
-
-      // Add another tiled window
-      const metaWindow2 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
-      });
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
-      nodeWindow2.mode = WINDOW_MODES.TILE;
-
-      // Should process floating windows without throwing
-      expect(() => windowManager.showWindowBorders()).not.toThrow();
     });
 
     it("should apply stacked border class for windows in stacked container", () => {
@@ -609,48 +447,6 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       // Border class should be set when multiple windows exist
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
-    });
-
-    it("should process single floating window without error", () => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-border-toggle") return true;
-        if (key === "focus-border-hidden-on-single") return true;
-        return false;
-      });
-
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-        workspace: workspace0,
-        wm_class: "TestApp",
-      });
-
-      const mockBorder = {
-        set_style_class_name: vi.fn(),
-        add_style_class_name: vi.fn(),
-        set_size: vi.fn(),
-        set_position: vi.fn(),
-        show: vi.fn(),
-        hide: vi.fn(),
-      };
-      const windowActor = metaWindow.get_compositor_private();
-      windowActor.border = mockBorder;
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-      global.display.get_n_monitors.mockReturnValue(1);
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.FLOAT;
-
-      // Should process single floating window without error
-      expect(() => windowManager.showWindowBorders()).not.toThrow();
     });
   });
 

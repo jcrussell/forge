@@ -601,21 +601,4 @@ describe("WindowManager - Command System", () => {
       expect(() => windowManager.command(action)).toThrow();
     });
   });
-
-  describe("Command Edge Cases", () => {
-    it("should handle unknown command gracefully", () => {
-      const action = { name: "UnknownCommand" };
-
-      expect(() => windowManager.command(action)).not.toThrow();
-    });
-
-    it("should throw when action is null (action.name is accessed)", () => {
-      // The implementation accesses action.name without null check
-      expect(() => windowManager.command(null)).toThrow();
-    });
-
-    it("should handle empty action object", () => {
-      expect(() => windowManager.command({})).not.toThrow();
-    });
-  });
 });

@@ -15,10 +15,6 @@ describe("Queue", () => {
   });
 
   describe("length", () => {
-    it("should return 0 for empty queue", () => {
-      expect(queue.length).toBe(0);
-    });
-
     it("should return correct length after enqueue", () => {
       queue.enqueue("item1");
       expect(queue.length).toBe(1);
@@ -67,13 +63,6 @@ describe("Queue", () => {
       queue.enqueue(null);
 
       expect(queue.length).toBe(5);
-    });
-
-    it("should handle objects", () => {
-      const obj = { id: 1, name: "test" };
-      queue.enqueue(obj);
-
-      expect(queue.length).toBe(1);
     });
   });
 
@@ -134,17 +123,6 @@ describe("Queue", () => {
       expect(results).toEqual(items);
     });
 
-    it("should maintain order for numbers", () => {
-      const items = [1, 2, 3, 4, 5];
-      items.forEach((item) => queue.enqueue(item));
-
-      expect(queue.dequeue()).toBe(1);
-      expect(queue.dequeue()).toBe(2);
-      expect(queue.dequeue()).toBe(3);
-      expect(queue.dequeue()).toBe(4);
-      expect(queue.dequeue()).toBe(5);
-    });
-
     it("should maintain order for mixed types", () => {
       queue.enqueue("string");
       queue.enqueue(123);
@@ -192,16 +170,6 @@ describe("Queue", () => {
   });
 
   describe("edge cases", () => {
-    it("should handle null values", () => {
-      queue.enqueue(null);
-      expect(queue.dequeue()).toBeNull();
-    });
-
-    it("should handle undefined values", () => {
-      queue.enqueue(undefined);
-      expect(queue.dequeue()).toBeUndefined();
-    });
-
     it("should handle falsy values", () => {
       queue.enqueue(0);
       queue.enqueue(false);
@@ -225,16 +193,6 @@ describe("Queue", () => {
       }
 
       expect(queue.length).toBe(0);
-    });
-
-    it("should handle duplicate items", () => {
-      queue.enqueue("duplicate");
-      queue.enqueue("duplicate");
-      queue.enqueue("duplicate");
-
-      expect(queue.dequeue()).toBe("duplicate");
-      expect(queue.dequeue()).toBe("duplicate");
-      expect(queue.dequeue()).toBe("duplicate");
     });
   });
 

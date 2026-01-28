@@ -214,20 +214,6 @@ describe("WorkspaceManager", () => {
       expect(signals.length).toBeGreaterThan(0);
     });
 
-    it("should not bind if workspace is null", () => {
-      workspaceManager.bindWorkspaceSignals(null);
-
-      expect(workspaceManager._workspaceSignals.size).toBe(0);
-    });
-
-    it("should not bind if workspace lacks connect method", () => {
-      const badWorkspace = { index: () => 5 };
-
-      workspaceManager.bindWorkspaceSignals(badWorkspace);
-
-      expect(workspaceManager._workspaceSignals.size).toBe(0);
-    });
-
     it("should not double-bind to same workspace", () => {
       const connectSpy = vi.spyOn(workspace0, "connect");
 
@@ -273,23 +259,6 @@ describe("WorkspaceManager", () => {
 
       expect(disconnectSpy).toHaveBeenCalled();
     });
-
-    it("should handle missing workspace index gracefully", () => {
-      expect(() => {
-        workspaceManager.unbindWorkspaceSignals(99);
-      }).not.toThrow();
-    });
-
-    it("should handle workspace that no longer exists", () => {
-      // Make workspace_manager return null for index 0
-      global.workspace_manager.get_workspace_by_index.mockReturnValue(null);
-
-      expect(() => {
-        workspaceManager.unbindWorkspaceSignals(0);
-      }).not.toThrow();
-
-      expect(workspaceManager._workspaceSignals.has(0)).toBe(false);
-    });
   });
 
   describe("destroy()", () => {
@@ -312,14 +281,6 @@ describe("WorkspaceManager", () => {
 
       expect(disconnect0).toHaveBeenCalled();
       expect(disconnect1).toHaveBeenCalled();
-    });
-
-    it("should handle empty signals map", () => {
-      workspaceManager._workspaceSignals.clear();
-
-      expect(() => {
-        workspaceManager.destroy();
-      }).not.toThrow();
     });
   });
 

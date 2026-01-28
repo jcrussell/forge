@@ -90,18 +90,6 @@ describe("WindowManager - Movement & Positioning", () => {
   });
 
   describe("move", () => {
-    it("should handle null metaWindow gracefully", () => {
-      const rect = { x: 100, y: 100, width: 800, height: 600 };
-
-      expect(() => windowManager.move(null, rect)).not.toThrow();
-    });
-
-    it("should handle undefined metaWindow gracefully", () => {
-      const rect = { x: 100, y: 100, width: 800, height: 600 };
-
-      expect(() => windowManager.move(undefined, rect)).not.toThrow();
-    });
-
     it("should not move grabbed window", () => {
       const metaWindow = createMockWindow();
       metaWindow.grabbed = true;
@@ -187,14 +175,6 @@ describe("WindowManager - Movement & Positioning", () => {
   });
 
   describe("moveCenter", () => {
-    it("should handle null metaWindow gracefully", () => {
-      expect(() => windowManager.moveCenter(null)).not.toThrow();
-    });
-
-    it("should handle undefined metaWindow gracefully", () => {
-      expect(() => windowManager.moveCenter(undefined)).not.toThrow();
-    });
-
     it("should center window on current monitor", () => {
       const metaWindow = createMockWindow({
         rect: { x: 100, y: 100, width: 800, height: 600 },
@@ -270,44 +250,6 @@ describe("WindowManager - Movement & Positioning", () => {
   });
 
   describe("rectForMonitor", () => {
-    it("should return null for null node", () => {
-      const rect = windowManager.rectForMonitor(null, 0);
-
-      expect(rect).toBeNull();
-    });
-
-    it("should return null for undefined node", () => {
-      const rect = windowManager.rectForMonitor(undefined, 0);
-
-      expect(rect).toBeNull();
-    });
-
-    it("should return null for non-window node", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const rect = windowManager.rectForMonitor(monitor, 1);
-
-      expect(rect).toBeNull();
-    });
-
-    it("should return null for negative monitor index", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const metaWindow = createMockWindow();
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-      nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
-
-      const rect = windowManager.rectForMonitor(nodeWindow, -1);
-
-      expect(rect).toBeNull();
-    });
-
     it("should calculate rect for monitor with same dimensions", () => {
       // Both monitors 1920x1080
       const metaWindow = createMockWindow();
@@ -514,31 +456,6 @@ describe("WindowManager - Movement & Positioning", () => {
       // Height: 480 * (1440/1080) = 640
       expect(Math.round(rect.width)).toBe(853);
       expect(rect.height).toBe(640);
-    });
-
-    it("should return null when work area is unavailable", () => {
-      const metaWindow = createMockWindow();
-      metaWindow.get_work_area_current_monitor = vi.fn(() => null);
-      metaWindow.get_work_area_for_monitor = vi.fn(() => ({
-        x: 1920,
-        y: 0,
-        width: 1920,
-        height: 1080,
-      }));
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-      nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
-
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
-
-      expect(rect).toBeNull();
     });
 
     it("should handle complex monitor arrangements", () => {

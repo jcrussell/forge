@@ -2,8 +2,8 @@
 
 ## Summary
 
-**Total Test Files**: 23 unit test files + 1 integration test
-**Total Tests**: 823 (822 passing, 1 skipped)
+**Total Test Files**: 37 test files (unit, integration, regression)
+**Total Tests**: 882 (881 passing, 1 skipped)
 **Overall Coverage**: ~62% statements
 **Source Code**: ~7,000 lines across 13 core files
 
@@ -20,23 +20,37 @@ All tests passing as of latest run:
 ✓ tests/unit/shared/logger.test.js (35 tests)
 ✓ tests/unit/shared/settings.test.js (31 tests)
 ✓ tests/unit/shared/theme.test.js (56 tests)
-✓ tests/unit/tree/Node.test.js (62 tests)
-✓ tests/unit/tree/Queue.test.js (26 tests)
+✓ tests/unit/tree/Node.test.js (37 tests)
+✓ tests/unit/tree/Queue.test.js (20 tests)
+✓ tests/unit/tree/Tree-cleanup.test.js (22 tests)
 ✓ tests/unit/tree/Tree-layout.test.js (23 tests)
-✓ tests/unit/tree/Tree-operations.test.js (51 tests)
-✓ tests/unit/tree/Tree.test.js (32 tests)
-✓ tests/unit/utils/utils.test.js (55 tests)
-✓ tests/unit/window/WindowManager-batch-float.test.js (29 tests)
-✓ tests/unit/window/WindowManager-commands.test.js (44 tests)
-✓ tests/unit/window/WindowManager-floating.test.js (63 tests)
-✓ tests/unit/window/WindowManager-focus.test.js (37 tests | 1 skipped)
-✓ tests/unit/window/WindowManager-gaps.test.js (24 tests)
-✓ tests/unit/window/WindowManager-lifecycle.test.js (30 tests)
-✓ tests/unit/window/WindowManager-movement.test.js (27 tests)
-✓ tests/unit/window/WindowManager-resize.test.js (22 tests)
-✓ tests/unit/window/WindowManager-workspace.test.js (31 tests)
-✓ tests/unit/workspace/WorkspaceManager.test.js (30 tests)
+✓ tests/unit/tree/Tree-operations.test.js (42 tests)
+✓ tests/unit/tree/Tree.test.js (29 tests)
+✓ tests/unit/utils/utils.test.js (48 tests)
+✓ tests/unit/window/WindowManager-batch-float.test.js (21 tests)
+✓ tests/unit/window/WindowManager-borders.test.js (11 tests)
+✓ tests/unit/window/WindowManager-commands.test.js (41 tests)
+✓ tests/unit/window/WindowManager-drag-drop.test.js (19 tests)
+✓ tests/unit/window/WindowManager-floating.test.js (72 tests)
+✓ tests/unit/window/WindowManager-focus.test.js (25 tests | 1 skipped)
+✓ tests/unit/window/WindowManager-gaps.test.js (14 tests)
+✓ tests/unit/window/WindowManager-handle-resizing.test.js (15 tests)
+✓ tests/unit/window/WindowManager-layout.test.js (20 tests)
+✓ tests/unit/window/WindowManager-lifecycle.test.js (22 tests)
+✓ tests/unit/window/WindowManager-movement.test.js (18 tests)
+✓ tests/unit/window/WindowManager-pointer.test.js (9 tests)
+✓ tests/unit/window/WindowManager-resize.test.js (21 tests)
+✓ tests/unit/window/WindowManager-workspace.test.js (26 tests)
+✓ tests/unit/workspace/WorkspaceManager.test.js (25 tests)
 ✓ tests/integration/window-operations.test.js (18 tests)
+✓ tests/regression/bug-040-minimized-focus.test.js (10 tests)
+✓ tests/regression/bug-125-vertical-stacked-tiling.test.js (6 tests)
+✓ tests/regression/bug-172-float-toggle.test.js (11 tests)
+✓ tests/regression/bug-213-movement.test.js (13 tests)
+✓ tests/regression/bug-305-resize.test.js (6 tests)
+✓ tests/regression/bug-311-orientation.test.js (8 tests)
+✓ tests/regression/bug-319-float-above.test.js (6 tests)
+✓ tests/regression/bug-resize-three-windows.test.js (7 tests)
 ```
 
 ---
@@ -74,7 +88,7 @@ All tests passing as of latest run:
 
 ### Tree Module (84% coverage)
 
-**Covered in `Node.test.js`, `Tree.test.js`, `Tree-operations.test.js`, `Tree-layout.test.js` (194 tests)**:
+**Covered in `Node.test.js`, `Tree.test.js`, `Tree-operations.test.js`, `Tree-layout.test.js`, `Tree-cleanup.test.js` (153 tests)**:
 - ✅ Node DOM-like API: `appendChild()`, `insertBefore()`, `removeChild()`
 - ✅ Node navigation: `firstChild`, `lastChild`, `nextSibling`, `previousSibling`
 - ✅ Node search: `getNodeByValue()`, `getNodeByType()`, `getNodeByLayout()`
@@ -99,7 +113,7 @@ These modules were extracted from window.js and tree.js during refactoring:
 
 ### WindowManager (44% coverage)
 
-**Covered across 10 test files (~307 tests)**:
+**Covered across 14 test files (~423 tests)**:
 - ✅ Window tracking: `trackWindow()`, `untrackWindow()`
 - ✅ Float management: `toggleFloatingMode()`, `isFloatingExempt()`
 - ✅ Float overrides: `addFloatOverride()`, `removeFloatOverride()`
@@ -197,6 +211,8 @@ Global mocks available in tests:
 | +theme.js | 696/697 | 58.6% | Added theme tests |
 | +settings.js | 727/728 | 60.5% | Added settings tests |
 | +extracted modules | 822/823 | ~62% | Added tests for command.js, monitor.js, workspace.js |
+| +regression tests | 1069/1069 | ~62% | Added regression tests, drag-drop, borders, etc. |
+| Pruning | 881/882 | ~62% | Removed ~190 implementation-specific/redundant tests |
 
 ---
 

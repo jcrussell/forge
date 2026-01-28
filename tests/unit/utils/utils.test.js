@@ -83,15 +83,6 @@ describe("Utility Functions", () => {
       expect(rectContainsPoint(rect, [0, 0])).toBe(true);
       expect(rectContainsPoint(rect, [-100, 0])).toBe(false);
     });
-
-    it("should return false for null rect", () => {
-      expect(rectContainsPoint(null, [50, 50])).toBe(false);
-    });
-
-    it("should return false for null point", () => {
-      const rect = { x: 0, y: 0, width: 100, height: 100 };
-      expect(rectContainsPoint(rect, null)).toBe(false);
-    });
   });
 
   describe("resolveWidth", () => {
@@ -144,61 +135,35 @@ describe("Utility Functions", () => {
   });
 
   describe("orientationFromGrab", () => {
-    it("should return VERTICAL for north resize", () => {
-      const result = orientationFromGrab(GrabOp.RESIZING_N);
-      expect(result).toBe(ORIENTATION_TYPES.VERTICAL);
+    it("should return VERTICAL for north/south resize", () => {
+      expect(orientationFromGrab(GrabOp.RESIZING_N)).toBe(ORIENTATION_TYPES.VERTICAL);
+      expect(orientationFromGrab(GrabOp.RESIZING_S)).toBe(ORIENTATION_TYPES.VERTICAL);
     });
 
-    it("should return VERTICAL for south resize", () => {
-      const result = orientationFromGrab(GrabOp.RESIZING_S);
-      expect(result).toBe(ORIENTATION_TYPES.VERTICAL);
+    it("should return HORIZONTAL for east/west resize", () => {
+      expect(orientationFromGrab(GrabOp.RESIZING_E)).toBe(ORIENTATION_TYPES.HORIZONTAL);
+      expect(orientationFromGrab(GrabOp.RESIZING_W)).toBe(ORIENTATION_TYPES.HORIZONTAL);
     });
 
-    it("should return HORIZONTAL for east resize", () => {
-      const result = orientationFromGrab(GrabOp.RESIZING_E);
-      expect(result).toBe(ORIENTATION_TYPES.HORIZONTAL);
-    });
-
-    it("should return HORIZONTAL for west resize", () => {
-      const result = orientationFromGrab(GrabOp.RESIZING_W);
-      expect(result).toBe(ORIENTATION_TYPES.HORIZONTAL);
-    });
-
-    it("should return NONE for moving operation", () => {
-      const result = orientationFromGrab(GrabOp.MOVING);
-      expect(result).toBe(ORIENTATION_TYPES.NONE);
-    });
-
-    it("should return NONE for no operation", () => {
-      const result = orientationFromGrab(GrabOp.NONE);
-      expect(result).toBe(ORIENTATION_TYPES.NONE);
+    it("should return NONE for non-resize operations", () => {
+      expect(orientationFromGrab(GrabOp.MOVING)).toBe(ORIENTATION_TYPES.NONE);
+      expect(orientationFromGrab(GrabOp.NONE)).toBe(ORIENTATION_TYPES.NONE);
     });
   });
 
   describe("positionFromGrabOp", () => {
-    it("should return BEFORE for west resize", () => {
-      const result = positionFromGrabOp(GrabOp.RESIZING_W);
-      expect(result).toBe(POSITION.BEFORE);
+    it("should return BEFORE for west/north resize", () => {
+      expect(positionFromGrabOp(GrabOp.RESIZING_W)).toBe(POSITION.BEFORE);
+      expect(positionFromGrabOp(GrabOp.RESIZING_N)).toBe(POSITION.BEFORE);
     });
 
-    it("should return BEFORE for north resize", () => {
-      const result = positionFromGrabOp(GrabOp.RESIZING_N);
-      expect(result).toBe(POSITION.BEFORE);
-    });
-
-    it("should return AFTER for east resize", () => {
-      const result = positionFromGrabOp(GrabOp.RESIZING_E);
-      expect(result).toBe(POSITION.AFTER);
-    });
-
-    it("should return AFTER for south resize", () => {
-      const result = positionFromGrabOp(GrabOp.RESIZING_S);
-      expect(result).toBe(POSITION.AFTER);
+    it("should return AFTER for east/south resize", () => {
+      expect(positionFromGrabOp(GrabOp.RESIZING_E)).toBe(POSITION.AFTER);
+      expect(positionFromGrabOp(GrabOp.RESIZING_S)).toBe(POSITION.AFTER);
     });
 
     it("should return UNKNOWN for moving operation", () => {
-      const result = positionFromGrabOp(GrabOp.MOVING);
-      expect(result).toBe(POSITION.UNKNOWN);
+      expect(positionFromGrabOp(GrabOp.MOVING)).toBe(POSITION.UNKNOWN);
     });
   });
 

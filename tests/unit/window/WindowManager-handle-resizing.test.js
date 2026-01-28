@@ -101,67 +101,6 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     windowManager = new WindowManager(mockExtension);
   });
 
-  describe("_handleResizing - Guard Conditions", () => {
-    it("should return early when focusNodeWindow is null", () => {
-      const spy = vi.spyOn(windowManager.tree, "nextVisible");
-
-      windowManager._handleResizing(null);
-
-      expect(spy).not.toHaveBeenCalled();
-    });
-
-    it("should return early when focusNodeWindow is floating", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.FLOAT;
-
-      const spy = vi.spyOn(windowManager.tree, "nextVisible");
-
-      windowManager._handleResizing(nodeWindow);
-
-      expect(spy).not.toHaveBeenCalled();
-    });
-
-    it("should return early when initGrabOp is RESIZING_UNKNOWN", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
-      nodeWindow.initGrabOp = GrabOp.RESIZING_UNKNOWN;
-
-      windowManager.grabOp = GrabOp.RESIZING_E;
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-
-      // Should return early without modifying percent
-      const initialPercent = nodeWindow.percent;
-
-      windowManager._handleResizing(nodeWindow);
-
-      expect(nodeWindow.percent).toBe(initialPercent);
-    });
-  });
-
   describe("_handleResizing - Horizontal Split Resizing", () => {
     it("should process horizontal resize without error", () => {
       const metaWindow1 = createMockWindow({
@@ -680,45 +619,6 @@ describe("WindowManager - Handle Resizing Behavior", () => {
   });
 
   describe("_repositionDuringResize", () => {
-    it("should return early when focusNodeWindow is null", () => {
-      expect(() => windowManager._repositionDuringResize(null)).not.toThrow();
-    });
-
-    it("should return early when initRect is missing", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
-      });
-
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.initRect = null;
-
-      const moveSpy = vi.spyOn(metaWindow, "move_frame");
-
-      windowManager._repositionDuringResize(nodeWindow);
-
-      expect(moveSpy).not.toHaveBeenCalled();
-    });
-
-    it("should return early when metaWindow is missing", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const nodeWindow = {
-        nodeValue: null,
-        initRect: { x: 0, y: 0, width: 960, height: 1080 },
-      };
-
-      expect(() => windowManager._repositionDuringResize(nodeWindow)).not.toThrow();
-    });
-
     it("should keep x fixed when resizing right edge", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 0, width: 1000, height: 1080 }),

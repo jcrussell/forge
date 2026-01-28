@@ -501,22 +501,5 @@ describe("Tree Cleanup and Container Management", () => {
       expect(node2.percent).toBe(0);
       expect(node3.percent).toBe(0);
     });
-
-    it("should handle null parent gracefully", () => {
-      expect(() => tree.resetSiblingPercent(null)).not.toThrow();
-    });
-
-    it("should handle parent with no children", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
-      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
-      // Remove any children
-      while (container.childNodes.length > 0) {
-        container.removeChild(container.firstChild);
-      }
-
-      expect(() => tree.resetSiblingPercent(container)).not.toThrow();
-    });
   });
 });

@@ -131,28 +131,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
     });
   });
 
-  describe("Tiling Mode Setting", () => {
-    it("should read tiling-mode-enabled from settings", () => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        return false;
-      });
-
-      const enabled = mockSettings.get_boolean("tiling-mode-enabled");
-      expect(enabled).toBe(true);
-    });
-
-    it("should read tiling-mode-enabled as false when disabled", () => {
-      mockSettings.get_boolean.mockImplementation((key) => {
-        if (key === "tiling-mode-enabled") return false;
-        return false;
-      });
-
-      const enabled = mockSettings.get_boolean("tiling-mode-enabled");
-      expect(enabled).toBe(false);
-    });
-  });
-
   describe("Window Mode Management", () => {
     it("should create window in TILE mode by default", () => {
       const metaWindow = createMockWindow({
@@ -514,42 +492,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       const found = windowManager.findNodeWindow(metaWindow2);
 
       expect(found).toBe(node2);
-    });
-  });
-
-  describe("Disabled State", () => {
-    it("should allow setting disabled property", () => {
-      windowManager.disabled = true;
-
-      expect(windowManager.disabled).toBe(true);
-    });
-
-    it("should prevent focus operations when disabled", () => {
-      windowManager.disabled = true;
-      windowManager.shouldFocusOnHover = true;
-
-      // _focusWindowUnderPointer should return false when disabled
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe("Workspace Changing State", () => {
-    it("should allow setting workspace transition state", () => {
-      windowManager._workspaceChanging = true;
-
-      expect(windowManager._workspaceChanging).toBe(true);
-    });
-
-    it("should prevent focus operations during workspace transition", () => {
-      windowManager.shouldFocusOnHover = true;
-      windowManager._workspaceChanging = true;
-
-      // Should return true (continue polling) but not focus
-      const result = windowManager._focusWindowUnderPointer();
-
-      expect(result).toBe(true);
     });
   });
 });

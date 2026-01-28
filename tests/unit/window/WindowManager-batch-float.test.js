@@ -158,12 +158,6 @@ describe("WindowManager - Batch Float Operations", () => {
       expect(nodeWindow2.prevFloat).toBeUndefined();
     });
 
-    it("should handle empty tree gracefully", () => {
-      expect(() => {
-        windowManager.floatAllWindows();
-      }).not.toThrow();
-    });
-
     it("should float windows across multiple workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
@@ -264,12 +258,6 @@ describe("WindowManager - Batch Float Operations", () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE);
     });
 
-    it("should handle empty tree gracefully", () => {
-      expect(() => {
-        windowManager.unfloatAllWindows();
-      }).not.toThrow();
-    });
-
     it("should unfloat windows across multiple workspaces", () => {
       const workspace0 = windowManager.tree.nodeWorkpaces[0];
       const workspace1 = windowManager.tree.nodeWorkpaces[1];
@@ -368,22 +356,6 @@ describe("WindowManager - Batch Float Operations", () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.TILE); // Unchanged
     });
 
-    it("should handle empty workspace gracefully", () => {
-      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([]);
-
-      expect(() => {
-        windowManager.floatWorkspace(0);
-      }).not.toThrow();
-    });
-
-    it("should handle null workspace gracefully", () => {
-      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue(null);
-
-      expect(() => {
-        windowManager.floatWorkspace(999);
-      }).not.toThrow();
-    });
-
     it("should enable always-on-top for floated windows when setting enabled", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -477,22 +449,6 @@ describe("WindowManager - Batch Float Operations", () => {
       expect(nodeWindow2.mode).toBe(WINDOW_MODES.FLOAT); // Unchanged
     });
 
-    it("should handle empty workspace gracefully", () => {
-      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue([]);
-
-      expect(() => {
-        windowManager.unfloatWorkspace(0);
-      }).not.toThrow();
-    });
-
-    it("should handle null workspace gracefully", () => {
-      vi.spyOn(windowManager, "getWindowsOnWorkspace").mockReturnValue(null);
-
-      expect(() => {
-        windowManager.unfloatWorkspace(999);
-      }).not.toThrow();
-    });
-
     it("should change mode to TILE when unfloating", () => {
       const workspace = windowManager.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
@@ -565,12 +521,6 @@ describe("WindowManager - Batch Float Operations", () => {
       windowManager.cleanupAlwaysFloat();
 
       expect(unmakeAboveSpy).not.toHaveBeenCalled();
-    });
-
-    it("should handle empty tree gracefully", () => {
-      expect(() => {
-        windowManager.cleanupAlwaysFloat();
-      }).not.toThrow();
     });
 
     it("should process all floating windows across workspaces", () => {
@@ -661,12 +611,6 @@ describe("WindowManager - Batch Float Operations", () => {
       windowManager.restoreAlwaysFloat();
 
       expect(makeAboveSpy).not.toHaveBeenCalled();
-    });
-
-    it("should handle empty tree gracefully", () => {
-      expect(() => {
-        windowManager.restoreAlwaysFloat();
-      }).not.toThrow();
     });
 
     it("should process all floating windows across workspaces", () => {

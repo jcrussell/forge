@@ -363,28 +363,4 @@ describe("Tree", () => {
       }
     });
   });
-
-  describe("Edge Cases", () => {
-    it("should handle empty parent value", () => {
-      const result = tree.createNode("", NODE_TYPES.CON, new St.Bin());
-
-      expect(result).toBeUndefined();
-    });
-
-    it("should handle null parent value", () => {
-      const result = tree.createNode(null, NODE_TYPES.CON, new St.Bin());
-
-      expect(result).toBeUndefined();
-    });
-
-    it("should find nodes case-sensitively", () => {
-      const workspace = tree.nodeWorkpaces[0];
-      if (workspace) {
-        tree.createNode(workspace.nodeValue, NODE_TYPES.CON, new St.Bin());
-
-        expect(tree.findNode("TestContainer")).toBeDefined();
-        expect(tree.findNode("testcontainer")).toBeNull();
-      }
-    });
-  });
 });

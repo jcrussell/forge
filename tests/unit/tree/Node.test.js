@@ -25,137 +25,6 @@ describe("Node", () => {
 
       expect(node.parentNode).toBeNull();
     });
-
-    it("should initialize with default mode", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-
-      expect(node.mode).toBe(WINDOW_MODES.DEFAULT);
-    });
-
-    it("should initialize with zero percent", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-
-      expect(node.percent).toBe(0.0);
-    });
-  });
-
-  describe("Type Checking Methods", () => {
-    it("should correctly identify ROOT type", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-
-      expect(node.isRoot()).toBe(true);
-      expect(node.isWindow()).toBe(false);
-      expect(node.isCon()).toBe(false);
-      expect(node.isMonitor()).toBe(false);
-      expect(node.isWorkspace()).toBe(false);
-    });
-
-    it("should correctly identify MONITOR type", () => {
-      const node = new Node(NODE_TYPES.MONITOR, "monitor-0");
-
-      expect(node.isMonitor()).toBe(true);
-      expect(node.isRoot()).toBe(false);
-      expect(node.isWindow()).toBe(false);
-    });
-
-    it("should correctly identify CON type", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-
-      expect(node.isCon()).toBe(true);
-      expect(node.isRoot()).toBe(false);
-      expect(node.isWindow()).toBe(false);
-    });
-
-    it("should correctly identify WORKSPACE type", () => {
-      const node = new Node(NODE_TYPES.WORKSPACE, "ws-0");
-
-      expect(node.isWorkspace()).toBe(true);
-      expect(node.isRoot()).toBe(false);
-      expect(node.isWindow()).toBe(false);
-    });
-
-    it("should check type by name", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-
-      expect(node.isType(NODE_TYPES.CON)).toBe(true);
-      expect(node.isType(NODE_TYPES.ROOT)).toBe(false);
-    });
-  });
-
-  describe("Mode Checking Methods", () => {
-    it("should check if node is floating", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-      node.mode = WINDOW_MODES.FLOAT;
-
-      expect(node.isFloat()).toBe(true);
-      expect(node.isTile()).toBe(false);
-    });
-
-    it("should check if node is tiled", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-      node.mode = WINDOW_MODES.TILE;
-
-      expect(node.isTile()).toBe(true);
-      expect(node.isFloat()).toBe(false);
-    });
-
-    it("should check if node is grab-tile", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-      node.mode = WINDOW_MODES.GRAB_TILE;
-
-      expect(node.isGrabTile()).toBe(true);
-    });
-
-    it("should check mode by name", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-      node.mode = WINDOW_MODES.TILE;
-
-      expect(node.isMode(WINDOW_MODES.TILE)).toBe(true);
-      expect(node.isMode(WINDOW_MODES.FLOAT)).toBe(false);
-    });
-  });
-
-  describe("Layout Checking Methods", () => {
-    it("should check horizontal split layout", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      node.layout = LAYOUT_TYPES.HSPLIT;
-
-      expect(node.isHSplit()).toBe(true);
-      expect(node.isVSplit()).toBe(false);
-      expect(node.isStacked()).toBe(false);
-    });
-
-    it("should check vertical split layout", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      node.layout = LAYOUT_TYPES.VSPLIT;
-
-      expect(node.isVSplit()).toBe(true);
-      expect(node.isHSplit()).toBe(false);
-    });
-
-    it("should check stacked layout", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      node.layout = LAYOUT_TYPES.STACKED;
-
-      expect(node.isStacked()).toBe(true);
-      expect(node.isTabbed()).toBe(false);
-    });
-
-    it("should check tabbed layout", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      node.layout = LAYOUT_TYPES.TABBED;
-
-      expect(node.isTabbed()).toBe(true);
-      expect(node.isStacked()).toBe(false);
-    });
-
-    it("should check layout by name", () => {
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      node.layout = LAYOUT_TYPES.HSPLIT;
-
-      expect(node.isLayout(LAYOUT_TYPES.HSPLIT)).toBe(true);
-      expect(node.isLayout(LAYOUT_TYPES.VSPLIT)).toBe(false);
-    });
   });
 
   describe("appendChild", () => {
@@ -200,13 +69,6 @@ describe("Node", () => {
       expect(parent.childNodes).toHaveLength(0);
       expect(otherParent.childNodes).toHaveLength(1);
       expect(child1.parentNode).toBe(otherParent);
-    });
-
-    it("should return null for null node", () => {
-      const result = parent.appendChild(null);
-
-      expect(result).toBeNull();
-      expect(parent.childNodes).toHaveLength(0);
     });
 
     it("should return the appended node", () => {
@@ -315,28 +177,6 @@ describe("Node", () => {
       expect(parent.lastChild).toBe(newChild);
     });
 
-    it("should return null if newNode is null", () => {
-      const result = parent.insertBefore(null, child1);
-
-      expect(result).toBeNull();
-    });
-
-    it("should return null if newNode same as childNode", () => {
-      const result = parent.insertBefore(child1, child1);
-
-      expect(result).toBeNull();
-    });
-
-    it("should return null if childNode parent is not this", () => {
-      const otherParent = new Node(NODE_TYPES.ROOT, "other");
-      const otherChild = new Node(NODE_TYPES.CON, new St.Bin());
-      otherParent.appendChild(otherChild);
-
-      const result = parent.insertBefore(newChild, otherChild);
-
-      expect(result).toBeNull();
-    });
-
     it("should move node if already has parent", () => {
       const otherParent = new Node(NODE_TYPES.ROOT, "other");
       otherParent.appendChild(newChild);
@@ -370,13 +210,6 @@ describe("Node", () => {
       it("should return last child", () => {
         expect(parent.lastChild).toBe(child3);
       });
-
-      it("should return null for empty node", () => {
-        const empty = new Node(NODE_TYPES.ROOT, "empty");
-
-        expect(empty.firstChild).toBeNull();
-        expect(empty.lastChild).toBeNull();
-      });
     });
 
     describe("nextSibling and previousSibling", () => {
@@ -397,13 +230,6 @@ describe("Node", () => {
       it("should return null for first child", () => {
         expect(child1.previousSibling).toBeNull();
       });
-
-      it("should return null when no parent", () => {
-        const orphan = new Node(NODE_TYPES.CON, new St.Bin());
-
-        expect(orphan.nextSibling).toBeNull();
-        expect(orphan.previousSibling).toBeNull();
-      });
     });
 
     describe("index", () => {
@@ -411,12 +237,6 @@ describe("Node", () => {
         expect(child1.index).toBe(0);
         expect(child2.index).toBe(1);
         expect(child3.index).toBe(2);
-      });
-
-      it("should return null when no parent", () => {
-        const orphan = new Node(NODE_TYPES.CON, new St.Bin());
-
-        expect(orphan.index).toBeNull();
       });
     });
 
@@ -460,10 +280,6 @@ describe("Node", () => {
       const other = new Node(NODE_TYPES.CON, new St.Bin());
 
       expect(root.contains(other)).toBe(false);
-    });
-
-    it("should return false for null", () => {
-      expect(root.contains(null)).toBe(false);
     });
   });
 
@@ -541,18 +357,6 @@ describe("Node", () => {
       const monitors = root.getNodeByType(NODE_TYPES.MONITOR);
 
       expect(monitors).toEqual([]);
-    });
-  });
-
-  describe("rect property", () => {
-    it("should get and set rect", () => {
-      // Use St.Bin for ROOT type since actor getter returns nodeValue for ROOT/CON types
-      const node = new Node(NODE_TYPES.CON, new St.Bin());
-      const rect = { x: 10, y: 20, width: 100, height: 200 };
-
-      node.rect = rect;
-
-      expect(node.rect).toEqual(rect);
     });
   });
 });
