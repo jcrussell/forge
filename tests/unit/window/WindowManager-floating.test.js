@@ -392,6 +392,268 @@ describe("WindowManager - Floating Mode", () => {
     });
   });
 
+  describe("isFloatingExempt - Explicit TILE Override (Bug #294)", () => {
+    it("should NOT float when user explicitly sets TILE mode", () => {
+      // Window that would normally float (no resize allowed)
+      const window = createMockWindow({
+        wm_class: "Neovide",
+        title: "Neovide",
+        allows_resize: false, // Would normally float
+      });
+
+      // But user has explicitly set it to tile
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "Neovide", mode: "tile" }];
+
+      expect(windowManager.isFloatingExempt(window)).toBe(false);
+    });
+
+    it("should respect TILE override even with float-by-class rule", () => {
+      // Window matches a float rule by class
+      mockConfigMgr.windowProps.overrides = [
+        { wmClass: "CustomApp", mode: "float" },
+        { wmClass: "CustomApp", mode: "tile" }, // User later adds tile override
+      ];
+
+      const window = createMockWindow({
+        wm_class: "CustomApp",
+        title: "Test",
+        allows_resize: true,
+      });
+
+      // TILE override should take precedence
+      expect(windowManager.isFloatingExempt(window)).toBe(false);
+    });
+
+    it("should respect TILE override with wmTitle match", () => {
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
+
+      const window = createMockWindow({
+        wm_class: "Terminal",
+        title: "vim - file.txt",
+        allows_resize: false, // Would normally float
+      });
+
+      expect(windowManager.isFloatingExempt(window)).toBe(false);
+    });
+
+    it("should respect TILE override with wmId match", () => {
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "App", wmId: 12345, mode: "tile" }];
+
+      const window = createMockWindow({
+        id: 12345,
+        wm_class: "App",
+        title: "App Window",
+        allows_resize: false, // Would normally float
+      });
+
+      expect(windowManager.isFloatingExempt(window)).toBe(false);
+    });
+
+    it("should still float when TILE override wmTitle does not match", () => {
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
+
+      const window = createMockWindow({
+        wm_class: "Terminal",
+        title: "bash", // Different title
+        allows_resize: false, // Would normally float
+      });
+
+      // No matching tile override, so floats due to allows_resize=false
+      expect(windowManager.isFloatingExempt(window)).toBe(true);
+    });
+  });
+
+  describe("isFloatingExempt - Built-in Float Rules", () => {
+    describe("Firefox Picture-in-Picture (Bug #383)", () => {
+      it("should float Firefox PIP windows", () => {
+        const window = createMockWindow({
+          wm_class: "Firefox",
+          title: "Picture-in-Picture",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float PIP windows case-insensitively", () => {
+        const window = createMockWindow({
+          wm_class: "Firefox",
+          title: "PICTURE-IN-PICTURE",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float PIP windows with additional title text", () => {
+        const window = createMockWindow({
+          wm_class: "Firefox",
+          title: "Video - Picture-in-Picture - YouTube",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should allow TILE override to beat PIP float rule", () => {
+        mockConfigMgr.windowProps.overrides = [
+          { wmClass: "Firefox", wmTitle: "Picture-in-Picture", mode: "tile" },
+        ];
+
+        const window = createMockWindow({
+          wm_class: "Firefox",
+          title: "Picture-in-Picture",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(false);
+      });
+    });
+
+    describe("Blender (Bug #260)", () => {
+      it("should float Blender windows", () => {
+        const window = createMockWindow({
+          wm_class: "Blender",
+          title: "Blender",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float Blender windows case-insensitively", () => {
+        const window = createMockWindow({
+          wm_class: "blender",
+          title: "Project.blend",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float Blender subwindows", () => {
+        const window = createMockWindow({
+          wm_class: "Blender-bin",
+          title: "Blender Preferences",
+          allows_resize: true,
+        });
+
+        // wmClass contains "blender"
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should allow TILE override to beat Blender float rule", () => {
+        mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
+
+        const window = createMockWindow({
+          wm_class: "Blender",
+          title: "Blender",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(false);
+      });
+    });
+
+    describe("Steam (Bug #271)", () => {
+      it("should float Steam windows", () => {
+        const window = createMockWindow({
+          wm_class: "Steam",
+          title: "Steam",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float Steam windows case-insensitively", () => {
+        const window = createMockWindow({
+          wm_class: "steam",
+          title: "Steam Library",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float steamwebhelper windows", () => {
+        const window = createMockWindow({
+          wm_class: "steamwebhelper",
+          title: "Steam Web Browser",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should float Steam game overlay windows", () => {
+        const window = createMockWindow({
+          wm_class: "Steam-overlay",
+          title: "Steam Overlay",
+          allows_resize: true,
+        });
+
+        // wmClass contains "steam"
+        expect(windowManager.isFloatingExempt(window)).toBe(true);
+      });
+
+      it("should allow TILE override to beat Steam float rule", () => {
+        mockConfigMgr.windowProps.overrides = [{ wmClass: "Steam", mode: "tile" }];
+
+        const window = createMockWindow({
+          wm_class: "Steam",
+          title: "Steam",
+          allows_resize: true,
+        });
+
+        expect(windowManager.isFloatingExempt(window)).toBe(false);
+      });
+    });
+  });
+
+  describe("isFloatingExempt - User Can Override Auto-Float Apps", () => {
+    it("should allow manual tiling of auto-float apps after user sets tile mode", () => {
+      // Start with window that auto-floats (Blender)
+      const window = createMockWindow({
+        wm_class: "Blender",
+        title: "Blender",
+        allows_resize: true,
+      });
+
+      // Initially floats
+      expect(windowManager.isFloatingExempt(window)).toBe(true);
+
+      // User adds tile override
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
+
+      // Now it tiles
+      expect(windowManager.isFloatingExempt(window)).toBe(false);
+    });
+
+    it("should allow specific window instance override via wmId", () => {
+      // Two Blender windows, only one should be tiled
+      const window1 = createMockWindow({
+        id: 111,
+        wm_class: "Blender",
+        title: "Blender - Main",
+        allows_resize: true,
+      });
+
+      const window2 = createMockWindow({
+        id: 222,
+        wm_class: "Blender",
+        title: "Blender - Secondary",
+        allows_resize: true,
+      });
+
+      // Override only window1 to tile
+      mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", wmId: 111, mode: "tile" }];
+
+      expect(windowManager.isFloatingExempt(window1)).toBe(false); // Tiled
+      expect(windowManager.isFloatingExempt(window2)).toBe(true); // Still floats
+    });
+  });
+
   describe("toggleFloatingMode", () => {
     let metaWindow;
     let nodeWindow;

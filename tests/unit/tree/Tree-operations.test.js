@@ -791,6 +791,200 @@ describe("Tree Operations", () => {
     });
   });
 
+  describe("next - Stacked Container Navigation", () => {
+    it("should cycle through windows in stacked container using UP/DOWN", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+      const node3 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window3);
+
+      // Navigate down from first window
+      const nextFromFirst = tree.next(node1, MotionDirection.DOWN);
+      expect(nextFromFirst).toBe(node2);
+
+      // Navigate down from second window
+      const nextFromSecond = tree.next(node2, MotionDirection.DOWN);
+      expect(nextFromSecond).toBe(node3);
+    });
+
+    it("should navigate up in stacked container", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // Navigate up from second window
+      const prev = tree.next(node2, MotionDirection.UP);
+      expect(prev).toBe(node1);
+    });
+
+    it("should exit stacked container when navigating left/right", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window1 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+
+      const window2 = createMockWindow();
+      const node2 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // Navigate right from stacked container should exit to sibling
+      const nextRight = tree.next(node1, MotionDirection.RIGHT);
+      expect(nextRight).toBe(node2);
+    });
+  });
+
+  describe("next - Tabbed Container Navigation", () => {
+    it("should cycle through tabs using LEFT/RIGHT", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+      const node3 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window3);
+
+      // Navigate right from first tab
+      const nextFromFirst = tree.next(node1, MotionDirection.RIGHT);
+      expect(nextFromFirst).toBe(node2);
+
+      // Navigate right from second tab
+      const nextFromSecond = tree.next(node2, MotionDirection.RIGHT);
+      expect(nextFromSecond).toBe(node3);
+    });
+
+    it("should navigate left between tabs", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // Navigate left from second tab
+      const prev = tree.next(node2, MotionDirection.LEFT);
+      expect(prev).toBe(node1);
+    });
+
+    it("should exit tabbed container when navigating up/down", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      monitor.layout = LAYOUT_TYPES.VSPLIT;
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+
+      const window1 = createMockWindow();
+      const node1 = tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+
+      const window2 = createMockWindow();
+      const node2 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // Navigate down from tabbed container should exit to sibling
+      const nextDown = tree.next(node1, MotionDirection.DOWN);
+      expect(nextDown).toBe(node2);
+    });
+  });
+
+  describe("next - Cross-Container Navigation", () => {
+    it("should navigate from one container to another container", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const container1 = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container1.layout = LAYOUT_TYPES.VSPLIT;
+
+      const container2 = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container2.layout = LAYOUT_TYPES.VSPLIT;
+
+      const window1 = createMockWindow();
+      const node1 = tree.createNode(container1.nodeValue, NODE_TYPES.WINDOW, window1);
+
+      const window2 = createMockWindow();
+      tree.createNode(container2.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // Navigate right from window in container1 - returns the sibling container
+      const next = tree.next(node1, MotionDirection.RIGHT);
+      // The next() function returns the container or its first window depending on layout
+      expect(next).toBeDefined();
+      expect(next.parentNode === monitor || next.parentNode.parentNode === monitor).toBe(true);
+    });
+
+    it("should navigate into container and find appropriate node", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const node1 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.VSPLIT;
+
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+      tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window3);
+
+      // Navigate right from window1 should go to the container or its first window
+      const next = tree.next(node1, MotionDirection.RIGHT);
+      expect(next).toBeDefined();
+      // Either we get the container or a window inside it
+      expect(next === container || next.nodeType === NODE_TYPES.WINDOW).toBe(true);
+    });
+
+    it("should navigate into stacked container", () => {
+      const workspace = tree.nodeWorkpaces[0];
+      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const node1 = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+
+      const container = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window2 = createMockWindow();
+      const window3 = createMockWindow();
+      tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+      tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window3);
+
+      // Navigate right from window1 should enter the stacked container
+      const next = tree.next(node1, MotionDirection.RIGHT);
+      expect(next).toBeDefined();
+      // Either we get the container or a window inside it
+      expect(next === container || next.parentNode === container).toBe(true);
+    });
+  });
+
   describe("getTiledChildren", () => {
     it("should return only tiled windows", () => {
       const workspace = tree.nodeWorkpaces[0];
