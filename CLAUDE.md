@@ -106,14 +106,12 @@ npm test
 npm run test:coverage
 ```
 
-**Coverage**: ~62% overall, 823 tests. See `tests/COVERAGE-GAPS.md` for detailed breakdown.
-
 Test structure:
 - `tests/setup.js` - Global test setup, loads mocks
 - `tests/mocks/gnome/` - GNOME API mocks (Meta.js, GLib.js, etc.)
 - `tests/mocks/helpers/` - Test helpers like `createMockWindow()`
 - `tests/unit/` - Unit tests organized by module
-- `tests/COVERAGE-GAPS.md` - Coverage analysis and gaps documentation
+- `tests/regression/` - Bug regression tests
 
 ## Key Concepts
 
