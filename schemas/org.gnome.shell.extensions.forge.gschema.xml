@@ -468,7 +468,7 @@
         </key>
 
         <key type="as" name="prefs-app-launch">
-            <default><![CDATA[['<Super>semicolon']]]></default>
+            <default><![CDATA[['<Shift><Super>Return']]]></default>
             <summary>Launch application</summary>
         </key>
 
