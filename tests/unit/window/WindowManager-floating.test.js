@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Tree, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES } from "../../../lib/extension/tree.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
-import { WindowType, Workspace } from "../../mocks/gnome/Meta.js";
+import { createWindowManagerFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import { WindowType } from "../../mocks/gnome/Meta.js";
 
 /**
  * WindowManager floating mode tests
@@ -10,88 +11,27 @@ import { WindowType, Workspace } from "../../mocks/gnome/Meta.js";
  * Tests for isFloatingExempt and toggleFloatingMode
  */
 describe("WindowManager - Floating Mode", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
-
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "focus-on-hover-enabled") return false;
-        if (key === "tiling-mode-enabled") return true;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+    ctx = createWindowManagerFixture();
   });
+
+  // Convenience accessors
+  const wm = () => ctx.windowManager;
+  const configMgr = () => ctx.configMgr;
 
   describe("isFloatingExempt - Type-based", () => {
     it("should float DIALOG windows", () => {
       const window = createMockWindow({ window_type: WindowType.DIALOG });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should float MODAL_DIALOG windows", () => {
       const window = createMockWindow({ window_type: WindowType.MODAL_DIALOG });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should NOT float NORMAL windows by type alone", () => {
@@ -102,7 +42,7 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should float windows with transient parent", () => {
@@ -111,67 +51,67 @@ describe("WindowManager - Floating Mode", () => {
         transient_for: parentWindow,
       });
 
-      expect(windowManager.isFloatingExempt(childWindow)).toBe(true);
+      expect(wm().isFloatingExempt(childWindow)).toBe(true);
     });
 
     it("should float windows without wm_class", () => {
       const window = createMockWindow({ wm_class: null });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should float windows without title", () => {
       const window = createMockWindow({ title: null });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should float windows with empty title", () => {
       const window = createMockWindow({ title: "" });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should float windows that do not allow resize", () => {
       const window = createMockWindow({ allows_resize: false });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should return true for null window", () => {
-      expect(windowManager.isFloatingExempt(null)).toBe(true);
+      expect(wm().isFloatingExempt(null)).toBe(true);
     });
   });
 
   describe("isFloatingExempt - Override by wmClass", () => {
     it("should float windows matching wmClass override", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Firefox", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Firefox", mode: "float" }];
 
       const window = createMockWindow({ wm_class: "Firefox", title: "Test", allows_resize: true });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should NOT float windows not matching wmClass override", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Firefox", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Firefox", mode: "float" }];
 
       const window = createMockWindow({ wm_class: "Chrome", title: "Test", allows_resize: true });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should ignore tile mode overrides when checking float", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Firefox", mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Firefox", mode: "tile" }];
 
       const window = createMockWindow({ wm_class: "Firefox", title: "Test", allows_resize: true });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
   });
 
   describe("isFloatingExempt - Override by wmTitle", () => {
     it("should float windows matching wmTitle substring", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Firefox", wmTitle: "Private", mode: "float" },
       ];
 
@@ -181,11 +121,11 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should NOT float windows not matching wmTitle", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Firefox", wmTitle: "Private", mode: "float" },
       ];
 
@@ -195,11 +135,11 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should handle multiple titles in wmTitle (comma-separated)", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Code", wmTitle: "Settings,Preferences", mode: "float" },
       ];
 
@@ -215,12 +155,12 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window1)).toBe(true);
-      expect(windowManager.isFloatingExempt(window2)).toBe(true);
+      expect(wm().isFloatingExempt(window1)).toBe(true);
+      expect(wm().isFloatingExempt(window2)).toBe(true);
     });
 
     it("should handle negated title matching (!prefix)", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Terminal", wmTitle: "!root", mode: "float" },
       ];
 
@@ -236,12 +176,12 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window1)).toBe(true);
-      expect(windowManager.isFloatingExempt(window2)).toBe(false);
+      expect(wm().isFloatingExempt(window1)).toBe(true);
+      expect(wm().isFloatingExempt(window2)).toBe(false);
     });
 
     it("should match exact single space title", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Test", wmTitle: " ", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Test", wmTitle: " ", mode: "float" }];
 
       const window1 = createMockWindow({
         wm_class: "Test",
@@ -255,15 +195,15 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window1)).toBe(true);
-      expect(windowManager.isFloatingExempt(window2)).toBe(false);
+      expect(wm().isFloatingExempt(window1)).toBe(true);
+      expect(wm().isFloatingExempt(window2)).toBe(false);
     });
   });
 
   describe("isFloatingExempt - Override by wmId", () => {
     it("should float windows matching wmId and wmClass", () => {
       // Note: The implementation requires wmClass to be specified and match
-      mockConfigMgr.windowProps.overrides = [{ wmId: 12345, wmClass: "TestApp", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmId: 12345, wmClass: "TestApp", mode: "float" }];
 
       const window = createMockWindow({
         id: 12345,
@@ -272,21 +212,21 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should NOT float windows not matching wmId", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmId: 12345, mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmId: 12345, mode: "float" }];
 
       const window = createMockWindow({ id: 67890, title: "Test", allows_resize: true });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
   });
 
   describe("isFloatingExempt - Combined Overrides", () => {
     it("should match when wmClass AND wmTitle both match", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Firefox", wmTitle: "Private", mode: "float" },
       ];
 
@@ -296,11 +236,11 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
 
     it("should NOT match when only wmClass matches", () => {
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Firefox", wmTitle: "Private", mode: "float" },
       ];
 
@@ -310,12 +250,12 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should require wmClass to match even when wmId matches", () => {
       // The implementation requires wmClass to match - it's not optional
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmId: 12345, wmClass: "Firefox", wmTitle: "Private", mode: "float" },
       ];
 
@@ -327,12 +267,12 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // wmClass must match, so this returns false
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should handle multiple overrides", () => {
       // Note: wmClass MUST be specified and match for an override to work
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "Firefox", mode: "float" },
         { wmClass: "Chrome", mode: "float" },
         { wmClass: "Calculator", wmTitle: "Calc", mode: "float" },
@@ -347,10 +287,10 @@ describe("WindowManager - Floating Mode", () => {
       });
       const window4 = createMockWindow({ wm_class: "Other", title: "Other", allows_resize: true });
 
-      expect(windowManager.isFloatingExempt(window1)).toBe(true);
-      expect(windowManager.isFloatingExempt(window2)).toBe(true);
-      expect(windowManager.isFloatingExempt(window3)).toBe(true);
-      expect(windowManager.isFloatingExempt(window4)).toBe(false);
+      expect(wm().isFloatingExempt(window1)).toBe(true);
+      expect(wm().isFloatingExempt(window2)).toBe(true);
+      expect(wm().isFloatingExempt(window3)).toBe(true);
+      expect(wm().isFloatingExempt(window4)).toBe(false);
     });
   });
 
@@ -364,14 +304,14 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // But user has explicitly set it to tile
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Neovide", mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Neovide", mode: "tile" }];
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should respect TILE override even with float-by-class rule", () => {
       // Window matches a float rule by class
-      mockConfigMgr.windowProps.overrides = [
+      configMgr().windowProps.overrides = [
         { wmClass: "CustomApp", mode: "float" },
         { wmClass: "CustomApp", mode: "tile" }, // User later adds tile override
       ];
@@ -383,11 +323,11 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // TILE override should take precedence
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should respect TILE override with wmTitle match", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
 
       const window = createMockWindow({
         wm_class: "Terminal",
@@ -395,11 +335,11 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: false, // Would normally float
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should respect TILE override with wmId match", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "App", wmId: 12345, mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "App", wmId: 12345, mode: "tile" }];
 
       const window = createMockWindow({
         id: 12345,
@@ -408,11 +348,11 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: false, // Would normally float
       });
 
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should still float when TILE override wmTitle does not match", () => {
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Terminal", wmTitle: "vim", mode: "tile" }];
 
       const window = createMockWindow({
         wm_class: "Terminal",
@@ -421,7 +361,7 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // No matching tile override, so floats due to allows_resize=false
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
     });
   });
 
@@ -434,7 +374,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float PIP windows case-insensitively", () => {
@@ -444,7 +384,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float PIP windows with additional title text", () => {
@@ -454,11 +394,11 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should allow TILE override to beat PIP float rule", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "Firefox", wmTitle: "Picture-in-Picture", mode: "tile" },
         ];
 
@@ -468,7 +408,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(false);
+        expect(wm().isFloatingExempt(window)).toBe(false);
       });
     });
 
@@ -480,7 +420,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float Blender windows case-insensitively", () => {
@@ -490,7 +430,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float Blender subwindows", () => {
@@ -501,11 +441,11 @@ describe("WindowManager - Floating Mode", () => {
         });
 
         // wmClass contains "blender"
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should allow TILE override to beat Blender float rule", () => {
-        mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
+        configMgr().windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
 
         const window = createMockWindow({
           wm_class: "Blender",
@@ -513,7 +453,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(false);
+        expect(wm().isFloatingExempt(window)).toBe(false);
       });
     });
 
@@ -525,7 +465,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float Steam windows case-insensitively", () => {
@@ -535,7 +475,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float steamwebhelper windows", () => {
@@ -545,7 +485,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should float Steam game overlay windows", () => {
@@ -556,11 +496,11 @@ describe("WindowManager - Floating Mode", () => {
         });
 
         // wmClass contains "steam"
-        expect(windowManager.isFloatingExempt(window)).toBe(true);
+        expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
       it("should allow TILE override to beat Steam float rule", () => {
-        mockConfigMgr.windowProps.overrides = [{ wmClass: "Steam", mode: "tile" }];
+        configMgr().windowProps.overrides = [{ wmClass: "Steam", mode: "tile" }];
 
         const window = createMockWindow({
           wm_class: "Steam",
@@ -568,7 +508,7 @@ describe("WindowManager - Floating Mode", () => {
           allows_resize: true,
         });
 
-        expect(windowManager.isFloatingExempt(window)).toBe(false);
+        expect(wm().isFloatingExempt(window)).toBe(false);
       });
     });
   });
@@ -583,13 +523,13 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // Initially floats
-      expect(windowManager.isFloatingExempt(window)).toBe(true);
+      expect(wm().isFloatingExempt(window)).toBe(true);
 
       // User adds tile override
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
 
       // Now it tiles
-      expect(windowManager.isFloatingExempt(window)).toBe(false);
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should allow specific window instance override via wmId", () => {
@@ -609,10 +549,10 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // Override only window1 to tile
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "Blender", wmId: 111, mode: "tile" }];
+      configMgr().windowProps.overrides = [{ wmClass: "Blender", wmId: 111, mode: "tile" }];
 
-      expect(windowManager.isFloatingExempt(window1)).toBe(false); // Tiled
-      expect(windowManager.isFloatingExempt(window2)).toBe(true); // Still floats
+      expect(wm().isFloatingExempt(window1)).toBe(false); // Tiled
+      expect(wm().isFloatingExempt(window2)).toBe(true); // Still floats
     });
   });
 
@@ -628,70 +568,68 @@ describe("WindowManager - Floating Mode", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      nodeWindow = windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
-      global.display.get_focus_window.mockReturnValue(metaWindow);
+      ctx.display.get_focus_window.mockReturnValue(metaWindow);
     });
 
     it("should toggle from tile to float", () => {
       const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
 
-      windowManager.toggleFloatingMode(action, metaWindow);
+      wm().toggleFloatingMode(action, metaWindow);
 
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
     });
 
     it("should add float override when toggling to float", () => {
       const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
-      const addSpy = vi.spyOn(windowManager, "addFloatOverride");
+      const addSpy = vi.spyOn(wm(), "addFloatOverride");
 
-      windowManager.toggleFloatingMode(action, metaWindow);
+      wm().toggleFloatingMode(action, metaWindow);
 
       expect(addSpy).toHaveBeenCalledWith(metaWindow, true);
     });
 
     it("should toggle from float to tile when override exists", () => {
       nodeWindow.mode = WINDOW_MODES.FLOAT;
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
 
       const action = { name: "FloatToggle", mode: WINDOW_MODES.TILE };
 
-      windowManager.toggleFloatingMode(action, metaWindow);
+      wm().toggleFloatingMode(action, metaWindow);
 
       expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
     });
 
     it("should remove float override when toggling from float", () => {
       nodeWindow.mode = WINDOW_MODES.FLOAT;
-      mockConfigMgr.windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
+      configMgr().windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
 
       const action = { name: "FloatToggle", mode: WINDOW_MODES.TILE };
-      const removeSpy = vi.spyOn(windowManager, "removeFloatOverride");
+      const removeSpy = vi.spyOn(wm(), "removeFloatOverride");
 
-      windowManager.toggleFloatingMode(action, metaWindow);
+      wm().toggleFloatingMode(action, metaWindow);
 
       expect(removeSpy).toHaveBeenCalledWith(metaWindow, true);
     });
 
     it("should handle FloatClassToggle action", () => {
       const action = { name: "FloatClassToggle", mode: WINDOW_MODES.FLOAT };
-      const addSpy = vi.spyOn(windowManager, "addFloatOverride");
+      const addSpy = vi.spyOn(wm(), "addFloatOverride");
 
-      windowManager.toggleFloatingMode(action, metaWindow);
+      wm().toggleFloatingMode(action, metaWindow);
 
       expect(addSpy).toHaveBeenCalledWith(metaWindow, false);
     });
 
     it("should not toggle non-window nodes", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
 
       const modeBefore = monitor.mode;
-      windowManager.toggleFloatingMode(action, monitor.nodeValue);
+      wm().toggleFloatingMode(action, monitor.nodeValue);
 
       // Should not change
       expect(monitor.mode).toBe(modeBefore);
@@ -701,15 +639,10 @@ describe("WindowManager - Floating Mode", () => {
   describe("findNodeWindow", () => {
     it("should find window in tree", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const found = windowManager.findNodeWindow(metaWindow);
+      const found = wm().findNodeWindow(metaWindow);
 
       expect(found).toBe(nodeWindow);
     });
@@ -717,7 +650,7 @@ describe("WindowManager - Floating Mode", () => {
     it("should return null for window not in tree", () => {
       const metaWindow = createMockWindow();
 
-      const found = windowManager.findNodeWindow(metaWindow);
+      const found = wm().findNodeWindow(metaWindow);
 
       expect(found).toBeNull();
     });
@@ -728,11 +661,11 @@ describe("WindowManager - Floating Mode", () => {
       it("should add new float override by wmClass", () => {
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        const initialLength = mockConfigMgr.windowProps.overrides.length;
+        const initialLength = configMgr().windowProps.overrides.length;
 
-        windowManager.addFloatOverride(metaWindow, false);
+        wm().addFloatOverride(metaWindow, false);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(initialLength + 1);
         expect(overrides[overrides.length - 1]).toEqual({
           wmClass: "TestApp",
@@ -744,9 +677,9 @@ describe("WindowManager - Floating Mode", () => {
       it("should add new float override with wmId when requested", () => {
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.addFloatOverride(metaWindow, true);
+        wm().addFloatOverride(metaWindow, true);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         const addedOverride = overrides[overrides.length - 1];
         expect(addedOverride.wmClass).toBe("TestApp");
         expect(addedOverride.wmId).toBe(123);
@@ -756,11 +689,11 @@ describe("WindowManager - Floating Mode", () => {
       it("should not add duplicate override for same wmClass without wmId", () => {
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.addFloatOverride(metaWindow, false);
-        const lengthAfterFirst = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow, false);
+        const lengthAfterFirst = configMgr().windowProps.overrides.length;
 
-        windowManager.addFloatOverride(metaWindow, false);
-        const lengthAfterSecond = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow, false);
+        const lengthAfterSecond = configMgr().windowProps.overrides.length;
 
         expect(lengthAfterSecond).toBe(lengthAfterFirst);
       });
@@ -769,11 +702,11 @@ describe("WindowManager - Floating Mode", () => {
         const metaWindow1 = createMockWindow({ wm_class: "TestApp", id: 123 });
         const metaWindow2 = createMockWindow({ wm_class: "TestApp", id: 456 });
 
-        windowManager.addFloatOverride(metaWindow1, true);
-        const lengthAfterFirst = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow1, true);
+        const lengthAfterFirst = configMgr().windowProps.overrides.length;
 
-        windowManager.addFloatOverride(metaWindow2, true);
-        const lengthAfterSecond = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow2, true);
+        const lengthAfterSecond = configMgr().windowProps.overrides.length;
 
         expect(lengthAfterSecond).toBe(lengthAfterFirst + 1);
       });
@@ -781,102 +714,102 @@ describe("WindowManager - Floating Mode", () => {
       it("should not add duplicate when wmId matches existing override", () => {
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.addFloatOverride(metaWindow, true);
-        const lengthAfterFirst = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow, true);
+        const lengthAfterFirst = configMgr().windowProps.overrides.length;
 
-        windowManager.addFloatOverride(metaWindow, true);
-        const lengthAfterSecond = mockConfigMgr.windowProps.overrides.length;
+        wm().addFloatOverride(metaWindow, true);
+        const lengthAfterSecond = configMgr().windowProps.overrides.length;
 
         expect(lengthAfterSecond).toBe(lengthAfterFirst);
       });
 
       it("should ignore overrides with wmTitle when checking duplicates", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", wmTitle: "Something", mode: "float" },
         ];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.addFloatOverride(metaWindow, false);
+        wm().addFloatOverride(metaWindow, false);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(2); // Both should exist
       });
 
       it("should update windowProps on WindowManager instance", () => {
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.addFloatOverride(metaWindow, false);
+        wm().addFloatOverride(metaWindow, false);
 
-        expect(windowManager.windowProps).toBe(mockConfigMgr.windowProps);
+        expect(wm().windowProps).toBe(configMgr().windowProps);
       });
     });
 
     describe("removeFloatOverride", () => {
       beforeEach(() => {
         // Reset overrides before each test
-        mockConfigMgr.windowProps.overrides = [];
+        configMgr().windowProps.overrides = [];
       });
 
       it("should remove float override by wmClass", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", mode: "float" },
           { wmClass: "OtherApp", mode: "float" },
         ];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, false);
+        wm().removeFloatOverride(metaWindow, false);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(1);
         expect(overrides[0].wmClass).toBe("OtherApp");
       });
 
       it("should remove float override by wmClass and wmId when requested", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", wmId: 123, mode: "float" },
           { wmClass: "TestApp", wmId: 456, mode: "float" },
         ];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, true);
+        wm().removeFloatOverride(metaWindow, true);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(1);
         expect(overrides[0].wmId).toBe(456);
       });
 
       it("should not remove overrides with wmTitle (user-defined)", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", wmTitle: "UserRule", mode: "float" },
           { wmClass: "TestApp", mode: "float" },
         ];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, false);
+        wm().removeFloatOverride(metaWindow, false);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(1);
         expect(overrides[0].wmTitle).toBe("UserRule");
       });
 
       it("should handle non-existent override gracefully", () => {
-        mockConfigMgr.windowProps.overrides = [{ wmClass: "OtherApp", mode: "float" }];
+        configMgr().windowProps.overrides = [{ wmClass: "OtherApp", mode: "float" }];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
         expect(() => {
-          windowManager.removeFloatOverride(metaWindow, false);
+          wm().removeFloatOverride(metaWindow, false);
         }).not.toThrow();
 
-        expect(mockConfigMgr.windowProps.overrides.length).toBe(1);
+        expect(configMgr().windowProps.overrides.length).toBe(1);
       });
 
       it("should remove all matching overrides without wmId filter", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", mode: "float" },
           { wmClass: "TestApp", wmId: 123, mode: "float" },
           { wmClass: "TestApp", wmId: 456, mode: "float" },
@@ -884,14 +817,14 @@ describe("WindowManager - Floating Mode", () => {
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, false);
+        wm().removeFloatOverride(metaWindow, false);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(0);
       });
 
       it("should only remove matching wmId when wmId filter enabled", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "TestApp", mode: "float" },
           { wmClass: "TestApp", wmId: 123, mode: "float" },
           { wmClass: "TestApp", wmId: 456, mode: "float" },
@@ -899,21 +832,21 @@ describe("WindowManager - Floating Mode", () => {
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, true);
+        wm().removeFloatOverride(metaWindow, true);
 
-        const overrides = mockConfigMgr.windowProps.overrides;
+        const overrides = configMgr().windowProps.overrides;
         expect(overrides.length).toBe(2);
         expect(overrides.some((o) => o.wmId === 123)).toBe(false);
       });
 
       it("should update windowProps on WindowManager instance", () => {
-        mockConfigMgr.windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
+        configMgr().windowProps.overrides = [{ wmClass: "TestApp", mode: "float" }];
 
         const metaWindow = createMockWindow({ wm_class: "TestApp", id: 123 });
 
-        windowManager.removeFloatOverride(metaWindow, false);
+        wm().removeFloatOverride(metaWindow, false);
 
-        expect(windowManager.windowProps).toBe(mockConfigMgr.windowProps);
+        expect(wm().windowProps).toBe(configMgr().windowProps);
       });
     });
 
@@ -924,55 +857,55 @@ describe("WindowManager - Floating Mode", () => {
           { wmClass: "App2", mode: "tile" },
         ];
 
-        mockConfigMgr.windowProps.overrides = newOverrides;
+        configMgr().windowProps.overrides = newOverrides;
 
-        windowManager.reloadWindowOverrides();
+        wm().reloadWindowOverrides();
 
-        expect(windowManager.windowProps.overrides.length).toBe(2);
+        expect(wm().windowProps.overrides.length).toBe(2);
       });
 
       it("should filter out wmId-based overrides", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "App1", mode: "float" },
           { wmClass: "App2", wmId: 123, mode: "float" },
           { wmClass: "App3", mode: "tile" },
         ];
 
-        windowManager.reloadWindowOverrides();
+        wm().reloadWindowOverrides();
 
-        const overrides = windowManager.windowProps.overrides;
+        const overrides = wm().windowProps.overrides;
         expect(overrides.length).toBe(2);
         expect(overrides.some((o) => o.wmId !== undefined)).toBe(false);
       });
 
       it("should preserve wmTitle-based overrides", () => {
-        mockConfigMgr.windowProps.overrides = [
+        configMgr().windowProps.overrides = [
           { wmClass: "App1", wmTitle: "Test", mode: "float" },
           { wmClass: "App2", wmId: 123, mode: "float" },
         ];
 
-        windowManager.reloadWindowOverrides();
+        wm().reloadWindowOverrides();
 
-        const overrides = windowManager.windowProps.overrides;
+        const overrides = wm().windowProps.overrides;
         expect(overrides.length).toBe(1);
         expect(overrides[0].wmTitle).toBe("Test");
       });
 
       it("should handle empty overrides array", () => {
-        mockConfigMgr.windowProps.overrides = [];
+        configMgr().windowProps.overrides = [];
 
-        windowManager.reloadWindowOverrides();
+        wm().reloadWindowOverrides();
 
-        expect(windowManager.windowProps.overrides.length).toBe(0);
+        expect(wm().windowProps.overrides.length).toBe(0);
       });
 
       it("should update windowProps reference", () => {
         const freshProps = { overrides: [{ wmClass: "Test", mode: "float" }] };
-        mockConfigMgr.windowProps = freshProps;
+        configMgr().windowProps = freshProps;
 
-        windowManager.reloadWindowOverrides();
+        wm().reloadWindowOverrides();
 
-        expect(windowManager.windowProps).toBe(freshProps);
+        expect(wm().windowProps).toBe(freshProps);
       });
     });
   });

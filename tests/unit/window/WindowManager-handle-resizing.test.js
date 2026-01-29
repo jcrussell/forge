@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Tree, NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
-import { Workspace, Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
 
 /**
  * WindowManager _handleResizing behavior tests
@@ -16,152 +16,67 @@ import { Workspace, Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome
  * - Edge cases (floating, minimized windows)
  */
 describe("WindowManager - Handle Resizing Behavior", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
-  let workspace0;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      get_monitor_neighbor_index: vi.fn(() => -1),
-      sort_windows_by_stacking: vi.fn((windows) => windows),
-    };
+    ctx = createWindowManagerFixture();
 
-    workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-    global.get_pointer = vi.fn(() => [960, 540]);
-
-    // Mock Meta namespace
-    global.Meta = {
-      GrabOp,
-      MotionDirection,
-    };
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-on-hover-enabled") return false;
-        return false;
-      }),
-      get_uint: vi.fn((key) => {
-        if (key === "window-gap-size") return 0;
-        if (key === "window-gap-size-increment") return 4;
-        return 0;
-      }),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+    // Mock Meta namespace for GrabOp and MotionDirection
+    global.Meta = { GrabOp, MotionDirection };
   });
+
+  const wm = () => ctx.windowManager;
+  const workspace0 = () => ctx.workspaces[0];
 
   describe("_handleResizing - Horizontal Split Resizing", () => {
     it("should process horizontal resize without error", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 960, y: 0, width: 960, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       // Should process resize without throwing
-      expect(() => windowManager._handleResizing(nodeWindow1)).not.toThrow();
+      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
     });
 
     it("should call nextVisible to find resize pair", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
@@ -170,12 +85,12 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      const nextVisibleSpy = vi.spyOn(windowManager.tree, "nextVisible");
+      const nextVisibleSpy = vi.spyOn(ctx.tree, "nextVisible");
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       expect(nextVisibleSpy).toHaveBeenCalled();
     });
@@ -183,44 +98,36 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should maintain total percent sum close to 1", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 960, y: 0, width: 960, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // Total should be close to 1 (accounting for normalization)
       const totalPercent = nodeWindow1.percent + nodeWindow2.percent;
@@ -230,32 +137,24 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should process left edge resize (RESIZING_W) without error", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.initRect = { x: 960, y: 0, width: 960, height: 1080 };
@@ -264,11 +163,11 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       metaWindow2._frameRect = new Rectangle({ x: 800, y: 0, width: 1120, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_W;
+      wm().grabOp = GrabOp.RESIZING_W;
       global.display.get_focus_window.mockReturnValue(metaWindow2);
 
       // Should process left edge resize without throwing
-      expect(() => windowManager._handleResizing(nodeWindow2)).not.toThrow();
+      expect(() => wm()._handleResizing(nodeWindow2)).not.toThrow();
     });
   });
 
@@ -276,76 +175,60 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should process vertical resize without error", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 540 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 540, width: 1920, height: 540 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.VSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 1920, height: 540 };
       nodeWindow1.rect = { x: 0, y: 0, width: 1920, height: 540 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_S;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 0, y: 540, width: 1920, height: 540 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1920, height: 700 });
 
-      windowManager.grabOp = GrabOp.RESIZING_S;
+      wm().grabOp = GrabOp.RESIZING_S;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       // Should process vertical resize without throwing
-      expect(() => windowManager._handleResizing(nodeWindow1)).not.toThrow();
+      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
     });
 
     it("should process top edge resize (RESIZING_N) without error", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 540 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 540, width: 1920, height: 540 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.VSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.rect = { x: 0, y: 0, width: 1920, height: 540 };
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.initRect = { x: 0, y: 540, width: 1920, height: 540 };
@@ -354,11 +237,11 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       metaWindow2._frameRect = new Rectangle({ x: 0, y: 400, width: 1920, height: 680 });
 
-      windowManager.grabOp = GrabOp.RESIZING_N;
+      wm().grabOp = GrabOp.RESIZING_N;
       global.display.get_focus_window.mockReturnValue(metaWindow2);
 
       // Should process top edge resize without throwing
-      expect(() => windowManager._handleResizing(nodeWindow2)).not.toThrow();
+      expect(() => wm()._handleResizing(nodeWindow2)).not.toThrow();
     });
   });
 
@@ -366,46 +249,38 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should force parent-level resize for tabbed containers", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.TABBED;
       monitor.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       // In tabbed containers, sameParent is forced to false per Bug #497 fix
       // so resizing should happen at parent level, not between siblings
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // The parent (tabbed container) should be resized, not individual windows
       expect(true).toBe(true); // Test that it doesn't crash
@@ -414,44 +289,36 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should force parent-level resize for stacked containers", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.STACKED;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.5;
       nodeWindow1.initRect = { x: 0, y: 0, width: 1920, height: 1080 };
       nodeWindow1.rect = { x: 0, y: 0, width: 1920, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 2100, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // Should not throw and should handle stacked layout
       expect(true).toBe(true);
@@ -462,27 +329,23 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should skip floating windows when finding resize pair", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 640, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow3 = createMockWindow({
         rect: new Rectangle({ x: 1280, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.333;
       nodeWindow1.initRect = { x: 0, y: 0, width: 640, height: 1080 };
@@ -490,30 +353,22 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
       // Window 2 is floating - should be skipped
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.percent = 0.333;
       nodeWindow2.rect = { x: 640, y: 0, width: 640, height: 1080 };
 
-      const nodeWindow3 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow3
-      );
+      const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow3);
       nodeWindow3.mode = WINDOW_MODES.TILE;
       nodeWindow3.percent = 0.333;
       nodeWindow3.rect = { x: 1280, y: 0, width: 640, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 800, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // Floating window should be skipped, resize should affect window 3
       expect(nodeWindow1.percent).toBeGreaterThan(0.333);
@@ -522,59 +377,47 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should skip minimized windows when finding resize pair", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 640, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       metaWindow2.minimized = true;
 
       const metaWindow3 = createMockWindow({
         rect: new Rectangle({ x: 1280, y: 0, width: 640, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.333;
       nodeWindow1.initRect = { x: 0, y: 0, width: 640, height: 1080 };
       nodeWindow1.rect = { x: 0, y: 0, width: 640, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.333;
       nodeWindow2.rect = { x: 640, y: 0, width: 640, height: 1080 };
 
-      const nodeWindow3 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow3
-      );
+      const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow3);
       nodeWindow3.mode = WINDOW_MODES.TILE;
       nodeWindow3.percent = 0.333;
       nodeWindow3.rect = { x: 1280, y: 0, width: 640, height: 1080 };
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 800, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // Minimized window should be skipped
       expect(nodeWindow1.percent).toBeGreaterThan(0.333);
@@ -585,19 +428,15 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should not resize when only one tiled child exists", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 1.0;
       nodeWindow1.initRect = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -606,12 +445,12 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 2000, height: 1080 });
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       const initialPercent = nodeWindow1.percent;
 
-      windowManager._handleResizing(nodeWindow1);
+      wm()._handleResizing(nodeWindow1);
 
       // Percent should remain unchanged with single child
       expect(nodeWindow1.percent).toBe(initialPercent);
@@ -622,24 +461,20 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should keep x fixed when resizing right edge", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 0, width: 1000, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 100, y: 0, width: 960, height: 1080 };
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
 
       const moveSpy = vi.spyOn(metaWindow, "move_frame");
 
-      windowManager._repositionDuringResize(nodeWindow);
+      wm()._repositionDuringResize(nodeWindow);
 
       // X position should remain at initRect.x (with gaps=0)
       if (moveSpy.mock.calls.length > 0) {
@@ -650,24 +485,20 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should keep y fixed when resizing bottom edge", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 0, y: 100, width: 1920, height: 600 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 0, y: 100, width: 1920, height: 540 };
 
-      windowManager.grabOp = GrabOp.RESIZING_S;
+      wm().grabOp = GrabOp.RESIZING_S;
 
       const moveSpy = vi.spyOn(metaWindow, "move_frame");
 
-      windowManager._repositionDuringResize(nodeWindow);
+      wm()._repositionDuringResize(nodeWindow);
 
       // Y position should remain at initRect.y (with gaps=0)
       if (moveSpy.mock.calls.length > 0) {
@@ -678,24 +509,20 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should not reposition if position has not changed", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 960, height: 540 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
 
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 100, y: 100, width: 960, height: 540 };
 
-      windowManager.grabOp = GrabOp.RESIZING_E;
+      wm().grabOp = GrabOp.RESIZING_E;
 
       const moveSpy = vi.spyOn(metaWindow, "move_frame");
 
-      windowManager._repositionDuringResize(nodeWindow);
+      wm()._repositionDuringResize(nodeWindow);
 
       // If x and y match, move_frame should not be called
       // (depends on gap calculation)
@@ -706,35 +533,27 @@ describe("WindowManager - Handle Resizing Behavior", () => {
     it("should normalize percents to sum to 1", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0,
+        workspace: workspace0(),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
       nodeWindow1.percent = 0.6;
 
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow2
-      );
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
       nodeWindow2.percent = 0.6;
 
       // Total is 1.2, should be normalized
-      windowManager._normalizeSiblingPercents(monitor);
+      wm()._normalizeSiblingPercents(monitor);
 
       const total = nodeWindow1.percent + nodeWindow2.percent;
       expect(total).toBeCloseTo(1, 5);

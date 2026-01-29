@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WorkspaceManager } from "../../../lib/extension/workspace.js";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { Workspace } from "../../mocks/gnome/Meta.js";
+import { installGnomeGlobals } from "../../mocks/helpers/index.js";
 
 /**
  * WorkspaceManager unit tests
@@ -19,40 +19,17 @@ describe("WorkspaceManager", () => {
   let mockExtWm;
   let workspace0;
   let workspace1;
+  let ctx;
 
   beforeEach(() => {
-    // Create mock workspaces
-    workspace0 = new Workspace({ index: 0 });
-    workspace1 = new Workspace({ index: 1 });
+    // Install GNOME globals with 2 workspaces
+    ctx = installGnomeGlobals({
+      workspaceManager: { workspaceCount: 2 },
+    });
 
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 2),
-      get_workspace_by_index: vi.fn((i) => {
-        if (i === 0) return workspace0;
-        if (i === 1) return workspace1;
-        return new Workspace({ index: i });
-      }),
-      get_active_workspace_index: vi.fn(() => 0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      _children: [],
-      contains: vi.fn((child) => global.window_group._children.includes(child)),
-      add_child: vi.fn((child) => global.window_group._children.push(child)),
-      remove_child: vi.fn((child) => {
-        const idx = global.window_group._children.indexOf(child);
-        if (idx !== -1) global.window_group._children.splice(idx, 1);
-      }),
-    };
+    // Access workspaces from ctx
+    workspace0 = ctx.workspaces[0];
+    workspace1 = ctx.workspaces[1];
 
     // Create a mock tree with minimal implementation
     mockTree = {
@@ -85,6 +62,10 @@ describe("WorkspaceManager", () => {
 
     // Create WorkspaceManager instance
     workspaceManager = new WorkspaceManager(mockTree, mockExtWm);
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("constructor", () => {

@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Tree, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
-import { Workspace } from "../../mocks/gnome/Meta.js";
+import {
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+  createWindowNode,
+} from "../../mocks/helpers/index.js";
 
 /**
  * WindowManager movement and positioning tests
@@ -13,81 +17,28 @@ import { Workspace } from "../../mocks/gnome/Meta.js";
  * - rectForMonitor(): Calculate window rect for monitor switching
  */
 describe("WindowManager - Movement & Positioning", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn((index) => {
-        // Support multiple monitors for testing
-        if (index === 0) return { x: 0, y: 0, width: 1920, height: 1080 };
-        if (index === 1) return { x: 1920, y: 0, width: 2560, height: 1440 };
-        return { x: 0, y: 0, width: 1920, height: 1080 };
-      }),
-    };
-
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-on-hover-enabled") return false;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
+    ctx = createWindowManagerFixture({
+      settings: {
+        "tiling-mode-enabled": true,
+        "focus-on-hover-enabled": false,
       },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
+      globals: {
+        display: {
+          monitorCount: 2,
+          monitorGeometries: {
+            0: { x: 0, y: 0, width: 1920, height: 1080 },
+            1: { x: 1920, y: 0, width: 2560, height: 1440 },
+          },
+        },
       },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+    });
   });
+
+  // Convenience accessor
+  const wm = () => ctx.windowManager;
 
   describe("move", () => {
     it("should not move grabbed window", () => {
@@ -97,7 +48,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const moveFrameSpy = vi.spyOn(metaWindow, "move_frame");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       // Should not call move_frame on grabbed window
       expect(moveFrameSpy).not.toHaveBeenCalled();
@@ -108,7 +59,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       expect(unmaximizeSpy).toHaveBeenCalled();
     });
@@ -119,7 +70,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const removeTransitionsSpy = vi.spyOn(windowActor, "remove_all_transitions");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       expect(removeTransitionsSpy).toHaveBeenCalled();
     });
@@ -129,7 +80,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const moveFrameSpy = vi.spyOn(metaWindow, "move_frame");
       const rect = { x: 100, y: 200, width: 800, height: 600 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       expect(moveFrameSpy).toHaveBeenCalledWith(true, 100, 200);
     });
@@ -139,7 +90,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
       const rect = { x: 150, y: 250, width: 1024, height: 768 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       expect(moveResizeSpy).toHaveBeenCalledWith(true, 150, 250, 1024, 768);
     });
@@ -150,7 +101,7 @@ describe("WindowManager - Movement & Positioning", () => {
       const moveFrameSpy = vi.spyOn(metaWindow, "move_frame");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      windowManager.move(metaWindow, rect);
+      wm().move(metaWindow, rect);
 
       // Should still try to unmaximize but not call move_frame
       expect(moveFrameSpy).not.toHaveBeenCalled();
@@ -161,15 +112,15 @@ describe("WindowManager - Movement & Positioning", () => {
       const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
 
       // Small window
-      windowManager.move(metaWindow, { x: 0, y: 0, width: 200, height: 150 });
+      wm().move(metaWindow, { x: 0, y: 0, width: 200, height: 150 });
       expect(moveResizeSpy).toHaveBeenCalledWith(true, 0, 0, 200, 150);
 
       // Large window
-      windowManager.move(metaWindow, { x: 0, y: 0, width: 1920, height: 1080 });
+      wm().move(metaWindow, { x: 0, y: 0, width: 1920, height: 1080 });
       expect(moveResizeSpy).toHaveBeenCalledWith(true, 0, 0, 1920, 1080);
 
       // Positioned window
-      windowManager.move(metaWindow, { x: 500, y: 300, width: 640, height: 480 });
+      wm().move(metaWindow, { x: 500, y: 300, width: 640, height: 480 });
       expect(moveResizeSpy).toHaveBeenCalledWith(true, 500, 300, 640, 480);
     });
   });
@@ -180,9 +131,9 @@ describe("WindowManager - Movement & Positioning", () => {
         rect: { x: 100, y: 100, width: 800, height: 600 },
       });
 
-      const moveSpy = vi.spyOn(windowManager, "move");
+      const moveSpy = vi.spyOn(wm(), "move");
 
-      windowManager.moveCenter(metaWindow);
+      wm().moveCenter(metaWindow);
 
       expect(moveSpy).toHaveBeenCalled();
       const callArgs = moveSpy.mock.calls[0];
@@ -207,9 +158,9 @@ describe("WindowManager - Movement & Positioning", () => {
         rect: { x: 0, y: 0, width: 1024, height: 768 },
       });
 
-      const moveSpy = vi.spyOn(windowManager, "move");
+      const moveSpy = vi.spyOn(wm(), "move");
 
-      windowManager.moveCenter(metaWindow);
+      wm().moveCenter(metaWindow);
 
       const rect = moveSpy.mock.calls[0][1];
       expect(rect.width).toBe(1024);
@@ -221,9 +172,9 @@ describe("WindowManager - Movement & Positioning", () => {
         rect: { x: 500, y: 500, width: 400, height: 300 },
       });
 
-      const moveSpy = vi.spyOn(windowManager, "move");
+      const moveSpy = vi.spyOn(wm(), "move");
 
-      windowManager.moveCenter(metaWindow);
+      wm().moveCenter(metaWindow);
 
       const rect = moveSpy.mock.calls[0][1];
 
@@ -237,9 +188,9 @@ describe("WindowManager - Movement & Positioning", () => {
         rect: { x: 0, y: 0, width: 1600, height: 900 },
       });
 
-      const moveSpy = vi.spyOn(windowManager, "move");
+      const moveSpy = vi.spyOn(wm(), "move");
 
-      windowManager.moveCenter(metaWindow);
+      wm().moveCenter(metaWindow);
 
       const rect = moveSpy.mock.calls[0][1];
 
@@ -266,17 +217,11 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1080,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
-      nodeWindow.mode = WINDOW_MODES.TILE;
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, { mode: "TILE" });
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Same size monitors, so dimensions should be preserved
       expect(rect.width).toBe(800);
@@ -299,17 +244,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1440,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 960, height: 540 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Width ratio: 2560/1920 = 1.333..., Height ratio: 1440/1080 = 1.333...
       // New width: 960 * 1.333... = 1280
@@ -334,17 +274,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1080,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 1280, height: 720 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Width ratio: 1920/2560 = 0.75, Height ratio: 1080/1440 = 0.75
       // New width: 1280 * 0.75 = 960
@@ -369,17 +304,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1080,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Y should remain proportional since y positions are same (0)
       // X should be scaled: (100 / 1920) * 1920 + 1920 = 100 + 1920 = 2020
@@ -403,17 +333,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1080,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // X should remain the same
       // Y should be: (100 / 1080) * 1080 + 1080 = 100 + 1080 = 1180
@@ -438,17 +363,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1440,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.FLOAT;
       // No rect set on node, should use frame_rect from metaWindow
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Should use frame_rect and scale it
       expect(rect).not.toBeNull();
@@ -474,17 +394,12 @@ describe("WindowManager - Movement & Positioning", () => {
         height: 1080,
       }));
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
       nodeWindow.rect = { x: 600, y: 400, width: 800, height: 600 };
 
-      const rect = windowManager.rectForMonitor(nodeWindow, 1);
+      const rect = wm().rectForMonitor(nodeWindow, 1);
 
       // Should handle offset correctly
       expect(rect).not.toBeNull();

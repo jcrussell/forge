@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { MonitorManager } from "../../../lib/extension/monitor.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { installGnomeGlobals } from "../../mocks/helpers/index.js";
 
 /**
  * MonitorManager unit tests
@@ -14,28 +15,13 @@ describe("MonitorManager", () => {
   let monitorManager;
   let mockTree;
   let mockExtWm;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global display
-    global.display = {
-      get_n_monitors: vi.fn(() => 2),
-      get_monitor_geometry: vi.fn((idx) => ({
-        x: idx * 1920,
-        y: 0,
-        width: 1920,
-        height: 1080,
-      })),
-    };
-
-    global.window_group = {
-      _children: [],
-      contains: vi.fn((child) => global.window_group._children.includes(child)),
-      add_child: vi.fn((child) => global.window_group._children.push(child)),
-      remove_child: vi.fn((child) => {
-        const idx = global.window_group._children.indexOf(child);
-        if (idx !== -1) global.window_group._children.splice(idx, 1);
-      }),
-    };
+    // Set up GNOME globals with 2 monitors (default geometry: 1920x1080 per monitor)
+    ctx = installGnomeGlobals({
+      display: { monitorCount: 2 },
+    });
 
     // Create mock tree
     mockTree = {
@@ -60,6 +46,10 @@ describe("MonitorManager", () => {
 
     // Create MonitorManager instance
     monitorManager = new MonitorManager(mockTree, mockExtWm);
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("constructor", () => {

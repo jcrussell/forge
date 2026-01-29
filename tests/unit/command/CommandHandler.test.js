@@ -1,8 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { CommandHandler } from "../../../lib/extension/command.js";
 import { NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
-import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
+import {
+  createMockWindow,
+  installGnomeGlobals,
+  createMockSettings,
+} from "../../mocks/helpers/index.js";
 import { GrabOp } from "../../mocks/gnome/Meta.js";
 
 /**
@@ -28,13 +32,21 @@ describe("CommandHandler", () => {
   let mockMetaWindow;
   let mockSettings;
   let mockExt;
+  let ctx;
 
   beforeEach(() => {
+    // Install GNOME globals
+    ctx = installGnomeGlobals();
+
     // Create mock meta window
     mockMetaWindow = createMockWindow({
       wm_class: "TestApp",
       title: "Test Window",
     });
+
+    // Add custom mock implementations after globals are installed
+    ctx.display.get_current_time.mockReturnValue(12345);
+    ctx.display.get_tab_next = vi.fn(() => mockMetaWindow);
 
     // Create mock node window
     mockNodeWindow = {
@@ -57,27 +69,15 @@ describe("CommandHandler", () => {
     };
     mockNodeWindow.parentNode.lastChild = mockNodeWindow;
 
-    // Create mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        const defaults = {
-          "focus-border-toggle": true,
-          "tiling-mode-enabled": true,
-          "stacked-tiling-mode-enabled": true,
-          "tabbed-tiling-mode-enabled": true,
-          "showtab-decoration-enabled": true,
-        };
-        return defaults[key] ?? false;
-      }),
-      get_uint: vi.fn((key) => {
-        if (key === "window-gap-size-increment") return 4;
-        return 0;
-      }),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
+    // Create mock settings with defaults
+    mockSettings = createMockSettings({
+      "focus-border-toggle": true,
+      "tiling-mode-enabled": true,
+      "stacked-tiling-mode-enabled": true,
+      "tabbed-tiling-mode-enabled": true,
+      "showtab-decoration-enabled": true,
+      "window-gap-size-increment": 4,
+    });
 
     // Create mock extension
     mockExt = {
@@ -129,20 +129,12 @@ describe("CommandHandler", () => {
       eventQueue: [],
     };
 
-    // Set up global mocks
-    global.workspace_manager = {
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => ({ index: () => 0 })),
-    };
-
-    global.display = {
-      get_current_time: vi.fn(() => 12345),
-      get_tab_next: vi.fn(() => mockMetaWindow),
-      get_workspace_manager: vi.fn(() => global.workspace_manager),
-    };
-
     // Create CommandHandler
     commandHandler = new CommandHandler(mockWm);
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("constructor", () => {
@@ -356,7 +348,7 @@ describe("CommandHandler", () => {
       const lastActiveWindow = createMockWindow({ title: "Last Active" });
       const lastActiveNode = { nodeValue: lastActiveWindow };
 
-      global.display.get_tab_next.mockReturnValue(lastActiveWindow);
+      ctx.display.get_tab_next.mockReturnValue(lastActiveWindow);
       mockTree.findNode.mockReturnValue(lastActiveNode);
 
       commandHandler.execute({ name: "WindowSwapLastActive" });

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Tree, NODE_TYPES } from "../../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../../lib/extension/window.js";
+import { NODE_TYPES } from "../../../lib/extension/tree.js";
 import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
+import { createWindowManagerFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
 import { Workspace, WindowType } from "../../mocks/gnome/Meta.js";
 
 /**
@@ -14,110 +15,36 @@ import { Workspace, WindowType } from "../../mocks/gnome/Meta.js";
  * - postProcessWindow(): Post-creation processing
  */
 describe("WindowManager - Window Lifecycle", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
-
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-on-hover-enabled") return false;
-        if (key === "auto-split-enabled") return false;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+    ctx = createWindowManagerFixture();
   });
 
   afterEach(() => {
-    // Clean up any timers
-    vi.clearAllTimers();
+    ctx.cleanup();
   });
+
+  // Convenience accessor for tests
+  const wm = () => ctx.windowManager;
 
   describe("minimizedWindow", () => {
     it("should return false for non-minimized window", () => {
       const metaWindow = createMockWindow({ minimized: false });
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const result = windowManager.minimizedWindow(nodeWindow);
+      const result = wm().minimizedWindow(nodeWindow);
 
       expect(result).toBe(false);
     });
 
     it("should return true for minimized window", () => {
       const metaWindow = createMockWindow({ minimized: true });
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const result = windowManager.minimizedWindow(nodeWindow);
+      const result = wm().minimizedWindow(nodeWindow);
 
       expect(result).toBe(true);
     });
@@ -126,64 +53,49 @@ describe("WindowManager - Window Lifecycle", () => {
   describe("postProcessWindow", () => {
     it("should move pointer with regular window", () => {
       const metaWindow = createMockWindow({ title: "Regular Window" });
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const movePointerSpy = vi.spyOn(windowManager, "movePointerWith");
+      const movePointerSpy = vi.spyOn(wm(), "movePointerWith");
 
-      windowManager.postProcessWindow(nodeWindow);
+      wm().postProcessWindow(nodeWindow);
 
       expect(movePointerSpy).toHaveBeenCalledWith(metaWindow);
     });
 
     it("should center and activate preferences window", () => {
-      windowManager.prefsTitle = "Forge Preferences";
+      wm().prefsTitle = "Forge Preferences";
       const metaWindow = createMockWindow({ title: "Forge Preferences" });
 
       const mockWorkspace = new Workspace({ index: 0 });
       metaWindow._workspace = mockWorkspace;
       mockWorkspace.activate_with_focus = vi.fn();
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const moveCenterSpy = vi.spyOn(windowManager, "moveCenter");
+      const moveCenterSpy = vi.spyOn(wm(), "moveCenter");
 
-      windowManager.postProcessWindow(nodeWindow);
+      wm().postProcessWindow(nodeWindow);
 
       expect(mockWorkspace.activate_with_focus).toHaveBeenCalledWith(metaWindow, 12345);
       expect(moveCenterSpy).toHaveBeenCalledWith(metaWindow);
     });
 
     it("should not move pointer for preferences window", () => {
-      windowManager.prefsTitle = "Forge Preferences";
+      wm().prefsTitle = "Forge Preferences";
       const metaWindow = createMockWindow({ title: "Forge Preferences" });
 
       const mockWorkspace = new Workspace({ index: 0 });
       metaWindow._workspace = mockWorkspace;
       mockWorkspace.activate_with_focus = vi.fn();
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const movePointerSpy = vi.spyOn(windowManager, "movePointerWith");
+      const movePointerSpy = vi.spyOn(wm(), "movePointerWith");
 
-      windowManager.postProcessWindow(nodeWindow);
+      wm().postProcessWindow(nodeWindow);
 
       expect(movePointerSpy).not.toHaveBeenCalled();
     });
@@ -192,9 +104,9 @@ describe("WindowManager - Window Lifecycle", () => {
   describe("trackWindow", () => {
     it("should not track invalid window types", () => {
       const metaWindow = createMockWindow({ window_type: WindowType.MENU });
-      const treeCreateSpy = vi.spyOn(windowManager.tree, "createNode");
+      const treeCreateSpy = vi.spyOn(ctx.tree, "createNode");
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
       // Should not create node for invalid window type
       expect(treeCreateSpy).not.toHaveBeenCalled();
@@ -202,16 +114,15 @@ describe("WindowManager - Window Lifecycle", () => {
 
     it("should not track duplicate windows", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create window first time
-      windowManager.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
-      const treeCreateSpy = vi.spyOn(windowManager.tree, "createNode");
+      const treeCreateSpy = vi.spyOn(ctx.tree, "createNode");
 
       // Try to track same window again
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
       // Should not create duplicate node
       expect(treeCreateSpy).not.toHaveBeenCalled();
@@ -223,11 +134,11 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Test Window",
       });
 
-      const initialNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
       expect(finalNodeCount).toBe(initialNodeCount + 1);
     });
 
@@ -237,11 +148,11 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Dialog Window",
       });
 
-      const initialNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
       expect(finalNodeCount).toBe(initialNodeCount + 1);
     });
 
@@ -251,20 +162,20 @@ describe("WindowManager - Window Lifecycle", () => {
         title: "Modal Dialog",
       });
 
-      const initialNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      const finalNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
       expect(finalNodeCount).toBe(initialNodeCount + 1);
     });
 
     it("should create window in FLOAT mode by default", () => {
       const metaWindow = createMockWindow();
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      const nodeWindow = windowManager.findNodeWindow(metaWindow);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).not.toBeNull();
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
     });
@@ -272,15 +183,13 @@ describe("WindowManager - Window Lifecycle", () => {
     it("should attach window to current monitor/workspace", () => {
       const metaWindow = createMockWindow();
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      const nodeWindow = windowManager.findNodeWindow(metaWindow);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).not.toBeNull();
 
       // Should be attached to workspace 0, monitor 0
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       expect(monitor.contains(nodeWindow)).toBe(true);
     });
 
@@ -288,7 +197,7 @@ describe("WindowManager - Window Lifecycle", () => {
       const metaWindow = createMockWindow();
       const connectSpy = vi.spyOn(metaWindow, "connect");
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
       // Should connect to position-changed, size-changed, unmanaged, and focus signals
       expect(connectSpy).toHaveBeenCalledWith("position-changed", expect.any(Function));
@@ -300,7 +209,7 @@ describe("WindowManager - Window Lifecycle", () => {
     it("should mark window for first render", () => {
       const metaWindow = createMockWindow();
 
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
       expect(metaWindow.firstRender).toBe(true);
     });
@@ -309,21 +218,16 @@ describe("WindowManager - Window Lifecycle", () => {
   describe("windowDestroy", () => {
     it("should remove borders from actor", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
       actor.border = { hide: vi.fn() };
       actor.splitBorder = { hide: vi.fn() };
 
-      const removeChildSpy = vi.spyOn(global.window_group, "remove_child");
+      const removeChildSpy = vi.spyOn(ctx.windowGroup, "remove_child");
 
-      windowManager.windowDestroy(actor);
+      wm().windowDestroy(actor);
 
       expect(removeChildSpy).toHaveBeenCalledWith(actor.border);
       expect(removeChildSpy).toHaveBeenCalledWith(actor.splitBorder);
@@ -333,82 +237,66 @@ describe("WindowManager - Window Lifecycle", () => {
 
     it("should remove window node from tree", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
       actor.nodeWindow = nodeWindow;
 
       // Mock findNodeByActor to return our node
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
 
-      const initialNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
 
-      windowManager.windowDestroy(actor);
+      wm().windowDestroy(actor);
 
-      const finalNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.WINDOW).length;
+      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.WINDOW).length;
       expect(finalNodeCount).toBe(initialNodeCount - 1);
     });
 
     it("should not remove non-window nodes", () => {
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const actor = { border: null, splitBorder: null };
 
       // Mock findNodeByActor to return monitor (non-window node)
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(monitor);
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(monitor);
 
-      const initialNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.MONITOR).length;
+      const initialNodeCount = ctx.tree.getNodeByType(NODE_TYPES.MONITOR).length;
 
-      windowManager.windowDestroy(actor);
+      wm().windowDestroy(actor);
 
-      const finalNodeCount = windowManager.tree.getNodeByType(NODE_TYPES.MONITOR).length;
+      const finalNodeCount = ctx.tree.getNodeByType(NODE_TYPES.MONITOR).length;
       // Monitor should not be removed
       expect(finalNodeCount).toBe(initialNodeCount);
     });
 
     it("should remove float override for destroyed window", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
       actor.nodeWindow = nodeWindow;
 
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-      const removeOverrideSpy = vi.spyOn(windowManager, "removeFloatOverride");
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      const removeOverrideSpy = vi.spyOn(wm(), "removeFloatOverride");
 
-      windowManager.windowDestroy(actor);
+      wm().windowDestroy(actor);
 
       expect(removeOverrideSpy).toHaveBeenCalledWith(metaWindow, true);
     });
 
     it("should queue render event after destruction", () => {
       const metaWindow = createMockWindow();
-      const workspace = windowManager.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        metaWindow
-      );
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const actor = metaWindow.get_compositor_private();
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-      const queueEventSpy = vi.spyOn(windowManager, "queueEvent");
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      const queueEventSpy = vi.spyOn(wm(), "queueEvent");
 
-      windowManager.windowDestroy(actor);
+      wm().windowDestroy(actor);
 
       expect(queueEventSpy).toHaveBeenCalledWith({
         name: "window-destroy",
@@ -422,19 +310,19 @@ describe("WindowManager - Window Lifecycle", () => {
       const metaWindow = createMockWindow({ title: "Test Window" });
 
       // Track window
-      windowManager.trackWindow(null, metaWindow);
+      wm().trackWindow(null, metaWindow);
 
-      let nodeWindow = windowManager.findNodeWindow(metaWindow);
+      let nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).not.toBeNull();
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
 
       // Destroy window
       const actor = metaWindow.get_compositor_private();
-      vi.spyOn(windowManager.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-      windowManager.windowDestroy(actor);
+      vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
+      wm().windowDestroy(actor);
 
       // Window should be removed from tree
-      nodeWindow = windowManager.findNodeWindow(metaWindow);
+      nodeWindow = wm().findNodeWindow(metaWindow);
       expect(nodeWindow).toBeNull();
     });
 
@@ -442,31 +330,31 @@ describe("WindowManager - Window Lifecycle", () => {
       const metaWindow = createMockWindow({ minimized: false });
 
       // Track window
-      windowManager.trackWindow(null, metaWindow);
-      let nodeWindow = windowManager.findNodeWindow(metaWindow);
+      wm().trackWindow(null, metaWindow);
+      let nodeWindow = wm().findNodeWindow(metaWindow);
 
       // Initially not minimized
-      expect(windowManager.minimizedWindow(nodeWindow)).toBe(false);
+      expect(wm().minimizedWindow(nodeWindow)).toBe(false);
 
       // Minimize window
       metaWindow.minimized = true;
-      expect(windowManager.minimizedWindow(nodeWindow)).toBe(true);
+      expect(wm().minimizedWindow(nodeWindow)).toBe(true);
 
       // Unminimize window
       metaWindow.minimized = false;
-      expect(windowManager.minimizedWindow(nodeWindow)).toBe(false);
+      expect(wm().minimizedWindow(nodeWindow)).toBe(false);
     });
 
     it("should post-process window after tracking", () => {
       const metaWindow = createMockWindow({ title: "Regular Window" });
-      const movePointerSpy = vi.spyOn(windowManager, "movePointerWith");
+      const movePointerSpy = vi.spyOn(wm(), "movePointerWith");
 
       // Track window
-      windowManager.trackWindow(null, metaWindow);
-      const nodeWindow = windowManager.findNodeWindow(metaWindow);
+      wm().trackWindow(null, metaWindow);
+      const nodeWindow = wm().findNodeWindow(metaWindow);
 
       // Post-process
-      windowManager.postProcessWindow(nodeWindow);
+      wm().postProcessWindow(nodeWindow);
 
       expect(movePointerSpy).toHaveBeenCalledWith(metaWindow);
     });
