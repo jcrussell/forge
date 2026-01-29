@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { WindowManager, WINDOW_MODES } from "../../../lib/extension/window.js";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+  createWindowNode,
+} from "../../mocks/helpers/index.js";
 import { Workspace, WindowType, Rectangle } from "../../mocks/gnome/Meta.js";
 import * as Utils from "../../../lib/extension/utils.js";
 import { mockSeat } from "../../mocks/gnome/Clutter.js";
@@ -46,19 +51,27 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("findNodeWindowAtPointer()", () => {
     it("should find window under pointer", () => {
-      const metaWindow1 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-      });
-      const metaWindow2 = createMockWindow({
-        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow: nodeWindow1, metaWindow: metaWindow1 } = createWindowNode(
+        ctx.tree,
+        monitor,
+        {
+          windowOverrides: {
+            rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+            workspace: workspace0(),
+          },
+        }
+      );
+      const { nodeWindow: nodeWindow2, metaWindow: metaWindow2 } = createWindowNode(
+        ctx.tree,
+        monitor,
+        {
+          windowOverrides: {
+            rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+            workspace: workspace0(),
+          },
+        }
+      );
 
       // Mock sortedWindows
       Object.defineProperty(wm(), "sortedWindows", {
@@ -75,14 +88,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return null when no window under pointer", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Mock sortedWindows
       Object.defineProperty(wm(), "sortedWindows", {
@@ -99,19 +111,23 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should handle overlapping windows (return topmost)", () => {
-      const metaWindow1 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1000, height: 1000 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { metaWindow: metaWindow1 } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 1000, height: 1000 }),
+          workspace: workspace0(),
+        },
       });
-      const metaWindow2 = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 800, height: 800 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      const { nodeWindow: nodeWindow2, metaWindow: metaWindow2 } = createWindowNode(
+        ctx.tree,
+        monitor,
+        {
+          windowOverrides: {
+            rect: new Rectangle({ x: 100, y: 100, width: 800, height: 800 }),
+            workspace: workspace0(),
+          },
+        }
+      );
 
       // Mock sortedWindows (window2 is on top)
       Object.defineProperty(wm(), "sortedWindows", {
@@ -131,15 +147,14 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("canMovePointerInsideNodeWindow()", () => {
     it("should return true when pointer is outside window", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-        minimized: false,
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -150,15 +165,14 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false when pointer is already inside window", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-        minimized: false,
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer inside window
       global.get_pointer.mockReturnValue([480, 540]);
@@ -169,15 +183,14 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false when window is minimized", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-        minimized: true,
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+          minimized: true,
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -188,34 +201,27 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false when window is too small (width or height <= 8)", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Test small width
-      const smallWidthWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 5, height: 1080 }),
-        workspace: workspace0(),
-        minimized: false,
+      const { nodeWindow: nodeWindow1 } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 5, height: 1080 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
       });
-      const nodeWindow1 = ctx.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        smallWidthWindow
-      );
       global.get_pointer.mockReturnValue([100, 540]);
       expect(wm().canMovePointerInsideNodeWindow(nodeWindow1)).toBe(false);
 
       // Test small height
-      const smallHeightWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 5 }),
-        workspace: workspace0(),
-        minimized: false,
+      const { nodeWindow: nodeWindow2 } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 5 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
       });
-      const nodeWindow2 = ctx.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        smallHeightWindow
-      );
       global.get_pointer.mockReturnValue([1500, 540]);
       expect(wm().canMovePointerInsideNodeWindow(nodeWindow2)).toBe(false);
     });
@@ -224,15 +230,14 @@ describe("WindowManager - Pointer & Focus Management", () => {
     // see changes to global.Main.overview.visible set during the test.
     // The functionality works correctly in production. 36/37 tests passing.
     it.skip("should return false when overview is visible", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-        minimized: false,
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -246,18 +251,17 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false when pointer is over parent stacked decoration", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
-        workspace: workspace0(),
-        minimized: false,
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      const nodeWindow = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { nodeWindow } = createWindowNode(ctx.tree, container, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
+      });
 
       // Pointer in parent decoration area (above window, but in parent rect)
       global.get_pointer.mockReturnValue([480, 15]);
@@ -270,17 +274,16 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("pointerIsOverParentDecoration()", () => {
     it("should return true when pointer is over stacked parent decoration", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      const nodeWindow = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { nodeWindow } = createWindowNode(ctx.tree, container, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
+          workspace: workspace0(),
+        },
+      });
 
       // Pointer in parent decoration area
       const pointerCoord = [480, 15];
@@ -291,17 +294,16 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return true when pointer is over tabbed parent decoration", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
       container.layout = LAYOUT_TYPES.TABBED;
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      const nodeWindow = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { nodeWindow } = createWindowNode(ctx.tree, container, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
+          workspace: workspace0(),
+        },
+      });
 
       // Pointer in parent decoration area
       const pointerCoord = [480, 15];
@@ -312,17 +314,16 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false for non-stacked/tabbed parent", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
       container.layout = LAYOUT_TYPES.HSPLIT;
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      const nodeWindow = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { nodeWindow } = createWindowNode(ctx.tree, container, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
+      });
 
       // Pointer anywhere
       const pointerCoord = [480, 15];
@@ -333,17 +334,16 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return false when pointer is outside parent rect", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
-        workspace: workspace0(),
-      });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      const nodeWindow = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      const { nodeWindow } = createWindowNode(ctx.tree, container, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 30, width: 960, height: 1050 }),
+          workspace: workspace0(),
+        },
+      });
 
       // Pointer outside parent rect
       const pointerCoord = [1500, 540];
@@ -356,14 +356,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("warpPointerToNodeWindow()", () => {
     it("should warp pointer to window center when no stored position", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       wm().warpPointerToNodeWindow(nodeWindow);
 
@@ -374,14 +373,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should warp pointer to stored position", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Store pointer position
       nodeWindow.pointer = { x: 200, y: 300 };
@@ -402,14 +400,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
         return false;
       });
 
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -425,14 +422,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
         return false;
       });
 
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -448,14 +444,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
         return false;
       });
 
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -471,14 +466,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
         return false;
       });
 
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer inside window
       global.get_pointer.mockReturnValue([480, 540]);
@@ -489,14 +483,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should update lastFocusedWindow", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       wm().movePointerWith(nodeWindow);
 
@@ -535,14 +528,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("storePointerLastPosition()", () => {
     it("should store pointer position when inside window", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer inside window
       global.get_pointer.mockReturnValue([300, 400]);
@@ -553,14 +545,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should not store when pointer is outside window", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       // Pointer outside window
       global.get_pointer.mockReturnValue([1500, 540]);
@@ -573,14 +564,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
 
   describe("getPointerPositionInside()", () => {
     it("should return center position when no stored pointer", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const result = wm().getPointerPositionInside(nodeWindow);
 
@@ -591,14 +581,13 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
 
     it("should return stored pointer position", () => {
-      const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
-        workspace: workspace0(),
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 100, y: 100, width: 960, height: 1080 }),
+          workspace: workspace0(),
+        },
       });
-
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       nodeWindow.pointer = { x: 200, y: 300 };
 

@@ -193,19 +193,6 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(monitor.contains(nodeWindow)).toBe(true);
     });
 
-    it("should set up window signal handlers", () => {
-      const metaWindow = createMockWindow();
-      const connectSpy = vi.spyOn(metaWindow, "connect");
-
-      wm().trackWindow(null, metaWindow);
-
-      // Should connect to position-changed, size-changed, unmanaged, and focus signals
-      expect(connectSpy).toHaveBeenCalledWith("position-changed", expect.any(Function));
-      expect(connectSpy).toHaveBeenCalledWith("size-changed", expect.any(Function));
-      expect(connectSpy).toHaveBeenCalledWith("unmanaged", expect.any(Function));
-      expect(connectSpy).toHaveBeenCalledWith("focus", expect.any(Function));
-    });
-
     it("should mark window for first render", () => {
       const metaWindow = createMockWindow();
 

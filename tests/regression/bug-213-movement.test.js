@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   Tree,
   Node,
@@ -7,7 +7,11 @@ import {
   ORIENTATION_TYPES,
 } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import {
+  createMockWindow,
+  createTreeFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -22,72 +26,27 @@ import { Bin } from "../mocks/gnome/St.js";
  * movement direction doesn't match container orientation.
  */
 describe("Bug #213: Window movement directions", () => {
+  let ctx;
   let tree;
-  let mockExtWm;
-  let mockWorkspaceManager;
   let monitorNode;
 
   beforeEach(() => {
-    // Mock global
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      get_monitor_neighbor_index: vi.fn(() => -1),
-    };
+    // Use fixture with full ExtWm for move operations
+    ctx = createTreeFixture({ fullExtWm: true });
+    tree = ctx.tree;
 
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock workspace manager
-    mockWorkspaceManager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => ({
-        index: () => i,
-      })),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(mockWorkspaceManager);
-
-    // Mock WindowManager
-    mockExtWm = {
-      ext: {
-        settings: {
-          get_boolean: vi.fn((key) => {
-            if (key === "move-pointer-focus-enabled") return false;
-            return false;
-          }),
-          get_uint: vi.fn(() => 0),
-        },
-      },
-      determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
-      bindWorkspaceSignals: vi.fn(),
-      movePointerWith: vi.fn(),
-      move: vi.fn(),
-      currentMonWsNode: null,
-      rectForMonitor: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      floatingWindow: vi.fn(() => false),
-    };
-
-    // Create tree
-    tree = new Tree(mockExtWm);
-
-    // Setup tree structure - get workspace and monitor from tree
-    const workspace = tree.nodeWorkpaces[0];
-    monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+    // Get monitor node from tree
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitorNode = monitor;
     monitorNode.layout = LAYOUT_TYPES.HSPLIT;
     monitorNode.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
     // Make current monitor node available
-    mockExtWm.currentMonWsNode = monitorNode;
+    ctx.extWm.currentMonWsNode = monitorNode;
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("Swap with adjacent sibling", () => {

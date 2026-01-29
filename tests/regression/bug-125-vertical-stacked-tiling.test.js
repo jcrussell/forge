@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
 import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 import { Workspace } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 import * as Utils from "../../lib/extension/utils.js";
@@ -19,79 +23,27 @@ import * as Utils from "../../lib/extension/utils.js";
  * dropping on stacked/tabbed containers, matching the behavior of isLeft/isRight.
  */
 describe("Bug #125: Vertical tiling from stacked containers", () => {
+  let ctx;
   let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
 
   beforeEach(() => {
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      get_monitor_neighbor_index: vi.fn(() => -1),
-    };
-
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-on-hover-enabled") return false;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn((key) => {
-        if (key === "dnd-center-layout") return "STACKED";
-        return "";
-      }),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
+    // Use fixture with custom settings for DnD center layout
+    ctx = createWindowManagerFixture({
+      settings: {
+        "dnd-center-layout": "STACKED",
       },
-    };
+    });
+    windowManager = ctx.windowManager;
 
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
+    // Override get_string for dnd-center-layout
+    ctx.settings.get_string.mockImplementation((key) => {
+      if (key === "dnd-center-layout") return "STACKED";
+      return "";
+    });
+  });
 
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("Detach behavior for stacked containers", () => {
