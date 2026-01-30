@@ -324,6 +324,65 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       // Border class should be set when multiple windows exist
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
     });
+
+    it("should show border when window is alone in container but sibling containers have windows", () => {
+      // Bug fix: Border should appear when multiple windows exist on workspace,
+      // even if each window is in a separate container
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "tiling-mode-enabled") return true;
+        if (key === "focus-border-toggle") return true;
+        if (key === "focus-border-hidden-on-single") return true;
+        return false;
+      });
+
+      const metaWindow1 = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp1",
+      });
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp2",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const windowActor = metaWindow1.get_compositor_private();
+      windowActor.border = mockBorder;
+
+      global.display.get_focus_window.mockReturnValue(metaWindow1);
+      global.display.get_n_monitors.mockReturnValue(1);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      // Create two separate containers under the monitor
+      const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
+      container1.layout = LAYOUT_TYPES.HSPLIT;
+      const container2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
+      container2.layout = LAYOUT_TYPES.HSPLIT;
+
+      // Window 1 is alone in container1
+      const nodeWindow1 = ctx.tree.createNode(container1.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
+      nodeWindow1.mode = WINDOW_MODES.TILE;
+
+      // Window 2 is alone in container2
+      const nodeWindow2 = ctx.tree.createNode(container2.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      nodeWindow2.mode = WINDOW_MODES.TILE;
+
+      wm().showWindowBorders();
+
+      // Border should show because there are 2 tiled windows on the monitor,
+      // even though each is alone in its own container
+      expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
+    });
   });
 
   describe("Border Settings Integration", () => {
