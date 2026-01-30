@@ -66,6 +66,7 @@ export class Bin extends Widget {
   constructor(params = {}) {
     super(params);
     this.child = params.child || null;
+    this.children = [];
   }
 
   set_child(child) {
@@ -74,6 +75,29 @@ export class Bin extends Widget {
 
   get_child() {
     return this.child;
+  }
+
+  add_child(child) {
+    this.children.push(child);
+  }
+
+  remove_child(child) {
+    const index = this.children.indexOf(child);
+    if (index !== -1) {
+      this.children.splice(index, 1);
+    }
+  }
+
+  get_children() {
+    return this.children;
+  }
+
+  get_child_at_index(index) {
+    return this.children[index] || null;
+  }
+
+  contains(child) {
+    return this.children.includes(child);
   }
 }
 
@@ -93,6 +117,18 @@ export class BoxLayout extends Widget {
     if (index !== -1) {
       this.children.splice(index, 1);
     }
+  }
+
+  get_children() {
+    return this.children;
+  }
+
+  get_child_at_index(index) {
+    return this.children[index] || null;
+  }
+
+  contains(child) {
+    return this.children.includes(child);
   }
 }
 
