@@ -76,6 +76,10 @@ export default class ForgeExtension extends Extension {
       this._originalUnmaximize = this._wmKeybindings.get_strv("unmaximize");
       this._wmKeybindings.set_strv("unmaximize", []);
 
+      // Super+H conflicts with window-focus-left
+      this._originalMinimize = this._wmKeybindings.get_strv("minimize");
+      this._wmKeybindings.set_strv("minimize", []);
+
       // Super+V conflicts with con-split-vertical
       this._originalToggleMessageTray = this._shellKeybindings.get_strv("toggle-message-tray");
       this._shellKeybindings.set_strv("toggle-message-tray", []);
@@ -164,6 +168,9 @@ export default class ForgeExtension extends Extension {
         if (this._originalUnmaximize !== undefined) {
           this._wmKeybindings.set_strv("unmaximize", this._originalUnmaximize);
         }
+        if (this._originalMinimize !== undefined) {
+          this._wmKeybindings.set_strv("minimize", this._originalMinimize);
+        }
         Logger.info("Restored GNOME wm keybindings");
       } catch (e) {
         Logger.warn(`Failed to restore wm keybindings: ${e}`);
@@ -171,6 +178,7 @@ export default class ForgeExtension extends Extension {
       this._wmKeybindings = null;
       this._originalMaximize = undefined;
       this._originalUnmaximize = undefined;
+      this._originalMinimize = undefined;
     }
 
     if (this._shellKeybindings) {
