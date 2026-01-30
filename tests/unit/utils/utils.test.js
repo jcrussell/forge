@@ -14,6 +14,8 @@ import {
   calculateDropRegions,
   detectDropZone,
   DROP_ZONES,
+  isHorizontalZone,
+  isBeforeZone,
 } from "../../../lib/extension/utils.js";
 import { ORIENTATION_TYPES, POSITION } from "../../../lib/extension/tree.js";
 import { GRAB_TYPES } from "../../../lib/extension/window.js";
@@ -430,6 +432,34 @@ describe("Utility Functions", () => {
 
     it("should be frozen", () => {
       expect(Object.isFrozen(DROP_ZONES)).toBe(true);
+    });
+  });
+
+  describe("isHorizontalZone", () => {
+    it("should return true for LEFT and RIGHT", () => {
+      expect(isHorizontalZone(DROP_ZONES.LEFT)).toBe(true);
+      expect(isHorizontalZone(DROP_ZONES.RIGHT)).toBe(true);
+    });
+
+    it("should return false for TOP, BOTTOM, CENTER, NONE", () => {
+      expect(isHorizontalZone(DROP_ZONES.TOP)).toBe(false);
+      expect(isHorizontalZone(DROP_ZONES.BOTTOM)).toBe(false);
+      expect(isHorizontalZone(DROP_ZONES.CENTER)).toBe(false);
+      expect(isHorizontalZone(DROP_ZONES.NONE)).toBe(false);
+    });
+  });
+
+  describe("isBeforeZone", () => {
+    it("should return true for LEFT and TOP", () => {
+      expect(isBeforeZone(DROP_ZONES.LEFT)).toBe(true);
+      expect(isBeforeZone(DROP_ZONES.TOP)).toBe(true);
+    });
+
+    it("should return false for RIGHT, BOTTOM, CENTER, NONE", () => {
+      expect(isBeforeZone(DROP_ZONES.RIGHT)).toBe(false);
+      expect(isBeforeZone(DROP_ZONES.BOTTOM)).toBe(false);
+      expect(isBeforeZone(DROP_ZONES.CENTER)).toBe(false);
+      expect(isBeforeZone(DROP_ZONES.NONE)).toBe(false);
     });
   });
 
