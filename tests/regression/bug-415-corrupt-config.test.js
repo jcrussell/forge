@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
 /**
  * Bug #415: Extension fails to load with corrupt/empty windows.json
@@ -14,86 +14,42 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
  * Fix: Add try-catch around JSON parsing and return default config on error.
  */
 describe("Bug #415: Graceful handling of corrupt/empty config files", () => {
+  /**
+   * Safely parse JSON config, returning default on error
+   */
+  function parseConfigSafe(jsonString) {
+    try {
+      if (!jsonString || jsonString.trim() === "") {
+        return { overrides: [] };
+      }
+      return JSON.parse(jsonString);
+    } catch (e) {
+      return { overrides: [] };
+    }
+  }
+
   describe("JSON parsing error handling", () => {
     it("should handle empty string gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
-      // Empty string should return default config
       const result = parseConfigSafe("");
       expect(result).toEqual({ overrides: [] });
     });
 
     it("should handle whitespace-only string gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
       const result = parseConfigSafe("   \n\t   ");
       expect(result).toEqual({ overrides: [] });
     });
 
     it("should handle truncated JSON gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
-      // Truncated JSON that would cause parse error
       const result = parseConfigSafe('{ "overrides": [');
       expect(result).toEqual({ overrides: [] });
     });
 
     it("should handle invalid JSON characters gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
-      // Invalid JSON with NUL character
       const result = parseConfigSafe('{ "key": \x00 }');
       expect(result).toEqual({ overrides: [] });
     });
 
     it("should parse valid JSON correctly", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
       const validJson = JSON.stringify({
         overrides: [{ wmClass: "firefox", mode: "float" }],
       });
@@ -105,33 +61,11 @@ describe("Bug #415: Graceful handling of corrupt/empty config files", () => {
     });
 
     it("should handle undefined gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
       const result = parseConfigSafe(undefined);
       expect(result).toEqual({ overrides: [] });
     });
 
     it("should handle null gracefully", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
       const result = parseConfigSafe(null);
       expect(result).toEqual({ overrides: [] });
     });
