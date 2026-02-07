@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
-import { createTreeFixture, getWorkspaceAndMonitor } from "../mocks/helpers/index.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import {
+  createMockWindow,
+  createTreeFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 
 /**
  * Bug: Missing break in tree._search() MODE case causes fallthrough to LAYOUT case

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createMockWindow, createMockWindowArray } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow, createMockWindowArray } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
 /**

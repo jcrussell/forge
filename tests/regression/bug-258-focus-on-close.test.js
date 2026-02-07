@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow } from "../mocks/helpers/index.js";
 
 /**
  * Bug #258: Focus is lost if a window is closed even if 'hover on focus' is active

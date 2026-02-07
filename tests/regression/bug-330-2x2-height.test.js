@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Node, LAYOUT_TYPES, NODE_TYPES, ORIENTATION_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow } from "../mocks/helpers/index.js";
 
 /**
  * Bug #330: Wrong height in 2x2 layout

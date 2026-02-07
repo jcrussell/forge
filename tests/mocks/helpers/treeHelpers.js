@@ -6,7 +6,8 @@
  * window node creation.
  */
 
-import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { Bin } from "../gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { createMockWindow } from "./mockWindow.js";
 
@@ -269,52 +270,23 @@ export function setFocusedWindow(metaWindow) {
 }
 
 /**
- * Create a complete test scenario with multiple windows
+ * Create a container node with optional layout and rect
  *
- * @param {Object} tree - Tree instance
- * @param {Object} monitor - Monitor node
- * @param {Object} scenario - Scenario configuration
- * @param {string} scenario.layout - Layout type ('HSPLIT', 'VSPLIT', 'STACKED', 'TABBED')
- * @param {number} scenario.windowCount - Number of windows
- * @param {number} [scenario.focusIndex] - Index of window to focus
- * @returns {Object} Object with windows array and focused window info
+ * @param {Object} parent - Parent node to append to
+ * @param {Object} layout - Layout type (from LAYOUT_TYPES)
+ * @param {Object} [rect=null] - Optional rectangle for the container
+ * @returns {Object} The created container node
  *
  * @example
- * const { windows, focused } = createScenario(ctx.tree, monitor, {
- *   layout: 'HSPLIT',
- *   windowCount: 3,
- *   focusIndex: 1
- * });
+ * const container = createContainerNode(monitor, LAYOUT_TYPES.HSPLIT);
+ * const container = createContainerNode(monitor, LAYOUT_TYPES.VSPLIT, { x: 0, y: 0, width: 960, height: 1080 });
  */
-export function createScenario(tree, monitor, scenario) {
-  const { layout, windowCount, focusIndex = null } = scenario;
-
-  // Create layout
-  let windows;
-  switch (layout) {
-    case "VSPLIT":
-      windows = createVerticalLayout(tree, monitor, windowCount);
-      break;
-    case "STACKED":
-      windows = createStackedLayout(tree, monitor, windowCount);
-      break;
-    case "TABBED":
-      windows = createTabbedLayout(tree, monitor, windowCount);
-      break;
-    case "HSPLIT":
-    default:
-      windows = createHorizontalLayout(tree, monitor, windowCount);
-      break;
-  }
-
-  // Set focus if specified
-  let focused = null;
-  if (focusIndex !== null && windows[focusIndex]) {
-    focused = windows[focusIndex];
-    setFocusedWindow(focused.metaWindow);
-  }
-
-  return { windows, focused };
+export function createContainerNode(parent, layout, rect = null) {
+  const container = new Node(NODE_TYPES.CON, new Bin());
+  container.layout = layout;
+  if (rect) container.rect = rect;
+  parent.appendChild(container);
+  return container;
 }
 
 export default {
@@ -330,5 +302,5 @@ export default {
   getAllWindowNodes,
   getAllContainerNodes,
   setFocusedWindow,
-  createScenario,
+  createContainerNode,
 };

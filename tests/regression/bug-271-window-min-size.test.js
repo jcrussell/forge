@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow } from "../mocks/helpers/index.js";
 
 /**
  * Bug #271: Steam app is tiling but the size is overlapping

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
 import {
+  createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,

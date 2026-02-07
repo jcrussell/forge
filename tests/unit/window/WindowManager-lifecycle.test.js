@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow } from "../../mocks/helpers/mockWindow.js";
-import { createWindowManagerFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { Workspace, WindowType } from "../../mocks/gnome/Meta.js";
 
 /**

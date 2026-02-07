@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow } from "../mocks/helpers/index.js";
 
 /**
  * Bug #57: Do not stack nor put as tab windows with split con siblings

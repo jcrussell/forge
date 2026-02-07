@@ -27,7 +27,10 @@ tests/
 ├── mocks/
 │   ├── gnome/                   # GNOME API mocks (Meta, Gio, GLib, etc.)
 │   └── helpers/
-│       └── mockWindow.js        # Helper to create mock windows
+│       ├── index.js             # Central export for all test helpers
+│       ├── mockWindow.js        # Helper to create mock windows
+│       ├── treeHelpers.js       # Tree navigation and creation helpers
+│       └── testFixtures.js      # Complete test fixture factories
 ├── unit/                        # Unit tests by module
 ├── integration/                 # Full workflow tests
 └── regression/                  # Bug regression tests
@@ -39,7 +42,7 @@ Tests use [Vitest](https://vitest.dev/). GNOME APIs are mocked automatically:
 
 ```javascript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockWindow } from '../../mocks/helpers/mockWindow.js';
+import { createMockWindow, createWindowManagerFixture } from '../../mocks/helpers/index.js';
 
 describe('someFunction', () => {
   it('should do something', () => {

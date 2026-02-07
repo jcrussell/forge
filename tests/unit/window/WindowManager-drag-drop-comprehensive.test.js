@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createContainerNode,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
-import { Bin } from "../../mocks/gnome/St.js";
 
 /**
  * Comprehensive tests for moveWindowToPointer()
@@ -51,16 +51,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
     return { nodeWindow, metaWindow };
   }
 
-  /**
-   * Helper to create a container node
-   */
-  function createContainer(parent, layout, rect = null) {
-    const container = new Node(NODE_TYPES.CON, new Bin());
-    container.layout = layout;
-    if (rect) container.rect = rect;
-    parent.appendChild(container);
-    return container;
-  }
+  // createContainer uses imported createContainerNode helper
+  const createContainer = createContainerNode;
 
   /**
    * Helper to set pointer position
