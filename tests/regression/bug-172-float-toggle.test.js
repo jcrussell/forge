@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 
 /**
  * Bug #172: Toggle float on one window toggles all of same type
@@ -42,8 +46,7 @@ describe("Bug #172: Per-window float toggle", () => {
       });
 
       // Add both windows to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal1);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal2);
 
@@ -78,8 +81,7 @@ describe("Bug #172: Per-window float toggle", () => {
       });
 
       // Add both windows to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal1);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal2);
 
@@ -126,8 +128,7 @@ describe("Bug #172: Per-window float toggle", () => {
       });
 
       // Add windows to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal1);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal2);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal3);
@@ -161,8 +162,7 @@ describe("Bug #172: Per-window float toggle", () => {
       });
 
       // Add windows to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal1);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, terminal2);
 

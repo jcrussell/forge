@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 import { Rectangle, GrabOp, MotionDirection } from "../mocks/gnome/Meta.js";
 
 /**
@@ -60,8 +64,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       });
 
       // Add windows to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
       const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
@@ -93,8 +96,7 @@ describe("Bug #305: Resize boundary behavior", () => {
         allows_resize: true,
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       nodeWindow1.percent = 1.0;
 
@@ -123,8 +125,7 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
@@ -175,8 +176,7 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 1280, y: 0, width: 640, height: 1080 }),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
@@ -234,8 +234,7 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 1320, y: 0, width: 600, height: 1080 }),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 

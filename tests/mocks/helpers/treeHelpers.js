@@ -201,6 +201,29 @@ export function createTabbedLayout(tree, parent, count, options = {}) {
 }
 
 /**
+ * Create a tiled window node from a fixture context
+ *
+ * Convenience helper that combines getWorkspaceAndMonitor + createWindowNode
+ * for the common pattern of adding a tiled window to a test fixture.
+ *
+ * @param {Object} ctx - Fixture context (from createWindowManagerFixture or createTreeFixture)
+ * @param {Object} [windowOverrides={}] - Overrides for createMockWindow
+ * @param {number} [wsIndex=0] - Workspace index
+ * @param {number} [monIndex=0] - Monitor index within workspace
+ * @returns {Object} Object with nodeWindow and metaWindow
+ *
+ * @example
+ * const { nodeWindow, metaWindow } = createTiledWindow(ctx, { wm_class: 'TestApp' });
+ */
+export function createTiledWindow(ctx, windowOverrides = {}, wsIndex = 0, monIndex = 0) {
+  const { monitor } = getWorkspaceAndMonitor(ctx, wsIndex, monIndex);
+  return createWindowNode(ctx.tree, monitor, {
+    windowOverrides,
+    mode: "TILE",
+  });
+}
+
+/**
  * Find a window node by its metaWindow reference
  *
  * @param {Object} tree - Tree instance
@@ -298,6 +321,7 @@ export default {
   getWorkspaceAndMonitor,
   getMonitors,
   createWindowNode,
+  createTiledWindow,
   createHorizontalLayout,
   createVerticalLayout,
   createStackedLayout,

@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 
 /**
  * Bug #319: Nautilus toggle float stuck in "always on top"
@@ -37,8 +41,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -62,8 +65,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Float the window (sets _forgeSetAbove)
@@ -89,8 +91,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Simulate user setting always-on-top manually BEFORE floating
@@ -121,8 +122,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
@@ -145,8 +145,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Float the window first
@@ -176,8 +175,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 

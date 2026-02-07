@@ -13,16 +13,7 @@ import { GrabOp } from "../../mocks/gnome/Meta.js";
  * CommandHandler unit tests
  *
  * Tests for the CommandHandler class which processes keyboard and action commands.
- * Focus on commands not well covered by WindowManager-commands.test.js:
- * - WindowResetSizes
- * - LayoutStackedToggle / LayoutTabbedToggle
- * - CancelOperation
- * - ConfigReload
- * - MovePointerToFocus
- * - WindowSwapLastActive
- * - SnapLayoutMove
- * - ShowTabDecorationToggle
- * - WindowResize commands
+ * Uses mocked WindowManager/Tree to verify CommandHandler calls the right methods.
  */
 describe("CommandHandler", () => {
   let commandHandler;
@@ -34,23 +25,12 @@ describe("CommandHandler", () => {
   let mockExt;
   let ctx;
 
-  beforeEach(() => {
-    // Install GNOME globals
-    ctx = installGnomeGlobals();
-
-    // Create mock meta window
-    mockMetaWindow = createMockWindow({
-      wm_class: "TestApp",
-      title: "Test Window",
-    });
-
-    // Add custom mock implementations after globals are installed
-    ctx.display.get_current_time.mockReturnValue(12345);
-    ctx.display.get_tab_next = vi.fn(() => mockMetaWindow);
-
-    // Create mock node window
-    mockNodeWindow = {
-      nodeValue: mockMetaWindow,
+  /**
+   * Creates a mock node window with parent chain
+   */
+  function createMockNodeWindow(metaWindow) {
+    const node = {
+      nodeValue: metaWindow,
       nodeType: NODE_TYPES.WINDOW,
       mode: WINDOW_MODES.TILE,
       rect: { x: 0, y: 0, width: 800, height: 600 },
@@ -61,50 +41,23 @@ describe("CommandHandler", () => {
         lastTabFocus: null,
         isMonitor: vi.fn(() => false),
         appendChild: vi.fn(),
-        parentNode: {
-          layout: LAYOUT_TYPES.HSPLIT,
-        },
+        parentNode: { layout: LAYOUT_TYPES.HSPLIT },
       },
       isFloat: vi.fn(() => false),
     };
-    mockNodeWindow.parentNode.lastChild = mockNodeWindow;
+    node.parentNode.lastChild = node;
+    return node;
+  }
 
-    // Create mock settings with defaults
-    mockSettings = createMockSettings({
-      "focus-border-toggle": true,
-      "tiling-mode-enabled": true,
-      "stacked-tiling-mode-enabled": true,
-      "tabbed-tiling-mode-enabled": true,
-      "showtab-decoration-enabled": true,
-      "window-gap-size-increment": 4,
-    });
-
-    // Create mock extension
-    mockExt = {
-      settings: mockSettings,
-      openPreferences: vi.fn(),
-    };
-
-    // Create mock tree
-    mockTree = {
-      getTiledChildren: vi.fn(() => [mockNodeWindow]),
-      resetSiblingPercent: vi.fn(),
-      move: vi.fn(() => true),
-      focus: vi.fn(() => mockNodeWindow),
-      swap: vi.fn(),
-      swapPairs: vi.fn(),
-      split: vi.fn(),
-      processGap: vi.fn((node) => node.rect),
-      findNode: vi.fn(() => mockNodeWindow),
-      attachNode: null,
-    };
-
-    // Create mock WindowManager
-    mockWm = {
-      ext: mockExt,
-      tree: mockTree,
-      focusMetaWindow: mockMetaWindow,
-      findNodeWindow: vi.fn(() => mockNodeWindow),
+  /**
+   * Creates a mock WindowManager with all required methods
+   */
+  function createMockWindowManager(ext, tree, nodeWindow) {
+    return {
+      ext,
+      tree,
+      focusMetaWindow: nodeWindow?.nodeValue,
+      findNodeWindow: vi.fn(() => nodeWindow),
       toggleFloatingMode: vi.fn(),
       move: vi.fn(),
       renderTree: vi.fn(),
@@ -128,8 +81,50 @@ describe("CommandHandler", () => {
       moveCenter: vi.fn(),
       eventQueue: [],
     };
+  }
 
-    // Create CommandHandler
+  /**
+   * Creates a mock Tree with all required methods
+   */
+  function createMockTree(nodeWindow) {
+    return {
+      getTiledChildren: vi.fn(() => [nodeWindow]),
+      resetSiblingPercent: vi.fn(),
+      move: vi.fn(() => true),
+      focus: vi.fn(() => nodeWindow),
+      swap: vi.fn(),
+      swapPairs: vi.fn(),
+      split: vi.fn(),
+      processGap: vi.fn((node) => node.rect),
+      findNode: vi.fn(() => nodeWindow),
+      attachNode: null,
+    };
+  }
+
+  beforeEach(() => {
+    ctx = installGnomeGlobals();
+
+    mockMetaWindow = createMockWindow({ wm_class: "TestApp", title: "Test Window" });
+    ctx.display.get_current_time.mockReturnValue(12345);
+    ctx.display.get_tab_next = vi.fn(() => mockMetaWindow);
+
+    mockSettings = createMockSettings({
+      "focus-border-toggle": true,
+      "tiling-mode-enabled": true,
+      "stacked-tiling-mode-enabled": true,
+      "tabbed-tiling-mode-enabled": true,
+      "showtab-decoration-enabled": true,
+      "window-gap-size-increment": 4,
+    });
+
+    mockExt = {
+      settings: mockSettings,
+      openPreferences: vi.fn(),
+    };
+
+    mockNodeWindow = createMockNodeWindow(mockMetaWindow);
+    mockTree = createMockTree(mockNodeWindow);
+    mockWm = createMockWindowManager(mockExt, mockTree, mockNodeWindow);
     commandHandler = new CommandHandler(mockWm);
   });
 

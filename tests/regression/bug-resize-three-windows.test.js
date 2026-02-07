@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
 /**
@@ -35,8 +39,7 @@ describe("Bug: Three-window resize overflow", () => {
   describe("_normalizeSiblingPercents initialization", () => {
     it("should initialize zero-percent children based on current rect", () => {
       // Create parent with 3 children where one has percent = 0
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -91,8 +94,7 @@ describe("Bug: Three-window resize overflow", () => {
     });
 
     it("should preserve relative proportions when initializing missing percentages", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -144,8 +146,7 @@ describe("Bug: Three-window resize overflow", () => {
     });
 
     it("should handle vertical layout (VSPLIT)", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -183,8 +184,7 @@ describe("Bug: Three-window resize overflow", () => {
     });
 
     it("should use equal distribution when rect is not available", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -233,8 +233,7 @@ describe("Bug: Three-window resize overflow", () => {
 
   describe("computeSizes with three windows", () => {
     it("should not exceed parent size when percentages are properly initialized", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -259,8 +258,7 @@ describe("Bug: Three-window resize overflow", () => {
     });
 
     it("should handle resize scenario where one window has percent=0 after normalization", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
@@ -311,8 +309,7 @@ describe("Bug: Three-window resize overflow", () => {
 
   describe("Full resize workflow simulation", () => {
     it("should handle keyboard resize (grow right) without overflow", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
 
