@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 
 /**
@@ -39,8 +43,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Target window (drop target)
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
@@ -75,8 +78,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
@@ -112,8 +114,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -141,8 +142,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -176,8 +176,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -210,8 +209,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
@@ -246,8 +244,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -275,8 +272,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -314,8 +310,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
@@ -353,8 +348,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -389,8 +383,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -424,8 +417,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -468,8 +460,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -511,8 +502,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.STACKED;
 
       // Create stacked windows
@@ -552,8 +542,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.STACKED;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
@@ -586,8 +575,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.GRAB_TILE;
@@ -619,8 +607,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -648,8 +635,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.TILE;
@@ -682,8 +668,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);

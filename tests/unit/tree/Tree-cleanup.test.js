@@ -31,8 +31,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("removeNode - Basic Removal", () => {
     it("should remove window from parent", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -43,8 +42,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should return true on successful removal", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -55,8 +53,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should update attachNode after removal", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -70,8 +67,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("removeNode - Single Child Container Cleanup", () => {
     it("should remove container when last child is removed", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const window = createMockWindow();
@@ -84,8 +80,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should keep container when multiple children remain", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const window1 = createMockWindow();
@@ -100,8 +95,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should not remove monitor even when it has only one child", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { workspace, monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -115,8 +109,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("removeNode - Stacked/Tabbed Container Behavior", () => {
     it("should exit tabbed layout when single tab remains", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.TABBED;
@@ -134,8 +127,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should clear lastTabFocus when exiting tabbed layout", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.TABBED;
@@ -152,8 +144,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should keep stacked layout when multiple children remain", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.STACKED;
@@ -178,8 +169,7 @@ describe("Tree Cleanup and Container Management", () => {
         return false;
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.TABBED;
@@ -198,8 +188,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("removeNode - Percent Reset", () => {
     it("should reset sibling percents after removal in container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const window1 = createMockWindow();
@@ -222,8 +211,7 @@ describe("Tree Cleanup and Container Management", () => {
 
     it("should not reset percents across workspace boundary", () => {
       // This tests Bug #470 fix
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -248,8 +236,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("cleanTree - Orphan Container Removal", () => {
     it("should remove empty containers", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create empty container directly (bypassing normal flow)
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -266,8 +253,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should not remove containers with children", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const window = createMockWindow();
@@ -281,8 +267,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("cleanTree - Nested Container Flattening", () => {
     it("should flatten nested single-child containers", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create nested structure: monitor > con1 > con2
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -303,8 +288,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should inherit layout from child container when flattening", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container1.layout = LAYOUT_TYPES.HSPLIT;
@@ -327,8 +311,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should handle multiple levels of nesting", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create deeply nested: monitor > con1 > con2 > con3 > window
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -351,8 +334,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should not flatten containers with multiple children", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
 
@@ -375,8 +357,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("Container State After Window Destruction", () => {
     it("should maintain valid tree structure after window removal", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -392,8 +373,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should update parent child count after removal", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -407,8 +387,7 @@ describe("Tree Cleanup and Container Management", () => {
     });
 
     it("should handle removal of all windows gracefully", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -426,8 +405,7 @@ describe("Tree Cleanup and Container Management", () => {
 
   describe("resetSiblingPercent", () => {
     it("should reset all sibling percents to 0", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const window1 = createMockWindow();

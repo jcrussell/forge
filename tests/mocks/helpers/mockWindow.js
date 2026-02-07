@@ -22,15 +22,7 @@ export function createMockWindowArray(count, baseOverrides = {}) {
   );
 }
 
-export function createMockWindowWithRect(x, y, width, height, overrides = {}) {
-  return createMockWindow({
-    ...overrides,
-    rect: { x, y, width, height },
-  });
-}
-
 export default {
   createMockWindow,
   createMockWindowArray,
-  createMockWindowWithRect,
 };

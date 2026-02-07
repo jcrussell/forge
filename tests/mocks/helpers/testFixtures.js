@@ -289,22 +289,6 @@ export function createTreeFixture(options = {}) {
 }
 
 /**
- * Create a fixture for CommandHandler tests
- *
- * @param {Object} options - Configuration options
- * @returns {Object} Fixture context
- */
-export function createCommandFixture(options = {}) {
-  // CommandHandler tests need a full WindowManager context
-  const ctx = createWindowManagerFixture(options);
-
-  return {
-    ...ctx,
-    // Add any command-specific mocks here
-  };
-}
-
-/**
  * Create a fixture for WorkspaceManager tests
  *
  * @param {Object} options - Configuration options
@@ -355,6 +339,5 @@ export default {
   createMockExtension,
   createWindowManagerFixture,
   createTreeFixture,
-  createCommandFixture,
   createWorkspaceManagerFixture,
 };

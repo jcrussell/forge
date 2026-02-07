@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 import { Bin } from "../../mocks/gnome/St.js";
 
@@ -69,8 +73,7 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
    * Helper to get monitor node
    */
   function getMonitor() {
-    const workspace = ctx.tree.nodeWorkpaces[0];
-    return workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+    return getWorkspaceAndMonitor(ctx).monitor;
   }
 
   // ============================================================================

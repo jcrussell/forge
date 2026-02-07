@@ -3,7 +3,7 @@ import St from "gi://St";
 import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { Bin, BoxLayout } from "../../mocks/gnome/St.js";
-import { createTreeFixture } from "../../mocks/helpers/index.js";
+import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
 
 /**
  * Tree class tests
@@ -67,47 +67,36 @@ describe("Tree", () => {
 
     it("should find nested nodes", () => {
       // Create a nested structure
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      if (monitors.length > 0) {
-        const containerBin = new St.Bin();
-        const container = ctx.tree.createNode(monitors[0].nodeValue, NODE_TYPES.CON, containerBin);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const containerBin = new St.Bin();
+      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, containerBin);
 
-        // Find by the actual nodeValue (the St.Bin instance)
-        const found = ctx.tree.findNode(containerBin);
+      // Find by the actual nodeValue (the St.Bin instance)
+      const found = ctx.tree.findNode(containerBin);
 
-        expect(found).toBe(container);
-      }
+      expect(found).toBe(container);
     });
   });
 
   describe("createNode", () => {
     it("should create node under parent", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      if (monitors.length > 0) {
-        const containerBin = new St.Bin();
-        const newNode = ctx.tree.createNode(monitors[0].nodeValue, NODE_TYPES.CON, containerBin);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const containerBin = new St.Bin();
+      const newNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, containerBin);
 
-        expect(newNode).toBeDefined();
-        expect(newNode.nodeType).toBe(NODE_TYPES.CON);
-        // nodeValue is the St.Bin instance passed to createNode
-        expect(newNode.nodeValue).toBe(containerBin);
-      }
+      expect(newNode).toBeDefined();
+      expect(newNode.nodeType).toBe(NODE_TYPES.CON);
+      // nodeValue is the St.Bin instance passed to createNode
+      expect(newNode.nodeValue).toBe(containerBin);
     });
 
     it("should add node to parent children", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const initialChildCount = monitor.childNodes.length;
 
-      if (monitors.length > 0) {
-        const monitor = monitors[0];
-        const initialChildCount = monitor.childNodes.length;
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-        ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
-
-        expect(monitor.childNodes.length).toBe(initialChildCount + 1);
-      }
+      expect(monitor.childNodes.length).toBe(initialChildCount + 1);
     });
 
     it("should set node settings from tree", () => {
@@ -118,17 +107,12 @@ describe("Tree", () => {
     });
 
     it("should create node with default TILE mode", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      // Note: This would work for WINDOW type nodes
+      const newNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-      if (monitors.length > 0) {
-        const monitor = monitors[0];
-        // Note: This would work for WINDOW type nodes
-        const newNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
-
-        // CON nodes don't have mode set, but WINDOW nodes would
-        expect(newNode).toBeDefined();
-      }
+      // CON nodes don't have mode set, but WINDOW nodes would
+      expect(newNode).toBeDefined();
     });
 
     it("should return undefined if parent not found", () => {
@@ -140,20 +124,15 @@ describe("Tree", () => {
     it("should handle inserting after window parent", () => {
       // This tests the special case where parent is a window
       // Window's parent becomes the actual parent for the new node
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      if (monitors.length > 0) {
-        const monitor = monitors[0];
+      // Create two nodes - second should be sibling to first, not child
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-        // Create two nodes - second should be sibling to first, not child
-        const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
-        const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
-
-        // Both should be children of monitor
-        expect(monitor.childNodes).toContain(node1);
-        expect(monitor.childNodes).toContain(node2);
-      }
+      // Both should be children of monitor
+      expect(monitor.childNodes).toContain(node1);
+      expect(monitor.childNodes).toContain(node2);
     });
   });
 
@@ -184,20 +163,15 @@ describe("Tree", () => {
     });
 
     it("should return all window nodes when windows exist", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      if (monitors.length > 0) {
-        const monitor = monitors[0];
+      // Create mock window node (without actual Meta.Window to avoid UI init)
+      // In real usage, windows would be created differently
+      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
 
-        // Create mock window node (without actual Meta.Window to avoid UI init)
-        // In real usage, windows would be created differently
-        const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
-
-        // We can verify the getter works
-        const windows = ctx.tree.nodeWindows;
-        expect(Array.isArray(windows)).toBe(true);
-      }
+      // We can verify the getter works
+      const windows = ctx.tree.nodeWindows;
+      expect(Array.isArray(windows)).toBe(true);
     });
   });
 
@@ -307,24 +281,19 @@ describe("Tree", () => {
     });
 
     it("should allow deep nesting", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      if (monitors.length > 0) {
-        const monitor = monitors[0];
+      const bin1 = new St.Bin();
+      const bin2 = new St.Bin();
+      const bin3 = new St.Bin();
 
-        const bin1 = new St.Bin();
-        const bin2 = new St.Bin();
-        const bin3 = new St.Bin();
+      const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, bin1);
+      const container2 = ctx.tree.createNode(bin1, NODE_TYPES.CON, bin2);
+      const container3 = ctx.tree.createNode(bin2, NODE_TYPES.CON, bin3);
 
-        const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, bin1);
-        const container2 = ctx.tree.createNode(bin1, NODE_TYPES.CON, bin2);
-        const container3 = ctx.tree.createNode(bin2, NODE_TYPES.CON, bin3);
-
-        expect(container3.level).toBe(container1.level + 2);
-        // Find by the actual nodeValue (St.Bin instance)
-        expect(ctx.tree.findNode(bin3)).toBe(container3);
-      }
+      expect(container3.level).toBe(container1.level + 2);
+      // Find by the actual nodeValue (St.Bin instance)
+      expect(ctx.tree.findNode(bin3)).toBe(container3);
     });
   });
 });

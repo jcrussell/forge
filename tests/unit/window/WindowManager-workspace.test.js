@@ -37,8 +37,7 @@ describe("WindowManager - Workspace Management", () => {
       const metaWindow1 = createMockWindow({ id: 1, workspace: workspace0() });
       const metaWindow2 = createMockWindow({ id: 2, workspace: workspace0() });
 
-      const wsNode = ctx.tree.nodeWorkpaces[0];
-      const monitor = wsNode.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
@@ -79,8 +78,7 @@ describe("WindowManager - Workspace Management", () => {
     });
 
     it("should include all window types on workspace", () => {
-      const wsNode = ctx.tree.nodeWorkpaces[0];
-      const monitor = wsNode.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const normalWindow = createMockWindow({ id: 1, window_type: WindowType.NORMAL });
       const dialogWindow = createMockWindow({ id: 2, window_type: WindowType.DIALOG });
@@ -97,8 +95,7 @@ describe("WindowManager - Workspace Management", () => {
     });
 
     it("should include minimized windows", () => {
-      const wsNode = ctx.tree.nodeWorkpaces[0];
-      const monitor = wsNode.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const metaWindow1 = createMockWindow({ id: 1, minimized: false });
       const metaWindow2 = createMockWindow({ id: 2, minimized: true });
@@ -379,8 +376,7 @@ describe("WindowManager - Workspace Management", () => {
     });
 
     it("should handle workspace with mixed window modes", () => {
-      const wsNode = ctx.tree.nodeWorkpaces[0];
-      const monitor = wsNode.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const tiledWindow = createMockWindow({ id: 1 });
       const floatWindow = createMockWindow({ id: 2 });

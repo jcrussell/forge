@@ -32,8 +32,7 @@ describe("Tree Operations", () => {
 
   describe("next", () => {
     it("should find next sibling to the right", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -47,8 +46,7 @@ describe("Tree Operations", () => {
     });
 
     it("should find next sibling to the left", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -62,8 +60,7 @@ describe("Tree Operations", () => {
     });
 
     it("should find next sibling downward", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
       const window1 = createMockWindow();
@@ -77,8 +74,7 @@ describe("Tree Operations", () => {
     });
 
     it("should find next sibling upward", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
       const window1 = createMockWindow();
@@ -92,8 +88,7 @@ describe("Tree Operations", () => {
     });
 
     it("should return null for node at end", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window = createMockWindow();
@@ -106,8 +101,7 @@ describe("Tree Operations", () => {
     });
 
     it("should navigate across different orientations", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -127,8 +121,7 @@ describe("Tree Operations", () => {
 
   describe("split", () => {
     it("should create horizontal split container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
 
@@ -140,8 +133,7 @@ describe("Tree Operations", () => {
     });
 
     it("should create vertical split container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
 
@@ -153,8 +145,7 @@ describe("Tree Operations", () => {
     });
 
     it("should toggle split direction if single child", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -168,8 +159,7 @@ describe("Tree Operations", () => {
     });
 
     it("should not toggle if forceSplit is true", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.HSPLIT;
 
@@ -184,8 +174,7 @@ describe("Tree Operations", () => {
     });
 
     it("should ignore floating windows", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
       node.mode = WINDOW_MODES.FLOAT;
@@ -198,8 +187,7 @@ describe("Tree Operations", () => {
     });
 
     it("should preserve node rect and percent", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
       node.rect = { x: 100, y: 100, width: 500, height: 500 };
@@ -213,8 +201,7 @@ describe("Tree Operations", () => {
     });
 
     it("should set attachNode to new container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
 
@@ -226,8 +213,7 @@ describe("Tree Operations", () => {
 
   describe("swapPairs", () => {
     it("should swap two windows in same parent", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -249,8 +235,7 @@ describe("Tree Operations", () => {
     });
 
     it("should swap windows in different parents", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       const container2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -268,8 +253,7 @@ describe("Tree Operations", () => {
     });
 
     it("should exchange modes", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -286,8 +270,7 @@ describe("Tree Operations", () => {
     });
 
     it("should exchange percents", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -304,8 +287,7 @@ describe("Tree Operations", () => {
     });
 
     it("should call WindowManager.move for both windows", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -318,8 +300,7 @@ describe("Tree Operations", () => {
     });
 
     it("should focus first window if focus=true", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -336,8 +317,7 @@ describe("Tree Operations", () => {
     });
 
     it("should not swap if first node not swappable", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow({ minimized: true });
       const window2 = createMockWindow();
@@ -352,8 +332,7 @@ describe("Tree Operations", () => {
     });
 
     it("should not swap if second node not swappable", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow({ minimized: true });
@@ -370,8 +349,7 @@ describe("Tree Operations", () => {
 
   describe("swap", () => {
     it("should swap with next window to the right", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -388,8 +366,7 @@ describe("Tree Operations", () => {
     });
 
     it("should swap with first window in container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -414,8 +391,7 @@ describe("Tree Operations", () => {
     });
 
     it("should swap with last window in stacked container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -440,8 +416,7 @@ describe("Tree Operations", () => {
     });
 
     it("should return undefined if no next node", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -455,8 +430,7 @@ describe("Tree Operations", () => {
     });
 
     it("should return undefined if nodes not in same monitor", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
       const window2 = createMockWindow();
@@ -477,8 +451,7 @@ describe("Tree Operations", () => {
 
   describe("move", () => {
     it("should move window to the right", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -501,8 +474,7 @@ describe("Tree Operations", () => {
     });
 
     it("should move window to the left", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -521,8 +493,7 @@ describe("Tree Operations", () => {
     });
 
     it("should swap sibling positions when moving into occupied space", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -547,8 +518,7 @@ describe("Tree Operations", () => {
     });
 
     it("should move window into container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -571,8 +541,7 @@ describe("Tree Operations", () => {
     it("should swap window percentages when swapping adjacent siblings", () => {
       // When swapping adjacent siblings, the percentages are exchanged
       // so each position retains its size allocation
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -595,8 +564,7 @@ describe("Tree Operations", () => {
     });
 
     it("should return false if no next node", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window = createMockWindow();
       const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
@@ -610,8 +578,7 @@ describe("Tree Operations", () => {
     });
 
     it("should handle moving into stacked container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -634,8 +601,7 @@ describe("Tree Operations", () => {
 
   describe("next - Stacked Container Navigation", () => {
     it("should cycle through windows in stacked container using UP/DOWN", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.STACKED;
@@ -657,8 +623,7 @@ describe("Tree Operations", () => {
     });
 
     it("should navigate up in stacked container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.STACKED;
@@ -674,8 +639,7 @@ describe("Tree Operations", () => {
     });
 
     it("should exit stacked container when navigating left/right", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -695,8 +659,7 @@ describe("Tree Operations", () => {
 
   describe("next - Tabbed Container Navigation", () => {
     it("should cycle through tabs using LEFT/RIGHT", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.TABBED;
@@ -718,8 +681,7 @@ describe("Tree Operations", () => {
     });
 
     it("should navigate left between tabs", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
       container.layout = LAYOUT_TYPES.TABBED;
@@ -735,8 +697,7 @@ describe("Tree Operations", () => {
     });
 
     it("should exit tabbed container when navigating up/down", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -756,8 +717,7 @@ describe("Tree Operations", () => {
 
   describe("next - Cross-Container Navigation", () => {
     it("should navigate from one container to another container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -780,8 +740,7 @@ describe("Tree Operations", () => {
     });
 
     it("should navigate into container and find appropriate node", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();
@@ -803,8 +762,7 @@ describe("Tree Operations", () => {
     });
 
     it("should navigate into stacked container", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const window1 = createMockWindow();

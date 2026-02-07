@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
-import { createMockWindow, createTreeFixture } from "../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createTreeFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -23,9 +27,9 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
   beforeEach(() => {
     ctx = createTreeFixture({ fullExtWm: true });
 
-    // Setup tree structure - get workspace and monitor from tree
-    const workspace = ctx.tree.nodeWorkpaces[0];
-    monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+    // Setup tree structure using standardized helper
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitorNode = monitor;
     monitorNode.layout = LAYOUT_TYPES.HSPLIT;
     monitorNode.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 

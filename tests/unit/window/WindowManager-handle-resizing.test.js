@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { createMockWindow, createWindowManagerFixture } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
 
 /**
@@ -39,8 +43,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -71,8 +74,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -105,8 +107,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -144,8 +145,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -182,8 +182,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -218,8 +217,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.VSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -256,8 +254,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.TABBED;
       monitor.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
@@ -296,8 +293,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.STACKED;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -340,8 +336,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -390,8 +385,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -431,8 +425,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -464,8 +457,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 100, y: 0, width: 960, height: 1080 };
@@ -488,8 +480,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 0, y: 100, width: 1920, height: 540 };
@@ -512,8 +503,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.initRect = { x: 100, y: 100, width: 960, height: 540 };
@@ -540,8 +530,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
         workspace: workspace0(),
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);

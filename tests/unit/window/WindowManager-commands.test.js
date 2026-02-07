@@ -109,8 +109,7 @@ describe("WindowManager - Command System", () => {
         title: "Test Window 2",
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
@@ -149,8 +148,7 @@ describe("WindowManager - Command System", () => {
         title: "Test Window 2",
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });
@@ -184,8 +182,7 @@ describe("WindowManager - Command System", () => {
         title: "Test Window 2",
       });
 
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.TILE;
     });

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
-import { createTreeFixture } from "../mocks/helpers/index.js";
+import { createTreeFixture, getWorkspaceAndMonitor } from "../mocks/helpers/index.js";
 import { createMockWindow } from "../mocks/helpers/mockWindow.js";
 
 /**
@@ -25,9 +25,7 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
 
   describe("_search by MODE", () => {
     it("should only match nodes by mode, not by layout", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      const monitor = monitors[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create a window with TILE mode
       const mockWindow = createMockWindow({
@@ -62,9 +60,7 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
     });
 
     it("should not include nodes in MODE search that match by layout", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      const monitor = monitors[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Set monitor layout to STACKED
       monitor.layout = LAYOUT_TYPES.STACKED;
@@ -91,9 +87,7 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
     });
 
     it("should search by LAYOUT independently from MODE", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      const monitor = monitors[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Set monitor layout
       monitor.layout = LAYOUT_TYPES.VSPLIT;
@@ -116,9 +110,7 @@ describe("Bug: _search() MODE case fallthrough to LAYOUT", () => {
 
   describe("getNodeByMode", () => {
     it("should only return nodes matching the specified mode", () => {
-      const workspace = ctx.tree.nodeWorkpaces[0];
-      const monitors = workspace.getNodeByType(NODE_TYPES.MONITOR);
-      const monitor = monitors[0];
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
       // Create multiple windows with different modes
       const tileWindow = createMockWindow({ id: 1, wm_class: "tile", allows_resize: true });
