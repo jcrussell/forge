@@ -1,5 +1,7 @@
 // Mock GObject namespace
+import { withSignals } from "../helpers/signalMixin.js";
 
+// Legacy helper functions for external use (still work with any object)
 export function signal_connect(object, signal, callback) {
   if (!object._signals) object._signals = {};
   if (!object._signals[signal]) object._signals[signal] = [];
@@ -30,21 +32,10 @@ export const SignalFlags = {
   NO_HOOKS: 1 << 6,
 };
 
-class GObjectBase {
+// GObjectBase now uses signal mixin for DRY implementation
+class GObjectBase extends withSignals() {
   constructor() {
-    this._signals = {};
-  }
-
-  connect(signal, callback) {
-    return signal_connect(this, signal, callback);
-  }
-
-  disconnect(id) {
-    signal_disconnect(this, id);
-  }
-
-  emit(signal, ...args) {
-    signal_emit(this, signal, ...args);
+    super();
   }
 }
 

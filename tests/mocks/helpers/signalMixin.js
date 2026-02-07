@@ -76,6 +76,16 @@ export function createSignalMethods() {
         delete _signals[signal];
       }
     },
+
+    /**
+     * Disconnect all signal handlers (alias for clearSignals)
+     * Convenience method for cleanup
+     */
+    disconnect_all() {
+      for (const signal in _signals) {
+        delete _signals[signal];
+      }
+    },
   };
 }
 
@@ -131,6 +141,12 @@ export function withSignals(Base = class {}) {
     }
 
     clearSignals() {
+      for (const signal in this._signals) {
+        delete this._signals[signal];
+      }
+    }
+
+    disconnect_all() {
       for (const signal in this._signals) {
         delete this._signals[signal];
       }

@@ -520,7 +520,7 @@ describe("Tree Operations", () => {
       expect(node2.index).toBe(0);
     });
 
-    it("should swap siblings using swapPairs", () => {
+    it("should swap sibling positions when moving into occupied space", () => {
       const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -533,11 +533,17 @@ describe("Tree Operations", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      const swapPairsSpy = vi.spyOn(ctx.tree, "swapPairs");
+      // Verify initial indices
+      const initialIndex1 = node1.index;
+      const initialIndex2 = node2.index;
+      expect(initialIndex1).toBe(0);
+      expect(initialIndex2).toBe(1);
 
       ctx.tree.move(node1, MotionDirection.RIGHT);
 
-      expect(swapPairsSpy).toHaveBeenCalledWith(node1, node2);
+      // After move, indices should be swapped
+      expect(node1.index).toBe(initialIndex2);
+      expect(node2.index).toBe(initialIndex1);
     });
 
     it("should move window into container", () => {
@@ -562,9 +568,9 @@ describe("Tree Operations", () => {
       expect(node1.parentNode).toBe(container);
     });
 
-    it("should NOT reset sibling percent when swapping adjacent siblings", () => {
-      // When swapping adjacent siblings, resetSiblingPercent should NOT be called
-      // because the percents are already correct after a swap
+    it("should swap window percentages when swapping adjacent siblings", () => {
+      // When swapping adjacent siblings, the percentages are exchanged
+      // so each position retains its size allocation
       const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
@@ -577,12 +583,15 @@ describe("Tree Operations", () => {
       node1.mode = WINDOW_MODES.TILE;
       node2.mode = WINDOW_MODES.TILE;
 
-      const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
+      // Set specific percentages before swap
+      node1.percent = 0.4;
+      node2.percent = 0.6;
 
       ctx.tree.move(node1, MotionDirection.RIGHT);
 
-      // Siblings were swapped, so resetSiblingPercent should NOT be called
-      expect(resetSpy).not.toHaveBeenCalled();
+      // Percentages should be exchanged (each position keeps its size)
+      expect(node1.percent).toBe(0.6);
+      expect(node2.percent).toBe(0.4);
     });
 
     it("should return false if no next node", () => {

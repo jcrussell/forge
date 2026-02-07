@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
-import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
-import { WindowType, Workspace, Rectangle, GrabOp, MotionDirection } from "../mocks/gnome/Meta.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import { Rectangle, GrabOp, MotionDirection } from "../mocks/gnome/Meta.js";
 
 /**
  * Bug #305: Resizing one boundary also moves opposite boundary
@@ -16,83 +15,21 @@ import { WindowType, Workspace, Rectangle, GrabOp, MotionDirection } from "../mo
  * percent to exceed 1.0, causing repositioning on re-render.
  */
 describe("Bug #305: Resize boundary behavior", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
-  let workspace0;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global display and workspace manager
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      sort_windows_by_stacking: vi.fn((windows) => windows),
-    };
-
-    workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
+    ctx = createWindowManagerFixture();
 
     // Mock Meta namespace
     global.Meta = {
       GrabOp,
       MotionDirection,
     };
+  });
 
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "focus-on-hover-enabled") return false;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+  afterEach(() => {
+    ctx.cleanup();
+    delete global.Meta;
   });
 
   describe("_normalizeSiblingPercents helper", () => {
@@ -123,23 +60,11 @@ describe("Bug #305: Resize boundary behavior", () => {
       });
 
       // Add windows to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window1
-      );
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window2
-      );
-      const nodeWindow3 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window3
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+      const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
 
       // Set unbalanced percentages that sum to > 1.0 (simulating resize drift)
       nodeWindow1.percent = 0.4;
@@ -147,7 +72,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       nodeWindow3.percent = 0.4; // Total = 1.2
 
       // Normalize
-      windowManager._normalizeSiblingPercents(monitor);
+      ctx.windowManager._normalizeSiblingPercents(monitor);
 
       // Total should be 1.0
       const total = nodeWindow1.percent + nodeWindow2.percent + nodeWindow3.percent;
@@ -156,7 +81,7 @@ describe("Bug #305: Resize boundary behavior", () => {
 
     it("should handle null parent gracefully", () => {
       expect(() => {
-        windowManager._normalizeSiblingPercents(null);
+        ctx.windowManager._normalizeSiblingPercents(null);
       }).not.toThrow();
     });
 
@@ -168,17 +93,13 @@ describe("Bug #305: Resize boundary behavior", () => {
         allows_resize: true,
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window1
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
       nodeWindow1.percent = 1.0;
 
       expect(() => {
-        windowManager._normalizeSiblingPercents(monitor);
+        ctx.windowManager._normalizeSiblingPercents(monitor);
       }).not.toThrow();
     });
   });
@@ -202,20 +123,12 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window1
-      );
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window2
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
 
       nodeWindow1.percent = 0.5;
       nodeWindow2.percent = 0.5;
@@ -229,7 +142,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       nodeWindow2.percent = 0.4;
 
       // Normalize
-      windowManager._normalizeSiblingPercents(monitor);
+      ctx.windowManager._normalizeSiblingPercents(monitor);
 
       // Should still sum to 1.0
       const totalAfter = nodeWindow1.percent + nodeWindow2.percent;
@@ -262,25 +175,13 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 1280, y: 0, width: 640, height: 1080 }),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window1
-      );
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window2
-      );
-      const nodeWindow3 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window3
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+      const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
 
       // Initial equal split
       nodeWindow1.percent = 1 / 3;
@@ -295,7 +196,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       // Total = 0.4 + 0.27 + 0.333 = 1.003 (drift)
 
       // Normalize
-      windowManager._normalizeSiblingPercents(monitor);
+      ctx.windowManager._normalizeSiblingPercents(monitor);
 
       // Should sum to 1.0
       const total = nodeWindow1.percent + nodeWindow2.percent + nodeWindow3.percent;
@@ -333,26 +234,14 @@ describe("Bug #305: Resize boundary behavior", () => {
         rect: new Rectangle({ x: 1320, y: 0, width: 600, height: 1080 }),
       });
 
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
       monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window1
-      );
-      const nodeWindow2 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window2
-      );
-      const nodeWindow3 = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        window3
-      );
+      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+      const nodeWindow3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
 
       // Set initial percentages based on widths
       nodeWindow1.percent = 600 / 1920; // 0.3125
@@ -372,7 +261,7 @@ describe("Bug #305: Resize boundary behavior", () => {
       // nodeWindow3 unchanged
 
       // Normalize to ensure total = 1.0
-      windowManager._normalizeSiblingPercents(monitor);
+      ctx.windowManager._normalizeSiblingPercents(monitor);
 
       // Bug #305: window3's boundaries should NOT have moved
       // Calculate new window3 left edge

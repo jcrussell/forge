@@ -1,8 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
-import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
-import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**
  * Bug #482: Anki doesn't get tiled (windows with null wm_class)
@@ -20,75 +17,14 @@ import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
  * Fix in Bug #294 allows explicit tile overrides to take precedence.
  */
 describe("Bug #482: Windows with null wm_class handling", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
+    ctx = createWindowManagerFixture();
+  });
 
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "focus-on-hover-enabled") return false;
-        if (key === "tiling-mode-enabled") return true;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager - start with no overrides
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("Windows with null wm_class are floating exempt by default", () => {
@@ -101,7 +37,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(ankiWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(ankiWindow);
 
       // By default, null wm_class means floating exempt
       expect(isExempt).toBe(true);
@@ -115,7 +51,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(firefoxWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(firefoxWindow);
 
       // Valid wm_class means not floating exempt (can be tiled)
       expect(isExempt).toBe(false);
@@ -131,7 +67,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
 
       // Note: empty string !== null, so it may not be caught by wm_class check
       // But other checks (like empty title) might catch it
-      const isExempt = windowManager.isFloatingExempt(emptyClassWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(emptyClassWindow);
 
       // This depends on exact implementation - empty string is truthy for === null
       // But the app may still be exempt for other reasons
@@ -142,15 +78,12 @@ describe("Bug #482: Windows with null wm_class handling", () => {
   describe("Explicit TILE override takes precedence (Bug #294 fix)", () => {
     it("should allow tiling when user adds explicit TILE override for null wm_class window", () => {
       // User adds explicit tile override for the app class
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "Anki",
           mode: "tile",
         },
       ];
-
-      // Recreate windowManager to pick up new config
-      windowManager = new WindowManager(mockExtension);
 
       const ankiWindow = createMockWindow({
         wm_class: "Anki", // Some Anki builds do have wm_class
@@ -159,21 +92,19 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(ankiWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(ankiWindow);
 
       // With explicit TILE override, should NOT be exempt
       expect(isExempt).toBe(false);
     });
 
     it("should respect TILE override by title when wm_class is null", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmTitle: "Anki",
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const ankiWindow = createMockWindow({
         wm_class: null,
@@ -182,7 +113,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(ankiWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(ankiWindow);
 
       // With title-based TILE override, should NOT be exempt
       // (even though wm_class is null)
@@ -192,14 +123,12 @@ describe("Bug #482: Windows with null wm_class handling", () => {
 
   describe("Floating override still works for specific windows", () => {
     it("should respect FLOAT override for specific window classes", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "TestApp",
           mode: "float",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const testAppWindow = createMockWindow({
         wm_class: "TestApp",
@@ -208,7 +137,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(testAppWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(testAppWindow);
 
       // FLOAT override should make it exempt
       expect(isExempt).toBe(true);

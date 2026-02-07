@@ -1,4 +1,5 @@
 // Mock Meta namespace (Meta window manager APIs)
+import { withSignals } from "../helpers/signalMixin.js";
 
 export class Rectangle {
   constructor(params = {}) {
@@ -45,8 +46,9 @@ export class Rectangle {
   }
 }
 
-export class Window {
+export class Window extends withSignals() {
   constructor(params = {}) {
+    super();
     this.id = params.id ?? Math.random();
     this._rect = params.rect ?? new Rectangle();
     // Use 'in' operator to allow null/empty values to be explicitly set
@@ -59,7 +61,6 @@ export class Window {
     this._window_type = "window_type" in params ? params.window_type : WindowType.NORMAL;
     this._transient_for = "transient_for" in params ? params.transient_for : null;
     this._allows_resize = "allows_resize" in params ? params.allows_resize : true;
-    this._signals = {};
     this._workspace = params.workspace ?? null;
     this._monitor = params.monitor ?? 0;
   }
@@ -190,25 +191,6 @@ export class Window {
     // Mock kill operation
   }
 
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
-  }
-
-  emit(signal, ...args) {
-    if (this._signals[signal]) {
-      this._signals[signal].forEach((s) => s.callback(...args));
-    }
-  }
-
   get_window_type() {
     return this._window_type;
   }
@@ -252,11 +234,11 @@ export class Window {
   }
 }
 
-export class Workspace {
+export class Workspace extends withSignals() {
   constructor(params = {}) {
+    super();
     this._index = params.index || 0;
     this._windows = [];
-    this._signals = {};
   }
 
   index() {
@@ -290,25 +272,12 @@ export class Workspace {
   activate_with_focus(window, timestamp) {
     // Mock activation
   }
-
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
-  }
 }
 
-export class Display {
+export class Display extends withSignals() {
   constructor() {
+    super();
     this._workspaces = [];
-    this._signals = {};
   }
 
   get_workspace_manager() {
@@ -317,19 +286,6 @@ export class Display {
       get_workspace_by_index: (index) => this._workspaces[index] || null,
       get_workspaces: () => this._workspaces,
     };
-  }
-
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
   }
 }
 

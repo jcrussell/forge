@@ -1,7 +1,9 @@
 // Mock Clutter namespace
+import { withSignals } from "../helpers/signalMixin.js";
 
-export class Actor {
+export class Actor extends withSignals() {
   constructor(params = {}) {
+    super();
     this.name = params.name || "";
     this.x = params.x || 0;
     this.y = params.y || 0;
@@ -9,7 +11,6 @@ export class Actor {
     this.height = params.height || 0;
     this.visible = params.visible !== false;
     this.reactive = params.reactive !== false;
-    this._signals = {};
   }
 
   get_x() {
@@ -64,19 +65,6 @@ export class Actor {
 
   destroy() {
     // Mock destroy
-  }
-
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
   }
 }
 

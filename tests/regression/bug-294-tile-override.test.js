@@ -1,8 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
-import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
-import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**
  * Bug #294: Some windows cannot be tiled (Neovide, Blackbox)
@@ -20,84 +17,26 @@ import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
  * that takes precedence over default floating exemptions.
  */
 describe("Bug #294: Explicit TILE override for windows that default to float", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
+    ctx = createWindowManagerFixture();
+  });
 
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn(() => workspace0),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "focus-on-hover-enabled") return false;
-        if (key === "tiling-mode-enabled") return true;
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    windowManager = new WindowManager(mockExtension);
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("Explicit TILE override takes precedence over float exemptions", () => {
     it("should force-tile a window that would normally be floating exempt", () => {
       // Neovide-like window: uses wayland without proper decorations
       // which might trigger floating exemption
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "Neovide",
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const neovideWindow = createMockWindow({
         wm_class: "Neovide",
@@ -106,7 +45,7 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(neovideWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
 
       // With explicit TILE override, should NOT be floating exempt
       expect(isExempt).toBe(false);
@@ -114,14 +53,12 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
 
     it("should force-tile by title when class-based override is insufficient", () => {
       // Black Box terminal scenario
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmTitle: "Black Box",
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const blackboxWindow = createMockWindow({
         wm_class: "com.raggesilver.BlackBox",
@@ -130,21 +67,19 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(blackboxWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(blackboxWindow);
 
       expect(isExempt).toBe(false);
     });
 
     it("should tile window matching both class and title override", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "Neovide",
           wmTitle: "nvim",
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       // Window that matches both class and title
       const neovideWindow = createMockWindow({
@@ -154,21 +89,19 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(neovideWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
 
       expect(isExempt).toBe(false);
     });
 
     it("should not tile when window title does not match override title", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "Neovide",
           wmTitle: "specific-project",
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       // Window class matches but title doesn't
       const neovideWindow = createMockWindow({
@@ -180,7 +113,7 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
 
       // Without matching title, the TILE override shouldn't apply
       // so it falls back to default behavior
-      const isExempt = windowManager.isFloatingExempt(neovideWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
 
       // Since we only have a specific title override that doesn't match,
       // and Neovide may have other properties that make it float,
@@ -192,7 +125,7 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
   describe("TILE override vs FLOAT override precedence", () => {
     it("should tile when TILE override exists even if FLOAT override also exists for different criteria", () => {
       // Complex scenario: class-based float, but title-based tile
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "TestApp",
           mode: "float", // Float all TestApp windows
@@ -204,8 +137,6 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         },
       ];
 
-      windowManager = new WindowManager(mockExtension);
-
       const workWindow = createMockWindow({
         wm_class: "TestApp",
         id: "test-1",
@@ -214,21 +145,19 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
       });
 
       // TILE override should win when more specific
-      const isExempt = windowManager.isFloatingExempt(workWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(workWindow);
 
       // The TILE check happens first in isFloatingExempt, so should not be exempt
       expect(isExempt).toBe(false);
     });
 
     it("should float when only FLOAT override matches", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "TestApp",
           mode: "float",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const testWindow = createMockWindow({
         wm_class: "TestApp",
@@ -237,7 +166,7 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         allows_resize: true,
       });
 
-      const isExempt = windowManager.isFloatingExempt(testWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(testWindow);
 
       expect(isExempt).toBe(true);
     });
@@ -245,14 +174,12 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
 
   describe("Override matching behavior", () => {
     it("should match partial wmClass names", () => {
-      mockConfigMgr.windowProps.overrides = [
+      ctx.configMgr.windowProps.overrides = [
         {
           wmClass: "raggesilver.BlackBox", // Partial match
           mode: "tile",
         },
       ];
-
-      windowManager = new WindowManager(mockExtension);
 
       const blackboxWindow = createMockWindow({
         wm_class: "com.raggesilver.BlackBox",
@@ -262,7 +189,7 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
       });
 
       // Check if the override uses includes() for matching
-      const isExempt = windowManager.isFloatingExempt(blackboxWindow);
+      const isExempt = ctx.windowManager.isFloatingExempt(blackboxWindow);
 
       // Depending on implementation, partial match might or might not work
       expect(isExempt).toBeDefined();

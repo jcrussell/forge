@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WindowManager, WINDOW_MODES } from "../../lib/extension/window.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
-import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
+import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**
  * Bug #319: Nautilus toggle float stuck in "always on top"
@@ -15,76 +14,17 @@ import { WindowType, Workspace } from "../mocks/gnome/Meta.js";
  * tracking for always-on-top state.
  */
 describe("Bug #319: Float always-on-top handling", () => {
-  let windowManager;
-  let mockExtension;
-  let mockSettings;
-  let mockConfigMgr;
+  let ctx;
 
   beforeEach(() => {
-    // Mock global
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-    };
+    // float-always-on-top-enabled is TRUE for this test
+    ctx = createWindowManagerFixture({
+      settings: { "float-always-on-top-enabled": true },
+    });
+  });
 
-    const workspace0 = new Workspace({ index: 0 });
-
-    global.workspace_manager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => (i === 0 ? workspace0 : new Workspace({ index: i }))),
-      get_active_workspace_index: vi.fn(() => 0),
-      get_active_workspace: vi.fn(() => workspace0),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(global.workspace_manager);
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock settings - float-always-on-top-enabled is TRUE for this test
-    mockSettings = {
-      get_boolean: vi.fn((key) => {
-        if (key === "focus-on-hover-enabled") return false;
-        if (key === "tiling-mode-enabled") return true;
-        if (key === "float-always-on-top-enabled") return true; // Key for this bug
-        return false;
-      }),
-      get_uint: vi.fn(() => 0),
-      get_string: vi.fn(() => ""),
-      set_boolean: vi.fn(),
-      set_uint: vi.fn(),
-      set_string: vi.fn(),
-    };
-
-    // Mock config manager
-    mockConfigMgr = {
-      windowProps: {
-        overrides: [],
-      },
-    };
-
-    // Mock extension
-    mockExtension = {
-      metadata: { version: "1.0.0" },
-      settings: mockSettings,
-      configMgr: mockConfigMgr,
-      keybindings: null,
-      theme: {
-        loadStylesheet: vi.fn(),
-      },
-    };
-
-    // Create WindowManager
-    windowManager = new WindowManager(mockExtension);
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("_forgeSetAbove tracking", () => {
@@ -97,13 +37,9 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       // Initially, _forgeSetAbove should be undefined or false
@@ -126,13 +62,9 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Float the window (sets _forgeSetAbove)
       nodeWindow.float = true;
@@ -157,13 +89,9 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Simulate user setting always-on-top manually BEFORE floating
       nautilus.make_above();
@@ -193,18 +121,14 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       // Toggle float on
       const action = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
-      windowManager.toggleFloatingMode(action, nautilus);
+      ctx.windowManager.toggleFloatingMode(action, nautilus);
 
       // Window should be floating and above
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
@@ -221,17 +145,13 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
 
       // Float the window first
       const floatAction = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
-      windowManager.toggleFloatingMode(floatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(floatAction, nautilus);
 
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
       expect(nautilus.is_above()).toBe(true);
@@ -239,7 +159,7 @@ describe("Bug #319: Float always-on-top handling", () => {
 
       // Toggle float off
       const unfloatAction = { name: "FloatToggle", mode: WINDOW_MODES.TILE };
-      windowManager.toggleFloatingMode(unfloatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(unfloatAction, nautilus);
 
       // Bug #319: Window should be tiled and NOT above
       expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
@@ -256,29 +176,25 @@ describe("Bug #319: Float always-on-top handling", () => {
       });
 
       // Add window to tree
-      const workspace = windowManager.tree.nodeWorkpaces[0];
+      const workspace = ctx.tree.nodeWorkpaces[0];
       const monitor = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
-      const nodeWindow = windowManager.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        nautilus
-      );
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, nautilus);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       const floatAction = { name: "FloatToggle", mode: WINDOW_MODES.FLOAT };
       const unfloatAction = { name: "FloatToggle", mode: WINDOW_MODES.TILE };
 
       // Toggle multiple times
-      windowManager.toggleFloatingMode(floatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(floatAction, nautilus);
       expect(nautilus.is_above()).toBe(true);
 
-      windowManager.toggleFloatingMode(unfloatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(unfloatAction, nautilus);
       expect(nautilus.is_above()).toBe(false);
 
-      windowManager.toggleFloatingMode(floatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(floatAction, nautilus);
       expect(nautilus.is_above()).toBe(true);
 
-      windowManager.toggleFloatingMode(unfloatAction, nautilus);
+      ctx.windowManager.toggleFloatingMode(unfloatAction, nautilus);
       // Bug #319: Should NOT be stuck in always-on-top
       expect(nautilus.is_above()).toBe(false);
       expect(nodeWindow._forgeSetAbove).toBe(false);

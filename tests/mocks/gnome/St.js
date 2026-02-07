@@ -1,11 +1,12 @@
 // Mock St (Shell Toolkit) namespace
+import { withSignals } from "../helpers/signalMixin.js";
 
-export class Widget {
+export class Widget extends withSignals() {
   constructor(params = {}) {
+    super();
     this.name = params.name || "";
     this.style_class = params.style_class || "";
     this.visible = params.visible !== false;
-    this._signals = {};
   }
 
   get_style_class_name() {
@@ -46,19 +47,6 @@ export class Widget {
   set_position(x, y) {
     this.x = x;
     this.y = y;
-  }
-
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
   }
 }
 

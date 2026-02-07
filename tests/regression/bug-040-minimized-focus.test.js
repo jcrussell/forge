@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
-import { createMockWindow } from "../mocks/helpers/mockWindow.js";
+import { createMockWindow, createTreeFixture } from "../mocks/helpers/index.js";
 import { MotionDirection } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
 
@@ -17,73 +17,24 @@ import { Bin } from "../mocks/gnome/St.js";
  * Fix: Added !w.nodeValue.minimized filter in focus() at lines 795-797 and 823-826.
  */
 describe("Bug #40: Minimized windows in focus navigation", () => {
-  let tree;
-  let mockExtWm;
-  let mockWorkspaceManager;
+  let ctx;
   let monitorNode;
 
   beforeEach(() => {
-    // Mock global
-    global.display = {
-      get_workspace_manager: vi.fn(),
-      get_n_monitors: vi.fn(() => 1),
-      get_focus_window: vi.fn(() => null),
-      get_current_monitor: vi.fn(() => 0),
-      get_current_time: vi.fn(() => 12345),
-      get_monitor_geometry: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      get_monitor_neighbor_index: vi.fn(() => -1),
-    };
-
-    global.window_group = {
-      contains: vi.fn(() => false),
-      add_child: vi.fn(),
-      remove_child: vi.fn(),
-    };
-
-    global.get_current_time = vi.fn(() => 12345);
-
-    // Mock workspace manager
-    mockWorkspaceManager = {
-      get_n_workspaces: vi.fn(() => 1),
-      get_workspace_by_index: vi.fn((i) => ({
-        index: () => i,
-      })),
-    };
-
-    global.display.get_workspace_manager.mockReturnValue(mockWorkspaceManager);
-
-    // Mock WindowManager
-    mockExtWm = {
-      ext: {
-        settings: {
-          get_boolean: vi.fn((key) => {
-            if (key === "move-pointer-focus-enabled") return false;
-            return false;
-          }),
-          get_uint: vi.fn(() => 0),
-        },
-      },
-      determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
-      bindWorkspaceSignals: vi.fn(),
-      movePointerWith: vi.fn(),
-      move: vi.fn(),
-      currentMonWsNode: null,
-      rectForMonitor: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
-      floatingWindow: vi.fn(() => false),
-      getPointer: vi.fn(() => [960, 540]),
-    };
-
-    // Create tree
-    tree = new Tree(mockExtWm);
+    ctx = createTreeFixture({ fullExtWm: true });
 
     // Setup tree structure - get workspace and monitor from tree
-    const workspace = tree.nodeWorkpaces[0];
+    const workspace = ctx.tree.nodeWorkpaces[0];
     monitorNode = workspace.getNodeByType(NODE_TYPES.MONITOR)[0];
     monitorNode.layout = LAYOUT_TYPES.HSPLIT;
     monitorNode.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
     // Make current monitor node available
-    mockExtWm.currentMonWsNode = monitorNode;
+    ctx.extWm.currentMonWsNode = monitorNode;
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
   });
 
   describe("Focus should skip minimized windows in containers", () => {
@@ -95,15 +46,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowB.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus right from A should skip B (minimized) and go to C
-      const result = tree.focus(nodeA, MotionDirection.RIGHT);
+      const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
       expect(result).toBe(nodeC);
     });
@@ -116,15 +67,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowB.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus left from C should skip B (minimized) and go to A
-      const result = tree.focus(nodeC, MotionDirection.LEFT);
+      const result = ctx.tree.focus(nodeC, MotionDirection.LEFT);
 
       expect(result).toBe(nodeA);
     });
@@ -139,7 +90,7 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowB.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
 
       // Create container with B (minimized) and C
@@ -155,7 +106,7 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
       container.appendChild(nodeC);
 
       // Focus right from A should go into container and select C (not B which is minimized)
-      const result = tree.focus(nodeA, MotionDirection.RIGHT);
+      const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
       expect(result).toBe(nodeC);
     });
@@ -180,11 +131,11 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
       container.appendChild(nodeA);
       container.appendChild(nodeB);
 
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus left from C should go into container and select A (B is minimized)
-      const result = tree.focus(nodeC, MotionDirection.LEFT);
+      const result = ctx.tree.focus(nodeC, MotionDirection.LEFT);
 
       expect(result).toBe(nodeA);
     });
@@ -200,7 +151,7 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
       windowB.minimized = true;
       windowC.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
       nodeA.mode = WINDOW_MODES.TILE;
 
       // Create container with all minimized windows
@@ -216,7 +167,7 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
       container.appendChild(nodeC);
 
       // Focus right from A into container with all minimized windows
-      const result = tree.focus(nodeA, MotionDirection.RIGHT);
+      const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
       // Should return null or undefined since there are no visible windows to focus
       expect(result == null).toBe(true);
@@ -236,15 +187,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowB.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus down from A should skip B (minimized) and go to C
-      const result = tree.focus(nodeA, MotionDirection.DOWN);
+      const result = ctx.tree.focus(nodeA, MotionDirection.DOWN);
 
       expect(result).toBe(nodeC);
     });
@@ -261,15 +212,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowB.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus up from C should skip B (minimized) and go to A
-      const result = tree.focus(nodeC, MotionDirection.UP);
+      const result = ctx.tree.focus(nodeC, MotionDirection.UP);
 
       expect(result).toBe(nodeA);
     });
@@ -282,15 +233,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
       const windowB = createMockWindow({ id: "B" });
       const windowC = createMockWindow({ id: "C" });
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus right from A should go to B (not minimized)
-      const result = tree.focus(nodeA, MotionDirection.RIGHT);
+      const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
       expect(result).toBe(nodeB);
     });
@@ -303,15 +254,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowA.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus left from C should go to B (A is minimized)
-      const result = tree.focus(nodeC, MotionDirection.LEFT);
+      const result = ctx.tree.focus(nodeC, MotionDirection.LEFT);
 
       expect(result).toBe(nodeB);
     });
@@ -324,15 +275,15 @@ describe("Bug #40: Minimized windows in focus navigation", () => {
 
       windowC.minimized = true;
 
-      const nodeA = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
-      const nodeB = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
-      const nodeC = tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
+      const nodeA = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowA);
+      const nodeB = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowB);
+      const nodeC = ctx.tree.createNode(monitorNode.nodeValue, NODE_TYPES.WINDOW, windowC);
       nodeA.mode = WINDOW_MODES.TILE;
       nodeB.mode = WINDOW_MODES.TILE;
       nodeC.mode = WINDOW_MODES.TILE;
 
       // Focus right from A should go to B (C is minimized, but we hit B first)
-      const result = tree.focus(nodeA, MotionDirection.RIGHT);
+      const result = ctx.tree.focus(nodeA, MotionDirection.RIGHT);
 
       expect(result).toBe(nodeB);
     });
