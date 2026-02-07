@@ -5,6 +5,7 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  setPointer,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 
@@ -54,7 +55,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to left edge region (0-30% of width)
-      global.get_pointer = vi.fn(() => [100, 540]); // Left region
+      setPointer(100, 540); // Left region
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -91,7 +92,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow3.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to left edge of window1
-      global.get_pointer = vi.fn(() => [100, 270]);
+      setPointer(100, 270);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -123,7 +124,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to right edge region (70-100% of width)
-      global.get_pointer = vi.fn(() => [1800, 540]);
+      setPointer(1800, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -150,7 +151,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
-      global.get_pointer = vi.fn(() => [1800, 540]);
+      setPointer(1800, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -185,7 +186,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to top edge region (0-30% of height)
-      global.get_pointer = vi.fn(() => [960, 100]);
+      setPointer(960, 100);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -222,7 +223,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow3.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to top edge of window1
-      global.get_pointer = vi.fn(() => [480, 100]);
+      setPointer(480, 100);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -253,7 +254,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to bottom edge region (70-100% of height)
-      global.get_pointer = vi.fn(() => [960, 1000]);
+      setPointer(960, 1000);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -280,7 +281,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
-      global.get_pointer = vi.fn(() => [960, 1000]);
+      setPointer(960, 1000);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -320,7 +321,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to center region (30-70% of both dimensions)
-      global.get_pointer = vi.fn(() => [480, 540]);
+      setPointer(480, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -356,7 +357,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
-      global.get_pointer = vi.fn(() => [960, 540]);
+      setPointer(960, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -391,7 +392,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
-      global.get_pointer = vi.fn(() => [960, 540]);
+      setPointer(960, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -432,7 +433,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
         hide: vi.fn(),
       };
 
-      global.get_pointer = vi.fn(() => [100, 540]);
+      setPointer(100, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -477,7 +478,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       };
       nodeWindow2.previewHint = previewHint;
 
-      global.get_pointer = vi.fn(() => [100, 540]);
+      setPointer(100, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -516,7 +517,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow3.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point to left edge
-      global.get_pointer = vi.fn(() => [100, 540]);
+      setPointer(100, 540);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -557,7 +558,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       // Set detachWindow flag
       nodeWindow3.detachWindow = true;
 
-      global.get_pointer = vi.fn(() => [100, 540]);
+      setPointer(100, 540);
       wm().nodeWinAtPointer = nodeWindow1;
 
       wm().moveWindowToPointer(nodeWindow3, false);
@@ -580,7 +581,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
       nodeWindow1.mode = WINDOW_MODES.GRAB_TILE;
 
-      global.get_pointer = vi.fn(() => [960, 540]);
+      setPointer(960, 540);
 
       // Window pointing to itself
       wm().nodeWinAtPointer = nodeWindow1;
@@ -616,7 +617,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point at 29% of width (within left region)
-      global.get_pointer = vi.fn(() => [290, 500]);
+      setPointer(290, 500);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -644,7 +645,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point at 71% of width (within right region)
-      global.get_pointer = vi.fn(() => [710, 500]);
+      setPointer(710, 500);
 
       wm().nodeWinAtPointer = nodeWindow1;
 
@@ -678,7 +679,7 @@ describe("WindowManager - Drag and Drop Tiling", () => {
       nodeWindow2.mode = WINDOW_MODES.GRAB_TILE;
 
       // Point at 50% of both dimensions (center region)
-      global.get_pointer = vi.fn(() => [500, 500]);
+      setPointer(500, 500);
 
       wm().nodeWinAtPointer = nodeWindow1;
 

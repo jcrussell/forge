@@ -6,6 +6,7 @@
  * window node creation.
  */
 
+import { vi } from "vitest";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { Bin } from "../gnome/St.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
@@ -225,51 +226,6 @@ export function createTiledWindow(ctx, windowOverrides = {}, wsIndex = 0, monInd
 }
 
 /**
- * Find a window node by its metaWindow reference
- *
- * @param {Object} tree - Tree instance
- * @param {Object} metaWindow - Meta.Window to find
- * @returns {Object|null} Window node or null
- */
-export function findWindowNode(tree, metaWindow) {
-  const windows = tree.getNodeByType(NODE_TYPES.WINDOW);
-  return windows.find((n) => n.nodeValue === metaWindow) || null;
-}
-
-/**
- * Get all window nodes from a tree
- *
- * @param {Object} source - WindowManager, Tree, or fixture context
- * @returns {Array} Array of window nodes
- */
-export function getAllWindowNodes(source) {
-  const tree = source.tree || source;
-  return tree.getNodeByType(NODE_TYPES.WINDOW);
-}
-
-/**
- * Get all container nodes from a tree
- *
- * @param {Object} source - WindowManager, Tree, or fixture context
- * @returns {Array} Array of container nodes
- */
-export function getAllContainerNodes(source) {
-  const tree = source.tree || source;
-  return tree.getNodeByType(NODE_TYPES.CON);
-}
-
-/**
- * Set up a window as the focused window in the display mock
- *
- * @param {Object} metaWindow - Meta.Window to focus
- */
-export function setFocusedWindow(metaWindow) {
-  if (global.display && global.display.get_focus_window) {
-    global.display.get_focus_window.mockReturnValue(metaWindow);
-  }
-}
-
-/**
  * Create a container node with optional layout and rect
  *
  * @param {Object} parent - Parent node to append to
@@ -289,6 +245,23 @@ export function createContainerNode(parent, layout, rect = null) {
   return container;
 }
 
+/**
+ * Set the global pointer position for tests
+ *
+ * Replaces the common inline pattern:
+ *   global.get_pointer = vi.fn(() => [x, y]);
+ *
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ *
+ * @example
+ * setPointer(960, 540); // Center of 1920x1080 screen
+ * setPointer(100, 540); // Left edge
+ */
+export function setPointer(x, y) {
+  global.get_pointer = vi.fn(() => [x, y]);
+}
+
 export default {
   getWorkspaceAndMonitor,
   getMonitors,
@@ -298,9 +271,6 @@ export default {
   createVerticalLayout,
   createStackedLayout,
   createTabbedLayout,
-  findWindowNode,
-  getAllWindowNodes,
-  getAllContainerNodes,
-  setFocusedWindow,
   createContainerNode,
+  setPointer,
 };

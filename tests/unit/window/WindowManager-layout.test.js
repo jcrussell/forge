@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  setPointer,
 } from "../../mocks/helpers/index.js";
 import { Rectangle, WindowType } from "../../mocks/gnome/Meta.js";
 
@@ -45,7 +46,7 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
     ctx.display.sort_windows_by_stacking = vi.fn((windows) => windows);
     ctx.display.focus_window = null;
 
-    global.get_pointer = vi.fn(() => [960, 540]);
+    setPointer(960, 540);
     global.get_window_actors = vi.fn(() => []);
 
     global.Main = {

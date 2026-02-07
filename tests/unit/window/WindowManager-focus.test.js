@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  setPointer,
 } from "../../mocks/helpers/index.js";
 import { Workspace, WindowType, Rectangle } from "../../mocks/gnome/Meta.js";
 import * as Utils from "../../../lib/extension/utils.js";
@@ -35,7 +36,7 @@ describe("WindowManager - Pointer & Focus Management", () => {
     ctx.overview.visible = false;
 
     // Mock global.get_pointer
-    global.get_pointer = vi.fn(() => [960, 540]);
+    setPointer(960, 540);
   });
 
   const wm = () => ctx.windowManager;

@@ -6,6 +6,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createContainerNode,
+  setPointer,
 } from "../../mocks/helpers/index.js";
 import { Rectangle } from "../../mocks/gnome/Meta.js";
 
@@ -53,13 +54,6 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
   // createContainer uses imported createContainerNode helper
   const createContainer = createContainerNode;
-
-  /**
-   * Helper to set pointer position
-   */
-  function setPointer(x, y) {
-    global.get_pointer = vi.fn(() => [x, y]);
-  }
 
   /**
    * Helper to get monitor node
