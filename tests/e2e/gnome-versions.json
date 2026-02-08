@@ -1,0 +1,9 @@
+{
+  "fedora_to_gnome": {
+    "39": 45,
+    "40": 46,
+    "41": 47
+  },
+  "supported_fedora": [39, 40, 41],
+  "default_fedora": 41
+}

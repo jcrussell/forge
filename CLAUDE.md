@@ -113,6 +113,39 @@ Test structure:
 - `tests/unit/` - Unit tests organized by module
 - `tests/regression/` - Bug regression tests
 
+### E2E Testing (Real GNOME Shell)
+
+E2E tests run against real GNOME Shell in Docker containers using gnome-shell-pod images. Tests use D-Bus `Shell.Eval` to query window state and xdotool for input simulation.
+
+Supported GNOME versions are defined in `tests/e2e/gnome-versions.json`.
+
+```bash
+# Run E2E tests (default GNOME 47)
+make e2e-test
+
+# Run for specific GNOME version
+make e2e-test GNOME_VERSION=45
+make e2e-test GNOME_VERSION=46
+
+# Run for all supported versions
+make e2e-test-all
+
+# List supported versions
+make e2e-versions
+
+# Interactive debugging in container
+make e2e-debug
+
+# Clean E2E artifacts
+make e2e-clean
+```
+
+E2E test structure:
+- `tests/e2e/framework/` - Testing utilities (ShellProxy, InputSimulator, WindowHelper)
+- `tests/e2e/tests/` - Test scenarios (basic tiling, focus, swap, layout, float)
+- `docker/Dockerfile.e2e` - Container definition
+- `docker/scripts/` - Test runner scripts
+
 ## Key Concepts
 
 - **Tiling tree**: Windows are organized in a tree structure similar to i3/sway. Containers can split horizontally or vertically, or display children in stacked/tabbed mode.

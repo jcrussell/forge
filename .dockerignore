@@ -6,9 +6,12 @@ yarn-error.log*
 
 # Testing
 coverage/
+e2e-results/
+__pycache__/
+.pytest_cache/
+*.pyc
 
-# Build outputs
-temp/
+# Build outputs (keep temp/ for E2E - it contains the built extension)
 dist/
 *.zip
 

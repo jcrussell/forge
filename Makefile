@@ -10,7 +10,8 @@ SHELL := /bin/bash
 HAS_XGETTEXT := $(shell command -v xgettext &>/dev/null && echo yes || echo no)
 HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
-.PHONY: all clean install schemas uninstall enable disable log debug patchcss check-deps
+.PHONY: all clean install schemas uninstall enable disable log debug patchcss check-deps \
+	e2e-test e2e-test-all e2e-debug e2e-clean e2e-build e2e-versions
 
 all: build install enable restart
 
@@ -215,3 +216,116 @@ unit-test-docker-watch: docker-test-build
 
 unit-test-docker-coverage: docker-test-build
 	docker run --rm -v $(PWD)/coverage:/app/coverage forge-test npm run test:coverage
+
+# E2E Testing (real GNOME Shell in containers)
+# gnome-shell-pod uses Fedora version numbers internally
+# Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47
+SUPPORTED_FEDORA_VERSIONS := 39 40 41
+
+# Map GNOME versions to Fedora versions for user convenience
+# Usage: make e2e-test GNOME_VERSION=47  or  make e2e-test FEDORA_VERSION=41
+ifdef GNOME_VERSION
+  ifeq ($(GNOME_VERSION),45)
+    FEDORA_VERSION := 39
+  else ifeq ($(GNOME_VERSION),46)
+    FEDORA_VERSION := 40
+  else ifeq ($(GNOME_VERSION),47)
+    FEDORA_VERSION := 41
+  else
+    $(error Unknown GNOME_VERSION=$(GNOME_VERSION). Supported: 45, 46, 47)
+  endif
+endif
+
+# Default Fedora version for E2E tests (Fedora 41 = GNOME 47)
+FEDORA_VERSION ?= 41
+E2E_IMAGE = forge-e2e-fedora$(FEDORA_VERSION)
+E2E_RESULTS_DIR = e2e-results
+DISPLAY_NUM ?= 99
+
+# Docker capabilities for gnome-shell-pod containers
+# --privileged is required for systemd to mount its filesystems
+# --cgroupns=host and cgroup mount are needed for systemd cgroup support
+# Container MUST run with systemd as PID 1 (detached mode)
+E2E_DOCKER_OPTS = --privileged \
+	--cgroupns=host \
+	-v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+	-e container=docker
+
+# Build E2E test container (builds extension first, then Docker image)
+e2e-build: build
+	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) --build-arg FEDORA_VERSION=$(FEDORA_VERSION) .
+
+# Run E2E tests for a specific GNOME/Fedora version
+# Usage: make e2e-test GNOME_VERSION=47  (or FEDORA_VERSION=41)
+#
+# This target runs the container in DETACHED mode with systemd as PID 1,
+# then uses docker exec to run tests. This is required because:
+# 1. GNOME Shell 45+ needs systemd-localed (org.freedesktop.locale1 D-Bus service)
+# 2. gnome-shell-pod containers expect systemd to manage services
+e2e-test: e2e-build
+	@mkdir -p $(E2E_RESULTS_DIR)
+	@echo "Starting E2E container in detached mode..."
+	@POD=$$(docker run --rm -td $(E2E_DOCKER_OPTS) \
+		-v $(PWD)/$(E2E_RESULTS_DIR):/app/e2e-results \
+		$(E2E_IMAGE)) && \
+	trap "echo 'Stopping container...'; docker stop $$POD 2>/dev/null || true" EXIT && \
+	echo "Container: $$POD" && \
+	echo "Waiting for container to initialize..." && \
+	sleep 3 && \
+	echo "Starting GNOME Shell session..." && \
+	docker exec $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	echo "Running E2E tests..." && \
+	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $$POD set-env.sh /app/scripts/run-tests.sh
+
+# Run E2E tests for all supported versions
+e2e-test-all:
+	@for version in $(SUPPORTED_FEDORA_VERSIONS); do \
+		echo "========================================"; \
+		echo "Running E2E tests for Fedora $$version..."; \
+		echo "========================================"; \
+		$(MAKE) e2e-test FEDORA_VERSION=$$version || echo "Fedora $$version tests failed"; \
+	done
+
+# Interactive debugging in E2E container
+# Starts container with GNOME Shell, then drops into bash
+e2e-debug: e2e-build
+	@mkdir -p $(E2E_RESULTS_DIR)
+	@echo "Starting E2E container for debugging..."
+	@POD=$$(docker run --rm -td $(E2E_DOCKER_OPTS) \
+		-v $(PWD)/tests/e2e:/app/tests/e2e \
+		-v $(PWD)/$(E2E_RESULTS_DIR):/app/e2e-results \
+		$(E2E_IMAGE)) && \
+	trap "echo 'Stopping container...'; docker stop $$POD 2>/dev/null || true" EXIT && \
+	echo "Container: $$POD" && \
+	echo "Waiting for container to initialize..." && \
+	sleep 3 && \
+	echo "Starting GNOME Shell session..." && \
+	docker exec $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	echo "" && \
+	echo "========================================" && \
+	echo "Debug shell ready. GNOME Shell is running." && \
+	echo "Run tests with: python3 -m pytest tests/ -v" && \
+	echo "========================================" && \
+	docker exec -it --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) \
+		-w /app/tests/e2e $$POD set-env.sh /bin/bash
+
+# Clean E2E artifacts
+e2e-clean:
+	rm -rf $(E2E_RESULTS_DIR)
+	@for version in $(SUPPORTED_FEDORA_VERSIONS); do \
+		docker rmi forge-e2e-fedora$$version 2>/dev/null || true; \
+	done
+
+# List supported versions
+e2e-versions:
+	@echo "Supported GNOME versions:"
+	@echo "  GNOME 45 (Fedora 39)"
+	@echo "  GNOME 46 (Fedora 40)"
+	@echo "  GNOME 47 (Fedora 41) - default"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make e2e-test                    # Run with default (GNOME 47)"
+	@echo "  make e2e-test GNOME_VERSION=45   # Run with GNOME 45"
+	@echo "  make e2e-test FEDORA_VERSION=40  # Run with Fedora 40 (GNOME 46)"
+	@echo "  make e2e-test-all                # Run for all versions"
+	@echo "  make e2e-debug                   # Interactive debugging"

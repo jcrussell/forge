@@ -1,0 +1,76 @@
+# Forge E2E Testing Container
+# Based on gnome-shell-pod for real GNOME Shell testing
+#
+# FEDORA_VERSION maps to GNOME version:
+#   39 -> GNOME 45, 40 -> GNOME 46, 41 -> GNOME 47
+#
+# Build extension first on host: make build
+# Then build container: docker build -f docker/Dockerfile.e2e -t forge-e2e .
+#
+# IMPORTANT: This container must be run with systemd as PID 1:
+#   - Run in detached mode: docker run -td ...
+#   - Use docker exec to run tests: docker exec $POD set-env.sh /app/scripts/run-tests.sh
+#   - The Makefile handles this automatically with: make e2e-test
+
+ARG FEDORA_VERSION=41
+FROM ghcr.io/schneegans/gnome-shell-pod-${FEDORA_VERSION}
+
+LABEL maintainer="Forge <forge@jmmaranan.com>"
+LABEL description="E2E testing environment for Forge GNOME Shell extension"
+
+# Install minimal dependencies - most are already in the base image
+# ibus is needed for keyboard input services that GNOME Shell expects
+# Clean cache in same layer to save space
+RUN dnf install -y --setopt=install_weak_deps=False \
+    python3-pip \
+    ImageMagick \
+    gnome-text-editor \
+    ibus \
+    xdotool \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Install Python testing packages
+RUN pip3 install --no-cache-dir pytest PyGObject Pillow dbus-python
+
+# Set up extension directory
+ARG UUID=forge@jmmaranan.com
+ENV EXTENSION_PATH=/home/gnomeshell/.local/share/gnome-shell/extensions/${UUID}
+
+# Copy pre-built extension (build on host first with: make build)
+COPY --chown=gnomeshell:gnomeshell temp/ ${EXTENSION_PATH}/
+
+# Copy test framework and scripts
+WORKDIR /app
+COPY --chown=gnomeshell:gnomeshell tests/e2e/ /app/tests/e2e/
+COPY --chown=gnomeshell:gnomeshell docker/scripts/ /app/scripts/
+
+RUN chmod +x /app/scripts/*.sh
+
+# Set up test results directory
+RUN mkdir -p /app/e2e-results && chown -R gnomeshell:gnomeshell /app
+
+# Enable the Forge extension for the gnomeshell user via dconf
+# This must be done before GNOME Shell starts so it loads the extension on startup
+RUN mkdir -p /home/gnomeshell/.config/dconf && \
+    chown -R gnomeshell:gnomeshell /home/gnomeshell/.config
+
+# Pre-enable the extension by writing to dconf database directly
+# Create a keyfile and compile it to binary format
+RUN mkdir -p /tmp/dconf-db && \
+    echo -e "[org/gnome/shell]\nenabled-extensions=['forge@jmmaranan.com']" > /tmp/dconf-db/00-forge && \
+    dconf compile /home/gnomeshell/.config/dconf/user /tmp/dconf-db && \
+    chown gnomeshell:gnomeshell /home/gnomeshell/.config/dconf/user && \
+    rm -rf /tmp/dconf-db
+
+# Enable lingering for gnomeshell user so user services can run without login
+RUN mkdir -p /var/lib/systemd/linger && \
+    touch /var/lib/systemd/linger/gnomeshell
+
+# Copy the start-user-session.sh script (included with docker/scripts/)
+# and make it available in the standard path
+RUN cp /app/scripts/start-user-session.sh /usr/local/bin/start-user-session.sh && \
+    chmod +x /usr/local/bin/start-user-session.sh
+
+# NOTE: Don't override CMD - container uses systemd by default which is required
+# for GNOME Shell to function properly. Use docker exec to run tests.

@@ -9,3 +9,11 @@ po/forge.pot
 .vscode
 node_modules
 lib/prefs/metadata.js
+
+# E2E testing
+e2e-results/
+__pycache__/
+.pytest_cache/
+*.pyc
+.coverage
+htmlcov/

@@ -1,0 +1,45 @@
+# Docker Compose for Forge E2E Testing
+# Uses Fedora version (maps to GNOME: F39=G45, F40=G46, F41=G47)
+#
+# NOTE: This container requires systemd as PID 1.
+# For interactive use, prefer: make e2e-debug
+#
+# Usage:
+#   # Build and start container in detached mode
+#   FEDORA_VERSION=41 docker-compose -f docker/docker-compose.e2e.yml up -d
+#
+#   # Run tests using docker exec
+#   docker exec forge-e2e set-env.sh wait-user-bus.sh
+#   docker exec forge-e2e set-env.sh systemctl --user start gnome-xsession@:99
+#   docker exec forge-e2e set-env.sh /app/scripts/run-tests.sh
+#
+#   # Stop container
+#   docker-compose -f docker/docker-compose.e2e.yml down
+
+services:
+  e2e:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.e2e
+      args:
+        FEDORA_VERSION: ${FEDORA_VERSION:-41}
+    image: forge-e2e-fedora${FEDORA_VERSION:-41}
+    container_name: forge-e2e
+    volumes:
+      - ../tests/e2e:/app/tests/e2e:ro
+      - ../e2e-results:/app/e2e-results
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    environment:
+      - DISPLAY=:99
+      - container=docker
+      - FEDORA_VERSION=${FEDORA_VERSION:-41}
+    # Systemd requires privileged mode and proper cgroup namespace
+    privileged: true
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+      - SYS_ADMIN
+    # Use host cgroup namespace for systemd support
+    cgroup: host
+    # Don't override the command - container uses systemd by default
+    # Use docker exec to run commands after container starts

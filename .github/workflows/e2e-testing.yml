@@ -1,0 +1,191 @@
+# E2E Testing Workflow for Forge
+# Runs end-to-end tests against real GNOME Shell in containers
+#
+# Uses Fedora version numbers (gnome-shell-pod naming convention):
+#   Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47
+
+name: e2e-testing
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - .git*
+      - .husky/**
+      - "*.md"
+  pull_request:
+    branches: ["main"]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths-ignore:
+      - .git*
+      - .husky/**
+      - "*.md"
+  workflow_dispatch:
+    inputs:
+      fedora_version:
+        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Read versions config
+        id: set-matrix
+        run: |
+          if [ -n "${{ github.event.inputs.fedora_version }}" ]; then
+            echo "matrix={\"fedora_version\":[${{ github.event.inputs.fedora_version }}]}" >> $GITHUB_OUTPUT
+          else
+            VERSIONS=$(cat tests/e2e/gnome-versions.json | jq -c '.supported_fedora')
+            echo "matrix={\"fedora_version\":$VERSIONS}" >> $GITHUB_OUTPUT
+          fi
+
+  e2e-tests:
+    needs: setup
+    if: github.event.pull_request.draft == false
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/schneegans/gnome-shell-pod-${{ matrix.fedora_version }}
+      # Systemd requires privileged mode and proper cgroup support
+      options: --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          dnf install -y \
+            python3 \
+            python3-pip \
+            python3-gobject \
+            python3-dbus \
+            xdotool \
+            ImageMagick \
+            gnome-text-editor \
+            make \
+            zip \
+            gettext
+
+      - name: Install Python test dependencies
+        run: |
+          pip3 install --no-cache-dir -r tests/e2e/requirements.txt
+
+      - name: Build and install extension
+        run: |
+          make build
+          mkdir -p ~/.local/share/gnome-shell/extensions/forge@jmmaranan.com
+          cp -r temp/* ~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/
+
+      - name: Enable extension
+        run: |
+          mkdir -p ~/.config/dconf
+          cat > /tmp/forge-enable.conf << 'EOF'
+          [org/gnome/shell]
+          enabled-extensions=['forge@jmmaranan.com']
+          EOF
+          dconf load / < /tmp/forge-enable.conf || true
+
+      - name: Run E2E tests
+        id: e2e_tests
+        run: |
+          mkdir -p e2e-results/screenshots
+
+          # Source container environment setup (provides D-Bus session)
+          source /local/bin/set-env.sh
+
+          # Wait for D-Bus user bus
+          /local/bin/wait-user-bus.sh
+
+          # Start GNOME Shell via systemd service
+          systemctl --user start "gnome-xsession@:99"
+          export DISPLAY=:99
+
+          # Wait for GNOME Shell to be ready
+          MAX_WAIT=60
+          WAITED=0
+          while [ $WAITED -lt $MAX_WAIT ]; do
+            if gdbus call --session \
+                --dest org.gnome.Shell \
+                --object-path /org/gnome/Shell \
+                --method org.gnome.Shell.Eval "1+1" 2>/dev/null | grep -q "true"; then
+              echo "GNOME Shell ready"
+              break
+            fi
+            sleep 1
+            WAITED=$((WAITED + 1))
+          done
+
+          if [ $WAITED -ge $MAX_WAIT ]; then
+            echo "::error::GNOME Shell failed to start"
+            exit 1
+          fi
+
+          # Enable Forge extension
+          gnome-extensions enable forge@jmmaranan.com || true
+          sleep 5
+
+          cd tests/e2e
+          python3 -m pytest tests/ \
+            --verbose \
+            --junitxml=../../e2e-results/junit-fedora${{ matrix.fedora_version }}.xml \
+            || TEST_EXIT=$?
+
+          # Stop GNOME Shell
+          systemctl --user stop "gnome-xsession@:99" 2>/dev/null || true
+
+          exit ${TEST_EXIT:-0}
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results-fedora${{ matrix.fedora_version }}
+          path: e2e-results/
+          retention-days: 14
+
+      - name: Upload screenshots on failure
+        uses: actions/upload-artifact@v4
+        if: failure() || steps.e2e_tests.outcome == 'failure'
+        with:
+          name: e2e-screenshots-fedora${{ matrix.fedora_version }}
+          path: e2e-results/screenshots/
+          retention-days: 7
+
+      - name: Check test results
+        if: steps.e2e_tests.outcome == 'failure'
+        run: |
+          echo "::error::E2E tests failed for Fedora ${{ matrix.fedora_version }}"
+          exit 1
+
+  e2e-summary:
+    needs: [setup, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check E2E test results
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
+            echo "::error::Some E2E tests failed"
+            exit 1
+          elif [ "${{ needs.e2e-tests.result }}" == "cancelled" ]; then
+            echo "::warning::E2E tests were cancelled"
+            exit 0
+          else
+            echo "All E2E tests passed!"
+          fi
