@@ -346,8 +346,8 @@ class ShellProxy:
                 const windowNode = findNodeByWindow(ext.extWm.tree.root, focusWindow);
                 if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
 
-                const layoutMap = {0: 'HSPLIT', 1: 'VSPLIT', 2: 'STACKED', 3: 'TABBED'};
-                return layoutMap[windowNode.parentNode.layout] || 'UNKNOWN';
+                // Layout is a string enum value (HSPLIT, VSPLIT, STACKED, TABBED)
+                return windowNode.parentNode.layout || 'UNKNOWN';
             } catch(e) {
                 return 'ERROR';
             }
@@ -439,7 +439,7 @@ class ShellProxy:
 
                 function countWindows(node) {
                     if (!node) return 0;
-                    if (node.nodeType === 4) return 1; // WINDOW node type
+                    if (node.nodeType === 'WINDOW') return 1;
                     let count = 0;
                     for (const child of (node.childNodes || [])) {
                         count += countWindows(child);
@@ -461,3 +461,387 @@ class ShellProxy:
             return int(result)
         except (ValueError, TypeError):
             return 0
+
+    # === Tree Query Methods for Regression Test Validation ===
+
+    def get_node_for_window(self, wm_class: str) -> dict:
+        """
+        Get the Forge tree node for a window by WM_CLASS.
+
+        Args:
+            wm_class: The WM_CLASS of the window to find.
+
+        Returns:
+            Dictionary with node info including nodeType, layout, parentLayout,
+            siblingCount, and rect.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
+
+                function findNode(node, wmClass) {{
+                    if (!node) return null;
+                    if (node.nodeValue?.get_wm_class?.() === wmClass) {{
+                        return node;
+                    }}
+                    for (const child of (node.childNodes || [])) {{
+                        const found = findNode(child, wmClass);
+                        if (found) return found;
+                    }}
+                    return null;
+                }}
+
+                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+                if (!windowNode) return JSON.stringify({{error: 'Window not found in tree'}});
+
+                const parent = windowNode.parentNode;
+                return JSON.stringify({{
+                    nodeType: windowNode.nodeType,
+                    layout: windowNode.layout,
+                    parentNodeType: parent?.nodeType || null,
+                    parentLayout: parent?.layout || null,
+                    siblingCount: parent ? parent.childNodes.length : 0,
+                    rect: windowNode.rect ? {{
+                        x: windowNode.rect.x,
+                        y: windowNode.rect.y,
+                        width: windowNode.rect.width,
+                        height: windowNode.rect.height
+                    }} : null
+                }});
+            }} catch(e) {{
+                return JSON.stringify({{error: e.message}});
+            }}
+        }})();
+        """
+        return self.eval(js)
+
+    def get_parent_layout(self, wm_class: str) -> str:
+        """
+        Get the layout type of a window's parent container.
+
+        Args:
+            wm_class: The WM_CLASS of the window.
+
+        Returns:
+            Layout type string: 'HSPLIT', 'VSPLIT', 'STACKED', 'TABBED', or 'ERROR'.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return 'ERROR';
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return 'ERROR';
+
+                function findNode(node, wmClass) {{
+                    if (!node) return null;
+                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
+                    for (const child of (node.childNodes || [])) {{
+                        const found = findNode(child, wmClass);
+                        if (found) return found;
+                    }}
+                    return null;
+                }}
+
+                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+                if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
+
+                return windowNode.parentNode.layout || 'UNKNOWN';
+            }} catch(e) {{
+                return 'ERROR';
+            }}
+        }})();
+        """
+        return self.eval(js)
+
+    def get_sibling_count(self, wm_class: str) -> int:
+        """
+        Get the number of siblings (including self) in the same container.
+
+        Args:
+            wm_class: The WM_CLASS of the window.
+
+        Returns:
+            Number of siblings in the same parent container.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return '0';
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return '0';
+
+                function findNode(node, wmClass) {{
+                    if (!node) return null;
+                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
+                    for (const child of (node.childNodes || [])) {{
+                        const found = findNode(child, wmClass);
+                        if (found) return found;
+                    }}
+                    return null;
+                }}
+
+                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+                if (!windowNode || !windowNode.parentNode) return '0';
+
+                return String(windowNode.parentNode.childNodes.length);
+            }} catch(e) {{
+                return '0';
+            }}
+        }})();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
+    def get_tree_structure(self) -> dict:
+        """
+        Get a simplified tree structure for assertions.
+
+        Returns:
+            Dictionary with nested structure showing nodeType, layout,
+            and children for each node in the tree.
+        """
+        js = """
+        (function() {
+            try {
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
+
+                function serializeNode(node, depth = 0) {
+                    if (!node || depth > 10) return null;
+                    return {
+                        nodeType: node.nodeType,
+                        layout: node.layout,
+                        childCount: node.childNodes ? node.childNodes.length : 0,
+                        wmClass: node.nodeValue?.get_wm_class?.() || null,
+                        title: node.nodeValue?.title || null,
+                        children: node.childNodes ? node.childNodes.map(c => serializeNode(c, depth + 1)) : []
+                    };
+                }
+
+                return JSON.stringify(serializeNode(ext.extWm.tree.root));
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
+        """
+        return self.eval(js)
+
+    def get_focused_node_path(self) -> list:
+        """
+        Get the path from root to the focused window node.
+
+        Returns:
+            List of node types/layouts from root to focused window.
+        """
+        js = """
+        (function() {
+            try {
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
+
+                const focusWindow = global.display.get_focus_window();
+                if (!focusWindow) return JSON.stringify({error: 'No focused window'});
+
+                function findNodePath(node, metaWindow, path = []) {
+                    if (!node) return null;
+                    const currentPath = [...path, {nodeType: node.nodeType, layout: node.layout}];
+                    if (node.nodeValue === metaWindow) return currentPath;
+                    for (const child of (node.childNodes || [])) {
+                        const found = findNodePath(child, metaWindow, currentPath);
+                        if (found) return found;
+                    }
+                    return null;
+                }
+
+                const nodePath = findNodePath(ext.extWm.tree.root, focusWindow);
+                return JSON.stringify(nodePath || []);
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
+        """
+        return self.eval(js)
+
+    def get_window_siblings(self, wm_class: str) -> list:
+        """
+        Get information about all siblings in the same container as a window.
+
+        Args:
+            wm_class: The WM_CLASS of the window.
+
+        Returns:
+            List of sibling info with nodeType, wmClass, and rect.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
+
+                function findNode(node, wmClass) {{
+                    if (!node) return null;
+                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
+                    for (const child of (node.childNodes || [])) {{
+                        const found = findNode(child, wmClass);
+                        if (found) return found;
+                    }}
+                    return null;
+                }}
+
+                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+                if (!windowNode || !windowNode.parentNode) return JSON.stringify([]);
+
+                const siblings = windowNode.parentNode.childNodes.map(sibling => ({{
+                    nodeType: sibling.nodeType,
+                    wmClass: sibling.nodeValue?.get_wm_class?.() || null,
+                    rect: sibling.rect ? {{
+                        x: sibling.rect.x,
+                        y: sibling.rect.y,
+                        width: sibling.rect.width,
+                        height: sibling.rect.height
+                    }} : null,
+                    childCount: sibling.childNodes ? sibling.childNodes.length : 0
+                }}));
+
+                return JSON.stringify(siblings);
+            }} catch(e) {{
+                return JSON.stringify({{error: e.message}});
+            }}
+        }})();
+        """
+        return self.eval(js)
+
+    def verify_tree_integrity(self) -> dict:
+        """
+        Verify the tree structure is valid (no orphans, proper parent refs).
+
+        Returns:
+            Dictionary with 'valid' bool and any 'errors' list.
+        """
+        js = """
+        (function() {
+            try {
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({valid: false, errors: ['Forge not loaded']});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({valid: false, errors: ['Tree not available']});
+
+                const errors = [];
+
+                function checkNode(node, expectedParent, depth = 0) {
+                    if (!node) return;
+                    if (depth > 20) {
+                        errors.push('Tree depth exceeds 20 - possible cycle');
+                        return;
+                    }
+
+                    // Check parent reference
+                    if (node.parentNode !== expectedParent) {
+                        errors.push(`Node has incorrect parent reference at depth ${depth}`);
+                    }
+
+                    // Check children
+                    for (const child of (node.childNodes || [])) {
+                        checkNode(child, node, depth + 1);
+                    }
+                }
+
+                checkNode(ext.extWm.tree.root, null);
+
+                return JSON.stringify({
+                    valid: errors.length === 0,
+                    errors: errors
+                });
+            } catch(e) {
+                return JSON.stringify({valid: false, errors: [e.message]});
+            }
+        })();
+        """
+        return self.eval(js)
+
+    def get_container_children_count(self, wm_class: str) -> dict:
+        """
+        Get child count info for the container holding a window.
+
+        Useful for verifying nested container structures.
+
+        Args:
+            wm_class: The WM_CLASS of a window in the container.
+
+        Returns:
+            Dictionary with directChildren and totalDescendants counts.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const Main = imports.ui.main;
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
+
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
+
+                function findNode(node, wmClass) {{
+                    if (!node) return null;
+                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
+                    for (const child of (node.childNodes || [])) {{
+                        const found = findNode(child, wmClass);
+                        if (found) return found;
+                    }}
+                    return null;
+                }}
+
+                function countDescendants(node) {{
+                    if (!node) return 0;
+                    let count = 0;
+                    for (const child of (node.childNodes || [])) {{
+                        count += 1 + countDescendants(child);
+                    }}
+                    return count;
+                }}
+
+                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+                if (!windowNode || !windowNode.parentNode) return JSON.stringify({{error: 'Window or parent not found'}});
+
+                const parent = windowNode.parentNode;
+                return JSON.stringify({{
+                    directChildren: parent.childNodes.length,
+                    totalDescendants: countDescendants(parent),
+                    parentLayout: parent.layout,
+                    parentNodeType: parent.nodeType
+                }});
+            }} catch(e) {{
+                return JSON.stringify({{error: e.message}});
+            }}
+        }})();
+        """
+        return self.eval(js)
