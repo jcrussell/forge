@@ -20,7 +20,8 @@ LABEL description="E2E testing environment for Forge GNOME Shell extension"
 
 # Install minimal dependencies - most are already in the base image
 # ibus is needed for keyboard input services that GNOME Shell expects
-# Clean cache in same layer to save space
+# gcc/python3-devel/dbus-devel are needed to build dbus-python from source
+# They are removed after pip install to keep the image small
 RUN dnf install -y --setopt=install_weak_deps=False \
     python3-pip \
     ImageMagick \
@@ -28,11 +29,11 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     ibus \
     xdotool \
     zenity \
+    gcc python3-devel dbus-devel glib2-devel \
+    && pip3 install --no-cache-dir pytest PyGObject Pillow dbus-python \
+    && dnf remove -y gcc python3-devel dbus-devel glib2-devel \
     && dnf clean all \
     && rm -rf /var/cache/dnf
-
-# Install Python testing packages
-RUN pip3 install --no-cache-dir pytest PyGObject Pillow dbus-python
 
 # Set up extension directory
 ARG UUID=forge@jmmaranan.com
