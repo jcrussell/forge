@@ -5,7 +5,7 @@ Provides assertion helpers for verifying window positions, sizes,
 and layout states in Forge.
 """
 
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .constants import Tolerance
 from .shell_proxy import ShellProxy
@@ -465,3 +465,70 @@ class WindowHelper:
             raise WindowAssertionError(
                 f"Windows overlap by {overlap} pixels (max allowed: {max_overlap})"
             )
+
+    # Sorting and measurement helpers
+
+    def get_windows_sorted_by_position(self, axis: str = "x") -> List[dict]:
+        """
+        Get all windows sorted by position along an axis.
+
+        Args:
+            axis: Sort axis - 'x' for horizontal, 'y' for vertical.
+
+        Returns:
+            List of window dicts sorted by the specified coordinate.
+        """
+        windows = self._shell.get_windows()
+        if not isinstance(windows, list):
+            return []
+        return sorted(windows, key=lambda w: w.get("rect", {}).get(axis, 0))
+
+    def assert_windows_fill_workspace(
+        self, tolerance: float = Tolerance.FILL_RATIO
+    ) -> None:
+        """
+        Assert that tiled windows together fill most of the workspace.
+
+        Args:
+            tolerance: Minimum fill ratio (0.0 to 1.0).
+
+        Raises:
+            WindowAssertionError: If fill ratio is below tolerance.
+        """
+        workspace = self._shell.get_workspace_rect()
+        workspace_area = workspace["width"] * workspace["height"]
+
+        windows = self._shell.get_windows()
+        if not isinstance(windows, list) or not windows:
+            raise WindowAssertionError("No windows found")
+
+        total_area = sum(
+            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
+            for w in windows
+        )
+
+        fill_ratio = total_area / workspace_area if workspace_area > 0 else 0
+        if fill_ratio < tolerance:
+            raise WindowAssertionError(
+                f"Windows fill only {fill_ratio*100:.1f}% of workspace "
+                f"(minimum: {tolerance*100:.1f}%)"
+            )
+
+    def measure_gap_between(self) -> int:
+        """
+        Measure the pixel gap between two side-by-side windows.
+
+        Returns:
+            Gap in pixels between the right edge of the left window
+            and the left edge of the right window.
+
+        Raises:
+            WindowAssertionError: If fewer than 2 windows found.
+        """
+        sorted_wins = self.get_windows_sorted_by_position("x")
+        if len(sorted_wins) < 2:
+            raise WindowAssertionError("Need at least 2 windows to measure gap")
+
+        left = sorted_wins[0].get("rect", {})
+        right = sorted_wins[1].get("rect", {})
+        return right.get("x", 0) - (left.get("x", 0) + left.get("width", 0))

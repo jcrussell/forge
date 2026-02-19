@@ -4,16 +4,18 @@ Float Toggle Tests for Forge.
 Tests floating window mode toggle with Super+c.
 """
 
+import time
+
 import pytest
 
-from framework.constants import Tolerance
+from framework.constants import Timing, Tolerance
 
 
 class TestFloatToggle:
     """Test floating mode toggle functionality."""
 
     def test_toggle_float_single_window(self, shell_proxy, input_sim, window_helper, test_window):
-        """Super+c should toggle window between tiled and floating."""
+        """FloatToggle should toggle window between tiled and floating."""
         wm_class = test_window.get("wmClass")
         workspace = window_helper.get_workspace_rect()
 
@@ -23,8 +25,16 @@ class TestFloatToggle:
             "Initial window should fill workspace width"
         )
 
-        # Toggle to floating
-        input_sim.toggle_float()
+        # Toggle to floating via D-Bus (xdotool focus unreliable in Xvfb)
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({
+            "name": "FloatToggle",
+            "x": "center",
+            "y": "center",
+            "width": 0.65,
+            "height": 0.75,
+        })
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Floating window should be smaller (default 65% x 75%)
         rect_after = window_helper.get_window_rect(wm_class)
@@ -44,8 +54,13 @@ class TestFloatToggle:
         rect_initial = window_helper.get_window_rect(wm_class)
 
         # Toggle to float then back to tiled
-        input_sim.toggle_float()
-        input_sim.toggle_float()
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
+
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         rect_final = window_helper.get_window_rect(wm_class)
 
@@ -60,7 +75,9 @@ class TestFloatToggle:
         """Floating window should be centered in workspace."""
         wm_class = test_window.get("wmClass")
 
-        input_sim.toggle_float()
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         rect = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
@@ -86,7 +103,10 @@ class TestFloatWithMultipleWindows:
         """Floating one window should make the other fill available space."""
         workspace = window_helper.get_workspace_rect()
 
-        input_sim.toggle_float()
+        # Use D-Bus action (xdotool focus unreliable in Xvfb)
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         # One window should be large (tiled, filling space)
         windows = shell_proxy.get_windows()
@@ -100,7 +120,9 @@ class TestFloatWithMultipleWindows:
         """Floating a window should not affect other window count."""
         count_before = len(shell_proxy.get_windows())
 
-        input_sim.toggle_float()
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         count_after = len(shell_proxy.get_windows())
         assert count_before == count_after, (
@@ -112,7 +134,9 @@ class TestFloatWithMultipleWindows:
         focused_before = shell_proxy.get_focused_window()
         focused_class = focused_before.get("wmClass")
 
-        input_sim.toggle_float()
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Focus should still be on the same window
         focused_after = shell_proxy.get_focused_window()

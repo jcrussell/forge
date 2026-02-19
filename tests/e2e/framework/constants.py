@@ -23,6 +23,11 @@ class Timing:
     LAYOUT_CHANGE = 0.5       # Time for layout change to complete
     FOCUS_CHANGE = 0.2        # Time for focus change
 
+    # Settings and resize
+    SETTINGS_SETTLE = 0.8     # Time for GSettings changes to propagate
+    RESIZE_SETTLE = 0.3       # Time for resize keybinding to take effect
+    WORKSPACE_SWITCH = 0.5    # Time for workspace switch animation
+
     # Polling
     POLL_INTERVAL = 0.1       # Default polling interval
     POLL_INTERVAL_WINDOW = 0.2  # Polling interval for window operations
@@ -42,6 +47,8 @@ class Tolerance:
     CENTERING = 100           # Tolerance for centered windows
     ALIGNMENT = 20            # Tolerance for window alignment
     FILL_RATIO = 0.85         # Min ratio of workspace filled by windows
+    RESIZE_MIN_DELTA = 10     # Minimum pixel change expected from resize
+    SNAP_RATIO = 0.05         # Tolerance for snap layout width ratio (5%)
 
 
 class Timeout:

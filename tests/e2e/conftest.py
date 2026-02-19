@@ -8,6 +8,7 @@ and other testing utilities.
 import os
 import subprocess
 import time
+import warnings
 from pathlib import Path
 from typing import Generator, Optional
 
@@ -19,6 +20,7 @@ from framework.constants import (
     RetryConfig,
     DEFAULT_TEST_APP,
     DEFAULT_TEST_APP_ARGS,
+    FORGE_UUID,
 )
 from framework.shell_proxy import ShellProxy, ShellProxyError
 from framework.input_simulator import InputSimulator
@@ -84,6 +86,27 @@ def shell_proxy() -> Generator[ShellProxy, None, None]:
     proxy.disconnect()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def check_forge_ready(shell_proxy):
+    """Check if Forge extension is ready (non-blocking)."""
+    js = """
+    (function() {
+        try {
+            const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
+            return ext && ext.stateObj ? 'ready' : 'not_ready';
+        } catch(e) { return 'error'; }
+    })();
+    """
+    try:
+        result = shell_proxy.eval(js)
+        if result != "ready":
+            warnings.warn(
+                f"Forge extension may not be ready at session start: {result}"
+            )
+    except Exception as e:
+        warnings.warn(f"Could not check Forge status: {e}")
+
+
 @pytest.fixture(scope="session")
 def input_sim(display) -> InputSimulator:
     """Provide an InputSimulator instance."""
@@ -105,11 +128,28 @@ def screenshot(display) -> ScreenshotCapture:
 @pytest.fixture(scope="session")
 def forge_settings() -> Generator[ForgeSettings, None, None]:
     """Provide connected ForgeSettings instance."""
-    settings = ForgeSettings()
-    try:
-        settings.connect()
-    except Exception as e:
-        pytest.skip(f"Could not connect to Forge settings: {e}")
+    # Try with the extension's schema directory first (Docker container path)
+    schema_dir = os.path.join(
+        os.path.expanduser("~"),
+        ".local/share/gnome-shell/extensions",
+        FORGE_UUID,
+        "schemas",
+    )
+
+    settings = None
+    if os.path.isdir(schema_dir):
+        settings = ForgeSettings(schema_dir=schema_dir)
+        try:
+            settings.connect()
+        except Exception:
+            settings = None
+
+    if settings is None:
+        settings = ForgeSettings()
+        try:
+            settings.connect()
+        except Exception as e:
+            pytest.skip(f"Could not connect to Forge settings: {e}")
 
     yield settings
     settings.disconnect()
@@ -165,6 +205,25 @@ def three_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
     window3 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
     time.sleep(Timing.WINDOW_SETTLE)
     yield (window1, window2, window3)
+
+
+@pytest.fixture
+def four_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
+    """Launch four test windows."""
+    windows = []
+    for _ in range(4):
+        w = _launch_window(DEFAULT_TEST_APP, shell_proxy)
+        time.sleep(Timing.WINDOW_SETTLE)
+        windows.append(w)
+    yield tuple(windows)
+
+
+@pytest.fixture
+def restore_settings(forge_settings) -> Generator:
+    """Yield forge_settings and restore all changes after test."""
+    yield forge_settings
+    forge_settings.restore_all()
+    time.sleep(Timing.SETTINGS_SETTLE)
 
 
 def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> dict:
@@ -227,3 +286,17 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.layout)
         if "float" in name:
             item.add_marker(pytest.mark.float)
+        if "resize" in name:
+            item.add_marker(pytest.mark.resize)
+        if "drag" in name:
+            item.add_marker(pytest.mark.drag)
+        if "dialog" in name:
+            item.add_marker(pytest.mark.dialog)
+        if "workspace" in name:
+            item.add_marker(pytest.mark.workspace)
+        if "settings" in name or "gap" in name:
+            item.add_marker(pytest.mark.settings)
+        if "snap" in name:
+            item.add_marker(pytest.mark.snap)
+        if "rebalance" in name or "close" in name:
+            item.add_marker(pytest.mark.rebalance)

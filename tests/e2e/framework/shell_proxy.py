@@ -130,16 +130,15 @@ class ShellProxy:
 
     def is_forge_enabled(self) -> bool:
         """Check if Forge extension is enabled."""
-        js = f"""
-        (function() {{
-            try {{
-                const Main = imports.ui.main;
-                const ext = Main.extensionManager.lookup('{self.FORGE_UUID}');
-                return ext && ext.state === 1; // ExtensionState.ENABLED
-            }} catch(e) {{
+        js = """
+        (function() {
+            try {
+                const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
+                return ext && ext.state === 1;
+            } catch(e) {
                 return false;
-            }}
-        }})();
+            }
+        })();
         """
         try:
             result = self.eval(js)
@@ -157,10 +156,8 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
 
@@ -193,13 +190,23 @@ class ShellProxy:
         """
         Get information about the currently focused window.
 
+        In Xvfb environments, focus can be lost after xdotool key events.
+        This method auto-activates the first window if no window is focused.
+
         Returns:
             Dictionary with window info: title, wm_class, rect, node_type.
         """
         js = """
         (function() {
-            const display = global.display;
-            const focusWindow = display.get_focus_window();
+            var focusWindow = global.display.get_focus_window();
+            if (!focusWindow) {
+                var ws = global.workspace_manager.get_active_workspace();
+                var windows = ws.list_windows();
+                if (windows.length > 0) {
+                    windows[0].activate(global.get_current_time());
+                    focusWindow = windows[0];
+                }
+            }
             if (!focusWindow) return JSON.stringify({error: 'No focused window'});
 
             const rect = focusWindow.get_frame_rect();
@@ -281,10 +288,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
 
@@ -323,14 +328,20 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return 'ERROR';
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return 'ERROR';
 
-                const focusWindow = global.display.get_focus_window();
+                var focusWindow = global.display.get_focus_window();
+                if (!focusWindow) {
+                    var ws = global.workspace_manager.get_active_workspace();
+                    var wins = ws.list_windows();
+                    if (wins.length > 0) {
+                        wins[0].activate(global.get_current_time());
+                        focusWindow = wins[0];
+                    }
+                }
                 if (!focusWindow) return 'NO_FOCUS';
 
                 function findNodeByWindow(node, metaWindow) {
@@ -368,11 +379,10 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return 'false';
-
                 const ext = forge.stateObj;
+
                 const windows = global.get_window_actors().map(a => a.meta_window);
                 const targetWindow = windows.find(w => w.get_wm_class() === '{wm_class}');
                 if (!targetWindow) return 'false';
@@ -420,6 +430,153 @@ class ShellProxy:
         except (ValueError, TypeError):
             return 0
 
+    def close_one_window(self) -> int:
+        """
+        Close one window on the active workspace via D-Bus.
+
+        Returns:
+            Number of remaining windows after closing.
+        """
+        js = """
+        (function() {
+            var ws = global.workspace_manager.get_active_workspace();
+            var windows = ws.list_windows();
+            if (windows.length === 0) return '0';
+            windows[0].delete(global.get_current_time());
+            return String(windows.length - 1);
+        })();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
+    def ensure_focus(self) -> bool:
+        """
+        Ensure a window has focus on the active workspace.
+
+        In Xvfb environments, focus can be lost. This activates the first
+        window on the active workspace if nothing is focused.
+
+        Returns:
+            True if a window is now focused, False if no windows available.
+        """
+        js = """
+        (function() {
+            if (global.display.get_focus_window()) return 'already_focused';
+            var ws = global.workspace_manager.get_active_workspace();
+            var windows = ws.list_windows();
+            if (windows.length === 0) return 'no_windows';
+            windows[0].activate(global.get_current_time());
+            return 'activated';
+        })();
+        """
+        result = self.eval(js)
+        return result in ("already_focused", "activated")
+
+    def invoke_forge_action(self, action: dict, focus_window: str = None) -> str:
+        """
+        Invoke a Forge command via D-Bus.
+
+        Calls ext.extWm.command(action) on the running Forge extension.
+        Overrides global.display.get_focus_window when focus is null in Xvfb.
+
+        Args:
+            action: Action dictionary, e.g. {"name": "WindowResizeRight", "amount": 50}
+            focus_window: Optional hint for which window to target when focus
+                override is needed. Supports position-based selection:
+                "leftmost", "rightmost", "topmost", "bottommost".
+                When None, picks the first window from the workspace list.
+
+        Returns:
+            Result string from the evaluation.
+        """
+        action_json = json.dumps(action)
+        focus_hint_js = json.dumps(focus_window) if focus_window else "null"
+        js = f"""
+        (function() {{
+            try {{
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return 'Error: Forge not loaded';
+                const ext = forge.stateObj;
+                if (!ext.extWm) return 'Error: extWm not available';
+
+                const ws = global.workspace_manager.get_active_workspace();
+                const wins = ws.list_windows();
+                const origFn = global.display.get_focus_window;
+                let focusMethod = 'natural';
+
+                if (!origFn.call(global.display) && wins.length > 0) {{
+                    const hint = {focus_hint_js};
+                    let targetWin = wins[0];
+                    if (hint === 'leftmost') {{
+                        targetWin = wins.reduce((best, w) =>
+                            w.get_frame_rect().x < best.get_frame_rect().x ? w : best, wins[0]);
+                    }} else if (hint === 'rightmost') {{
+                        targetWin = wins.reduce((best, w) =>
+                            w.get_frame_rect().x > best.get_frame_rect().x ? w : best, wins[0]);
+                    }} else if (hint === 'topmost') {{
+                        targetWin = wins.reduce((best, w) =>
+                            w.get_frame_rect().y < best.get_frame_rect().y ? w : best, wins[0]);
+                    }} else if (hint === 'bottommost') {{
+                        targetWin = wins.reduce((best, w) =>
+                            w.get_frame_rect().y > best.get_frame_rect().y ? w : best, wins[0]);
+                    }}
+                    global.display.get_focus_window = function() {{ return targetWin; }};
+                    focusMethod = 'display_override';
+                }}
+
+                try {{
+                    ext.extWm.command({action_json});
+                    return 'OK_' + focusMethod;
+                }} finally {{
+                    global.display.get_focus_window = origFn;
+                }}
+            }} catch(e) {{
+                return 'Error: ' + e.message;
+            }}
+        }})();
+        """
+        result = self.eval(js)
+        if isinstance(result, str) and result.startswith("Error:"):
+            raise ShellProxyError(
+                f"invoke_forge_action({action.get('name', action)}): {result}"
+            )
+        return result
+
+    def move_window_to_workspace(self, ws_index: int) -> str:
+        """
+        Move a window on the active workspace to the given workspace index.
+
+        Creates the target workspace if it doesn't exist.
+
+        Args:
+            ws_index: Target workspace index.
+
+        Returns:
+            Result string.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const wsMgr = global.workspace_manager;
+                const ws = wsMgr.get_active_workspace();
+                const windows = ws.list_windows();
+                if (windows.length === 0) return 'No windows';
+                // Ensure target workspace exists
+                while (wsMgr.get_n_workspaces() <= {ws_index}) {{
+                    wsMgr.append_new_workspace(false, global.get_current_time());
+                }}
+                windows[0].change_workspace_by_index({ws_index}, false);
+                return 'OK';
+            }} catch(e) {{
+                return 'Error: ' + e.message;
+            }}
+        }})();
+        """
+        return self.eval(js)
+
     def get_window_count(self) -> int:
         """
         Get the number of tiled windows on the current workspace.
@@ -430,10 +587,8 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return '0';
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return '0';
 
@@ -447,9 +602,6 @@ class ShellProxy:
                     return count;
                 }
 
-                // Find current workspace node
-                const wsIndex = global.workspace_manager.get_active_workspace_index();
-                // This is simplified - actual implementation would traverse tree properly
                 return String(countWindows(ext.extWm.tree.root));
             } catch(e) {
                 return '0';
@@ -461,6 +613,75 @@ class ShellProxy:
             return int(result)
         except (ValueError, TypeError):
             return 0
+
+    # === Workspace Query Methods ===
+
+    def get_active_workspace_index(self) -> int:
+        """
+        Get the index of the active workspace.
+
+        Returns:
+            Zero-based workspace index.
+        """
+        js = """
+        (function() {
+            return String(global.workspace_manager.get_active_workspace_index());
+        })();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
+    def get_workspace_count(self) -> int:
+        """
+        Get the total number of workspaces.
+
+        Returns:
+            Number of workspaces.
+        """
+        js = """
+        (function() {
+            return String(global.workspace_manager.get_n_workspaces());
+        })();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 1
+
+    def is_workspace_tiling_skipped(self, ws_index: int) -> bool:
+        """
+        Check if tiling is skipped for a workspace index.
+
+        Args:
+            ws_index: Zero-based workspace index.
+
+        Returns:
+            True if tiling is skipped for this workspace.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return 'false';
+                const ext = forge.stateObj;
+                const skipStr = ext.settings.get_string('workspace-skip-tile');
+                if (!skipStr) return 'false';
+                const indices = skipStr.split(',');
+                for (let i = 0; i < indices.length; i++) {{
+                    if (indices[i].trim() === String({ws_index})) return 'true';
+                }}
+                return 'false';
+            }} catch(e) {{
+                return 'false';
+            }}
+        }})();
+        """
+        result = self.eval(js)
+        return result == "true" or result is True
 
     # === Tree Query Methods for Regression Test Validation ===
 
@@ -478,10 +699,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
 
@@ -534,10 +753,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return 'ERROR';
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return 'ERROR';
 
@@ -575,10 +792,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return '0';
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return '0';
 
@@ -618,10 +833,8 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
 
@@ -655,10 +868,8 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
 
@@ -698,10 +909,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
 
@@ -748,41 +957,36 @@ class ShellProxy:
         js = """
         (function() {
             try {
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({valid: false, errors: ['Forge not loaded']});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({valid: false, errors: ['Tree not available']});
 
                 const errors = [];
+                const stack = [{node: ext.extWm.tree.root, parent: null, depth: 0}];
 
-                function checkNode(node, expectedParent, depth = 0) {
-                    if (!node) return;
-                    if (depth > 20) {
+                while (stack.length > 0) {
+                    const item = stack.pop();
+                    if (!item.node) continue;
+                    if (item.depth > 20) {
                         errors.push('Tree depth exceeds 20 - possible cycle');
-                        return;
+                        continue;
                     }
-
-                    // Check parent reference
-                    if (node.parentNode !== expectedParent) {
-                        errors.push(`Node has incorrect parent reference at depth ${depth}`);
+                    if (item.node.parentNode !== item.parent) {
+                        errors.push('Node has incorrect parent reference at depth ' + item.depth);
                     }
-
-                    // Check children
-                    for (const child of (node.childNodes || [])) {
-                        checkNode(child, node, depth + 1);
+                    const children = item.node.childNodes || [];
+                    for (let i = 0; i < children.length; i++) {
+                        stack.push({node: children[i], parent: item.node, depth: item.depth + 1});
                     }
                 }
-
-                checkNode(ext.extWm.tree.root, null);
 
                 return JSON.stringify({
                     valid: errors.length === 0,
                     errors: errors
                 });
             } catch(e) {
-                return JSON.stringify({valid: false, errors: [e.message]});
+                return JSON.stringify({valid: false, errors: [String(e)]});
             }
         })();
         """
@@ -803,10 +1007,8 @@ class ShellProxy:
         js = f"""
         (function() {{
             try {{
-                const Main = imports.ui.main;
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-
                 const ext = forge.stateObj;
                 if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
 

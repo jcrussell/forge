@@ -62,7 +62,7 @@ su - gnomeshell -c "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=un
 if ! ps -u gnomeshell 2>/dev/null | grep -q "gnome-shell"; then
     echo "Starting GNOME Shell..."
     su - gnomeshell -c "DISPLAY=:${DISPLAY_NUM} XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET gnome-shell --x11 --unsafe-mode &" 2>/dev/null
-    sleep 3
+    sleep 5
 fi
 
 # Wait for GNOME Shell to be ready
@@ -86,6 +86,11 @@ echo "Enabling Forge extension..."
 FORGE_UUID="forge@jmmaranan.com"
 
 # Use gnome-extensions CLI to enable the extension
+su - gnomeshell -c "DISPLAY=:${DISPLAY_NUM} XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET gnome-extensions enable ${FORGE_UUID}" 2>&1 || true
+
+# Re-enable after a delay: GNOME Shell may not process the first enable
+# if extensions are still loading during early shell startup
+sleep 5
 su - gnomeshell -c "DISPLAY=:${DISPLAY_NUM} XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET gnome-extensions enable ${FORGE_UUID}" 2>&1 || true
 
 # Wait for extension to be enabled

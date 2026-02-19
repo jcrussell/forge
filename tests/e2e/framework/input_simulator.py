@@ -63,6 +63,26 @@ class InputSimulator:
         # Workspace operations
         "workspace_prev": ("super", "Page_Up"),
         "workspace_next": ("super", "Page_Down"),
+        "workspace_tile_toggle": ("shift+super", "w"),
+        # Move window between workspaces
+        "move_window_next_ws": ("shift+super", "Page_Down"),
+        "move_window_prev_ws": ("shift+super", "Page_Up"),
+        # Resize
+        "resize_left_increase": ("ctrl+super", "y"),
+        "resize_left_decrease": ("ctrl+shift+super", "o"),
+        "resize_right_increase": ("ctrl+super", "o"),
+        "resize_right_decrease": ("ctrl+shift+super", "y"),
+        "resize_bottom_increase": ("ctrl+super", "u"),
+        "resize_bottom_decrease": ("ctrl+shift+super", "i"),
+        "resize_top_increase": ("ctrl+super", "i"),
+        "resize_top_decrease": ("ctrl+shift+super", "u"),
+        "reset_sizes": ("super", "equal"),
+        # Snap layouts
+        "snap_center": ("ctrl+alt", "c"),
+        "snap_one_third_left": ("ctrl+alt", "d"),
+        "snap_two_third_left": ("ctrl+alt", "e"),
+        "snap_one_third_right": ("ctrl+alt", "g"),
+        "snap_two_third_right": ("ctrl+alt", "t"),
     }
 
     def __init__(
@@ -234,6 +254,78 @@ class InputSimulator:
         """Press Super+Page_Down to go to next workspace."""
         self.key("super+Page_Down")
 
+    def workspace_tile_toggle(self) -> None:
+        """Press Shift+Super+w to toggle workspace tiling."""
+        self.key("shift+super+w")
+
+    def move_window_next_ws(self) -> None:
+        """Press Shift+Super+Page_Down to move window to next workspace."""
+        self.key("shift+super+Page_Down")
+
+    def move_window_prev_ws(self) -> None:
+        """Press Shift+Super+Page_Up to move window to previous workspace."""
+        self.key("shift+super+Page_Up")
+
+    # Resize methods
+
+    def resize_left_increase(self) -> None:
+        """Press Ctrl+Super+y to increase left resize."""
+        self.key("ctrl+super+y")
+
+    def resize_left_decrease(self) -> None:
+        """Press Ctrl+Shift+Super+o to decrease left resize."""
+        self.key("ctrl+shift+super+o")
+
+    def resize_right_increase(self) -> None:
+        """Press Ctrl+Super+o to increase right resize."""
+        self.key("ctrl+super+o")
+
+    def resize_right_decrease(self) -> None:
+        """Press Ctrl+Shift+Super+y to decrease right resize."""
+        self.key("ctrl+shift+super+y")
+
+    def resize_bottom_increase(self) -> None:
+        """Press Ctrl+Super+u to increase bottom resize."""
+        self.key("ctrl+super+u")
+
+    def resize_bottom_decrease(self) -> None:
+        """Press Ctrl+Shift+Super+i to decrease bottom resize."""
+        self.key("ctrl+shift+super+i")
+
+    def resize_top_increase(self) -> None:
+        """Press Ctrl+Super+i to increase top resize."""
+        self.key("ctrl+super+i")
+
+    def resize_top_decrease(self) -> None:
+        """Press Ctrl+Shift+Super+u to decrease top resize."""
+        self.key("ctrl+shift+super+u")
+
+    def reset_sizes(self) -> None:
+        """Press Super+= to reset window sizes to equal."""
+        self.key("super+equal")
+
+    # Snap layout methods
+
+    def snap_center(self) -> None:
+        """Press Ctrl+Alt+c to snap window to center."""
+        self.key("ctrl+alt+c")
+
+    def snap_one_third_left(self) -> None:
+        """Press Ctrl+Alt+d to snap window to left third."""
+        self.key("ctrl+alt+d")
+
+    def snap_two_third_left(self) -> None:
+        """Press Ctrl+Alt+e to snap window to left two-thirds."""
+        self.key("ctrl+alt+e")
+
+    def snap_one_third_right(self) -> None:
+        """Press Ctrl+Alt+g to snap window to right third."""
+        self.key("ctrl+alt+g")
+
+    def snap_two_third_right(self) -> None:
+        """Press Ctrl+Alt+t to snap window to right two-thirds."""
+        self.key("ctrl+alt+t")
+
     # Mouse operations
 
     def click(self, x: int, y: int, button: int = 1) -> None:
@@ -272,6 +364,45 @@ class InputSimulator:
         self._run_xdotool("mousedown", "1")
         time.sleep(0.1)
         self._run_xdotool("mousemove", str(end_x), str(end_y))
+        time.sleep(0.1)
+        self._run_xdotool("mouseup", "1")
+
+    def drag_window(
+        self,
+        start_x: int,
+        start_y: int,
+        end_x: int,
+        end_y: int,
+        steps: int = 10,
+        step_delay: float = 0.05,
+    ) -> None:
+        """
+        Drag from start to end in incremental steps.
+
+        Unlike drag(), this moves in small increments to trigger
+        Mutter's continuous grab-op-move callbacks, which is required
+        for drop zone detection during drag-and-drop tiling.
+
+        Args:
+            start_x: Starting X coordinate.
+            start_y: Starting Y coordinate.
+            end_x: Ending X coordinate.
+            end_y: Ending Y coordinate.
+            steps: Number of intermediate steps.
+            step_delay: Delay between steps in seconds.
+        """
+        self._run_xdotool("mousemove", str(start_x), str(start_y))
+        time.sleep(0.1)
+        self._run_xdotool("mousedown", "1")
+        time.sleep(0.1)
+
+        for i in range(1, steps + 1):
+            interp = i / steps
+            cur_x = int(start_x + (end_x - start_x) * interp)
+            cur_y = int(start_y + (end_y - start_y) * interp)
+            self._run_xdotool("mousemove", str(cur_x), str(cur_y))
+            time.sleep(step_delay)
+
         time.sleep(0.1)
         self._run_xdotool("mouseup", "1")
 

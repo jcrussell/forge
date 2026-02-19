@@ -45,8 +45,9 @@ fi
 
 # Wait for Forge extension to initialize
 echo "Waiting for Forge extension..."
-if ! wait_for_forge_extension 30; then
-    echo "WARNING: Forge extension may not be fully initialized"
+if ! wait_for_forge_extension 180; then
+    echo "ERROR: Forge extension failed to initialize — tests cannot run"
+    exit 1
 fi
 
 # Run tests

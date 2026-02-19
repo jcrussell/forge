@@ -60,21 +60,19 @@ wait_for_shell() {
 
 # Check if Forge extension is loaded and enabled
 # Usage: check_forge_extension
+# Returns: prints the raw state string; returns 0 if tree is ready
 check_forge_extension() {
     local status
-    # Query extension state via Shell.Eval
-    # Extension state 1 = ENABLED, 2 = DISABLED, etc.
     status=$(gdbus call --session \
         --dest org.gnome.Shell \
         --object-path /org/gnome/Shell \
         --method org.gnome.Shell.Eval \
-        "try { const Main = imports.ui.main; const ext = Main.extensionManager.lookup('forge@jmmaranan.com'); ext ? ext.state : -1; } catch(e) { -1; }" 2>/dev/null || echo "(-1,)")
+        "try { const ext = Main.extensionManager.lookup('forge@jmmaranan.com'); ext && ext.stateObj && ext.stateObj.extWm && ext.stateObj.extWm.tree ? 'tree_ready' : (ext && ext.stateObj ? 'stateObj_only' : (ext ? 'ext_state_' + ext.state : 'not_found')); } catch(e) { 'error:' + e; }" 2>/dev/null || echo "(false, 'dbus_error')")
 
-    if echo "$status" | grep -q "(true, '1')"; then
-        echo "Forge extension is enabled"
+    echo "$status"
+    if echo "$status" | grep -q "tree_ready"; then
         return 0
     else
-        echo "Forge extension status: $status"
         return 1
     fi
 }
@@ -82,32 +80,43 @@ check_forge_extension() {
 # Wait for Forge extension to be fully initialized
 # Usage: wait_for_forge_extension [max_wait_seconds]
 wait_for_forge_extension() {
-    local max_wait=${1:-30}
+    local max_wait=${1:-180}
     local waited=0
+    local uuid="forge@jmmaranan.com"
 
     echo "Waiting for Forge extension to initialize (max ${max_wait}s)..."
 
     while [ $waited -lt $max_wait ]; do
-        # Check if extension is enabled (state = 1)
-        if check_forge_extension 2>/dev/null; then
-            # Additional check: verify the tree is available via Main.extensionManager
-            local tree_check
-            tree_check=$(gdbus call --session \
-                --dest org.gnome.Shell \
-                --object-path /org/gnome/Shell \
-                --method org.gnome.Shell.Eval \
-                "try { const Main = imports.ui.main; const ext = Main.extensionManager.lookup('forge@jmmaranan.com'); ext?.stateObj?.extWm?.tree ? 'ready' : 'loading'; } catch(e) { 'error'; }" 2>/dev/null || echo "")
+        local status
+        status=$(check_forge_extension 2>/dev/null)
 
-            if echo "$tree_check" | grep -q "ready"; then
-                echo "Forge extension fully initialized after ${waited}s"
-                return 0
-            fi
+        if echo "$status" | grep -q "tree_ready"; then
+            echo "Forge extension fully initialized after ${waited}s"
+            return 0
         fi
+
+        # Print diagnostics every 10s
+        if [ $((waited % 10)) -eq 0 ] && [ $waited -gt 0 ]; then
+            echo "  [${waited}s] Extension status: $status"
+            # List enabled extensions for debugging
+            gnome-extensions list --enabled 2>/dev/null | head -5 || true
+        fi
+
+        # Every 30s, try a disable/re-enable cycle to nudge GNOME Shell
+        if [ $((waited % 30)) -eq 0 ] && [ $waited -gt 0 ]; then
+            echo "  [${waited}s] Attempting disable/re-enable cycle..."
+            gnome-extensions disable "${uuid}" 2>/dev/null || true
+            sleep 2
+            gnome-extensions enable "${uuid}" 2>/dev/null || true
+            sleep 2
+            waited=$((waited + 3))
+        fi
+
         sleep 1
         waited=$((waited + 1))
     done
 
-    echo "WARNING: Forge extension may not be fully initialized after ${max_wait}s"
+    echo "ERROR: Forge extension not fully initialized after ${max_wait}s"
     return 1
 }
 
