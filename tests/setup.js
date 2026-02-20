@@ -12,15 +12,20 @@ vi.mock("gi://St", () => GnomeMocks.St);
 vi.mock("gi://Clutter", () => GnomeMocks.Clutter);
 vi.mock("gi://GObject", () => GnomeMocks.GObject);
 
-// Create a shared overview object that tests can modify
-// Using vi.hoisted() ensures this is created before mocks and is mutable
-const { mockOverview } = vi.hoisted(() => {
+// Create shared mock objects that tests can modify
+// Using vi.hoisted() ensures these are created before mocks and are mutable
+const { mockOverview, mockWm } = vi.hoisted(() => {
   return {
     mockOverview: {
       visible: false,
       connect: (signal, callback) => Math.random(),
       disconnect: (id) => {},
       _signals: {},
+    },
+    mockWm: {
+      addKeybinding: () => {},
+      removeKeybinding: () => {},
+      allowKeybinding: () => {},
     },
   };
 });
@@ -45,11 +50,15 @@ vi.mock("resource:///org/gnome/shell/extensions/extension.js", () => ({
 
 vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   overview: mockOverview,
+  wm: mockWm,
+  notify: () => {},
 }));
 
 // Also set global.Main to use the same overview object reference
 global.Main = {
   overview: mockOverview,
+  wm: mockWm,
+  notify: () => {},
 };
 
 // Mock Extension class for extension.js

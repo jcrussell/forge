@@ -378,6 +378,21 @@ export const TabList = {
   NORMAL_ALL: 3,
 };
 
+export const KeyBindingFlags = {
+  NONE: 0,
+  IS_REVERSED: 1,
+  IS_BUILTIN: 2,
+  PER_WINDOW: 4,
+};
+
+export const KeyBindingAction = {
+  NONE: 0,
+};
+
+export function external_binding_name_for_action(action) {
+  return `binding-${action}`;
+}
+
 export default {
   Rectangle,
   Window,
@@ -391,4 +406,7 @@ export default {
   MaximizeFlags,
   GrabOp,
   TabList,
+  KeyBindingFlags,
+  KeyBindingAction,
+  external_binding_name_for_action,
 };

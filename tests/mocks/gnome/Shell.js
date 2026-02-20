@@ -82,9 +82,23 @@ export class WindowTracker {
   }
 }
 
+export const ActionMode = {
+  NONE: 0,
+  NORMAL: 1 << 0,
+  OVERVIEW: 1 << 1,
+  LOCK_SCREEN: 1 << 2,
+  UNLOCK_SCREEN: 1 << 3,
+  LOGIN_SCREEN: 1 << 4,
+  SYSTEM_MODAL: 1 << 5,
+  LOOKING_GLASS: 1 << 6,
+  POPUP: 1 << 7,
+  ALL: 0xff,
+};
+
 export default {
   Global,
   App,
   AppSystem,
   WindowTracker,
+  ActionMode,
 };
