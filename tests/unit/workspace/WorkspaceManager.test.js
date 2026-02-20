@@ -292,4 +292,265 @@ describe("WorkspaceManager", () => {
       expect(workspaceManager._workspaceSignals.size).toBe(0);
     });
   });
+
+  describe("renumberWorkspacesAfterRemoval()", () => {
+    /**
+     * Helper to create a mock tree that supports getNodeByType for renumbering tests.
+     * Nodes store their children and support getNodeByType filtering.
+     */
+    function createRenumberMockTree() {
+      const allNodes = [];
+
+      function makeNode(type, value) {
+        const node = {
+          _type: type,
+          _value: value,
+          get nodeType() {
+            return this._type;
+          },
+          get nodeValue() {
+            return this._value;
+          },
+          set nodeValue(v) {
+            this._value = v;
+          },
+          childNodes: [],
+          getNodeByType(t) {
+            return this.childNodes.filter((c) => c.nodeType === t);
+          },
+        };
+        allNodes.push(node);
+        return node;
+      }
+
+      return {
+        allNodes,
+        makeNode,
+        getNodeByType(type) {
+          return allNodes.filter((n) => n.nodeType === type);
+        },
+      };
+    }
+
+    it("should renumber higher-indexed workspace and monitor nodes after middle removal", () => {
+      const rt = createRenumberMockTree();
+      // Create ws0, ws1, ws2 with monitor children
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const ws2 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws2");
+
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      const mo0ws2 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws2");
+
+      ws0.childNodes.push(mo0ws0);
+      ws1.childNodes.push(mo0ws1);
+      ws2.childNodes.push(mo0ws2);
+
+      // Set up workspace signals
+      workspaceManager._workspaceSignals.set(0, [100]);
+      workspaceManager._workspaceSignals.set(1, [101]);
+      workspaceManager._workspaceSignals.set(2, [102]);
+
+      // Use our enhanced mock tree
+      workspaceManager._tree = rt;
+
+      // Remove ws1 (index 1) - ws2 should become ws1
+      workspaceManager.renumberWorkspacesAfterRemoval(1);
+
+      expect(ws0.nodeValue).toBe("ws0"); // unchanged
+      expect(ws2.nodeValue).toBe("ws1"); // decremented
+      expect(mo0ws0.nodeValue).toBe("mo0ws0"); // unchanged
+      expect(mo0ws2.nodeValue).toBe("mo0ws1"); // decremented
+    });
+
+    it("should be a no-op when removing the last workspace", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      ws0.childNodes.push(mo0ws0);
+      ws1.childNodes.push(mo0ws1);
+
+      workspaceManager._tree = rt;
+
+      // Remove ws2 (index 2) when only ws0 and ws1 exist - no renumbering needed
+      workspaceManager.renumberWorkspacesAfterRemoval(2);
+
+      expect(ws0.nodeValue).toBe("ws0");
+      expect(ws1.nodeValue).toBe("ws1");
+      expect(mo0ws0.nodeValue).toBe("mo0ws0");
+      expect(mo0ws1.nodeValue).toBe("mo0ws1");
+    });
+
+    it("should renumber all remaining nodes when removing the first workspace", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const ws2 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws2");
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      const mo0ws2 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws2");
+      ws0.childNodes.push(mo0ws0);
+      ws1.childNodes.push(mo0ws1);
+      ws2.childNodes.push(mo0ws2);
+
+      workspaceManager._tree = rt;
+
+      // Remove ws0 (index 0) - ws1->ws0, ws2->ws1
+      workspaceManager.renumberWorkspacesAfterRemoval(0);
+
+      expect(ws1.nodeValue).toBe("ws0");
+      expect(ws2.nodeValue).toBe("ws1");
+      expect(mo0ws1.nodeValue).toBe("mo0ws0");
+      expect(mo0ws2.nodeValue).toBe("mo0ws1");
+    });
+
+    it("should update workspace signal map keys correctly", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const ws2 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws2");
+      ws0.childNodes = [];
+      ws1.childNodes = [];
+      ws2.childNodes = [];
+
+      workspaceManager._workspaceSignals.set(0, [100]);
+      workspaceManager._workspaceSignals.set(2, [102]);
+      // ws1 already removed from signals map (by removeWorkspace)
+
+      workspaceManager._tree = rt;
+
+      workspaceManager.renumberWorkspacesAfterRemoval(1);
+
+      // Key 0 should remain, key 2 should become key 1
+      expect(workspaceManager._workspaceSignals.has(0)).toBe(true);
+      expect(workspaceManager._workspaceSignals.get(0)).toEqual([100]);
+      expect(workspaceManager._workspaceSignals.has(1)).toBe(true);
+      expect(workspaceManager._workspaceSignals.get(1)).toEqual([102]);
+      expect(workspaceManager._workspaceSignals.has(2)).toBe(false);
+    });
+
+    it("should handle multiple monitors per workspace", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo1ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo1ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      const mo1ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo1ws1");
+      ws0.childNodes.push(mo0ws0, mo1ws0);
+      ws1.childNodes.push(mo0ws1, mo1ws1);
+
+      workspaceManager._tree = rt;
+
+      // Remove ws0 (index 0)
+      workspaceManager.renumberWorkspacesAfterRemoval(0);
+
+      expect(ws1.nodeValue).toBe("ws0");
+      expect(mo0ws1.nodeValue).toBe("mo0ws0");
+      expect(mo1ws1.nodeValue).toBe("mo1ws0");
+    });
+  });
+
+  describe("renumberWorkspacesAfterAddition()", () => {
+    function createRenumberMockTree() {
+      const allNodes = [];
+
+      function makeNode(type, value) {
+        const node = {
+          _type: type,
+          _value: value,
+          get nodeType() {
+            return this._type;
+          },
+          get nodeValue() {
+            return this._value;
+          },
+          set nodeValue(v) {
+            this._value = v;
+          },
+          childNodes: [],
+          getNodeByType(t) {
+            return this.childNodes.filter((c) => c.nodeType === t);
+          },
+        };
+        allNodes.push(node);
+        return node;
+      }
+
+      return {
+        allNodes,
+        makeNode,
+        getNodeByType(type) {
+          return allNodes.filter((n) => n.nodeType === type);
+        },
+      };
+    }
+
+    it("should shift existing nodes up when adding at non-end index", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      ws0.childNodes.push(mo0ws0);
+      ws1.childNodes.push(mo0ws1);
+
+      workspaceManager._workspaceSignals.set(0, [100]);
+      workspaceManager._workspaceSignals.set(1, [101]);
+
+      workspaceManager._tree = rt;
+
+      // Insert at index 1 - ws1 should become ws2
+      workspaceManager.renumberWorkspacesAfterAddition(1);
+
+      expect(ws0.nodeValue).toBe("ws0"); // unchanged
+      expect(ws1.nodeValue).toBe("ws2"); // incremented
+      expect(mo0ws0.nodeValue).toBe("mo0ws0"); // unchanged
+      expect(mo0ws1.nodeValue).toBe("mo0ws2"); // incremented
+    });
+
+    it("should shift all nodes when adding at index 0", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      const mo0ws0 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws0");
+      const mo0ws1 = rt.makeNode(NODE_TYPES.MONITOR, "mo0ws1");
+      ws0.childNodes.push(mo0ws0);
+      ws1.childNodes.push(mo0ws1);
+
+      workspaceManager._tree = rt;
+
+      workspaceManager.renumberWorkspacesAfterAddition(0);
+
+      expect(ws0.nodeValue).toBe("ws1");
+      expect(ws1.nodeValue).toBe("ws2");
+      expect(mo0ws0.nodeValue).toBe("mo0ws1");
+      expect(mo0ws1.nodeValue).toBe("mo0ws2");
+    });
+
+    it("should update workspace signal map keys correctly", () => {
+      const rt = createRenumberMockTree();
+      const ws0 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws0");
+      const ws1 = rt.makeNode(NODE_TYPES.WORKSPACE, "ws1");
+      ws0.childNodes = [];
+      ws1.childNodes = [];
+
+      workspaceManager._workspaceSignals.set(0, [100]);
+      workspaceManager._workspaceSignals.set(1, [101]);
+
+      workspaceManager._tree = rt;
+
+      // Insert at index 1 - key 1 should become key 2
+      workspaceManager.renumberWorkspacesAfterAddition(1);
+
+      expect(workspaceManager._workspaceSignals.has(0)).toBe(true);
+      expect(workspaceManager._workspaceSignals.get(0)).toEqual([100]);
+      expect(workspaceManager._workspaceSignals.has(2)).toBe(true);
+      expect(workspaceManager._workspaceSignals.get(2)).toEqual([101]);
+      expect(workspaceManager._workspaceSignals.has(1)).toBe(false);
+    });
+  });
 });
