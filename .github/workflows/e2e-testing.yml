@@ -115,15 +115,15 @@ jobs:
           systemctl --user start "gnome-xsession@:99"
           export DISPLAY=:99
 
-          # Wait for GNOME Shell to be ready
-          MAX_WAIT=60
+          # Wait for GNOME Shell to be ready (configurable timeout)
+          MAX_WAIT=${GNOME_SHELL_STARTUP_TIMEOUT:-60}
           WAITED=0
           while [ $WAITED -lt $MAX_WAIT ]; do
             if gdbus call --session \
                 --dest org.gnome.Shell \
                 --object-path /org/gnome/Shell \
                 --method org.gnome.Shell.Eval "1+1" 2>/dev/null | grep -q "true"; then
-              echo "GNOME Shell ready"
+              echo "GNOME Shell ready after ${WAITED}s"
               break
             fi
             sleep 1
@@ -131,7 +131,7 @@ jobs:
           done
 
           if [ $WAITED -ge $MAX_WAIT ]; then
-            echo "::error::GNOME Shell failed to start"
+            echo "::error::GNOME Shell failed to start within ${MAX_WAIT}s"
             exit 1
           fi
 
@@ -149,7 +149,6 @@ jobs:
           systemctl --user stop "gnome-xsession@:99" 2>/dev/null || true
 
           exit ${TEST_EXIT:-0}
-        continue-on-error: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -161,17 +160,11 @@ jobs:
 
       - name: Upload screenshots on failure
         uses: actions/upload-artifact@v4
-        if: failure() || steps.e2e_tests.outcome == 'failure'
+        if: failure()
         with:
           name: e2e-screenshots-fedora${{ matrix.fedora_version }}
           path: e2e-results/screenshots/
           retention-days: 7
-
-      - name: Check test results
-        if: steps.e2e_tests.outcome == 'failure'
-        run: |
-          echo "::error::E2E tests failed for Fedora ${{ matrix.fedora_version }}"
-          exit 1
 
   e2e-summary:
     needs: [setup, e2e-tests]

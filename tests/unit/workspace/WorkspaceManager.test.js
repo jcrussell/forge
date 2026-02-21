@@ -205,15 +205,15 @@ describe("WorkspaceManager", () => {
       expect(connectSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("should set workspaceSignals property on metaWorkspace for backwards compat", () => {
+    it("should track signals only in internal Map, not on workspace object", () => {
       workspaceManager.bindWorkspaceSignals(workspace0);
 
-      expect(workspace0.workspaceSignals).toBeDefined();
-      expect(workspace0.workspaceSignals).toBeInstanceOf(Array);
+      expect(workspace0.workspaceSignals).toBeUndefined();
+      expect(workspaceManager._workspaceSignals.has(0)).toBe(true);
     });
 
-    it("should not bind if workspace already has workspaceSignals property", () => {
-      workspace0.workspaceSignals = [123];
+    it("should not bind if workspace is already tracked in Map", () => {
+      workspaceManager.bindWorkspaceSignals(workspace0);
       const connectSpy = vi.spyOn(workspace0, "connect");
 
       workspaceManager.bindWorkspaceSignals(workspace0);

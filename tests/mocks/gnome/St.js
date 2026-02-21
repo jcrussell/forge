@@ -166,18 +166,6 @@ export class Icon extends Widget {
     this.icon_name = params.icon_name || "";
     this.icon_size = params.icon_size || 16;
   }
-
-  set_gicon(gicon) {
-    this.gicon = gicon;
-  }
-
-  set_icon_name(name) {
-    this.icon_name = name;
-  }
-
-  set_icon_size(size) {
-    this.icon_size = size;
-  }
 }
 
 export default {

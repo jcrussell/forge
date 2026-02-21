@@ -13,22 +13,6 @@ export class Actor extends withSignals() {
     this.reactive = params.reactive !== false;
   }
 
-  get_x() {
-    return this.x;
-  }
-
-  set_x(x) {
-    this.x = x;
-  }
-
-  get_y() {
-    return this.y;
-  }
-
-  set_y(y) {
-    this.y = y;
-  }
-
   get_width() {
     return this.width;
   }

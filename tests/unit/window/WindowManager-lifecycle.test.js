@@ -349,4 +349,62 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(movePointerSpy).toHaveBeenCalledWith(metaWindow);
     });
   });
+
+  describe("_validWindow", () => {
+    it("should accept NORMAL window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.NORMAL });
+      expect(wm()._validWindow(metaWindow)).toBe(true);
+    });
+
+    it("should accept DIALOG window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.DIALOG });
+      expect(wm()._validWindow(metaWindow)).toBe(true);
+    });
+
+    it("should accept MODAL_DIALOG window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.MODAL_DIALOG });
+      expect(wm()._validWindow(metaWindow)).toBe(true);
+    });
+
+    it("should reject UTILITY window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.UTILITY });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject POPUP_MENU window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.POPUP_MENU });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject DROPDOWN_MENU window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.DROPDOWN_MENU });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject TOOLTIP window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.TOOLTIP });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject xwaylandvideobridge windows", () => {
+      const metaWindow = createMockWindow({
+        window_type: WindowType.NORMAL,
+        wm_class: "Xwaylandvideobridge",
+      });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject ddterm windows", () => {
+      const metaWindow = createMockWindow({
+        window_type: WindowType.NORMAL,
+        wm_class: "com.github.amezin.ddterm",
+      });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+
+    it("should reject DESKTOP window type", () => {
+      const metaWindow = createMockWindow({ window_type: WindowType.DESKTOP });
+      expect(wm()._validWindow(metaWindow)).toBe(false);
+    });
+  });
 });

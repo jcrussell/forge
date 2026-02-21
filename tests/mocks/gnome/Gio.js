@@ -1,4 +1,5 @@
 // Mock Gio namespace
+import { withSignals } from "../helpers/signalMixin.js";
 
 export class File {
   constructor(path) {
@@ -60,11 +61,11 @@ export class File {
   }
 }
 
-export class Settings {
+export class Settings extends withSignals() {
   constructor(schema_id) {
+    super();
     this.schema_id = schema_id;
     this._settings = new Map();
-    this._signals = {};
   }
 
   static new(schema_id) {
@@ -117,19 +118,6 @@ export class Settings {
 
   set_value(key, value) {
     this._settings.set(key, value);
-  }
-
-  connect(signal, callback) {
-    if (!this._signals[signal]) this._signals[signal] = [];
-    const id = Math.random();
-    this._signals[signal].push({ id, callback });
-    return id;
-  }
-
-  disconnect(id) {
-    for (const signal in this._signals) {
-      this._signals[signal] = this._signals[signal].filter((s) => s.id !== id);
-    }
   }
 }
 

@@ -1,27 +1,6 @@
 // Mock GObject namespace
 import { withSignals } from "../helpers/signalMixin.js";
 
-// Legacy helper functions for external use (still work with any object)
-export function signal_connect(object, signal, callback) {
-  if (!object._signals) object._signals = {};
-  if (!object._signals[signal]) object._signals[signal] = [];
-  const id = Math.random();
-  object._signals[signal].push({ id, callback });
-  return id;
-}
-
-export function signal_disconnect(object, id) {
-  if (!object._signals) return;
-  for (const signal in object._signals) {
-    object._signals[signal] = object._signals[signal].filter((s) => s.id !== id);
-  }
-}
-
-export function signal_emit(object, signal, ...args) {
-  if (!object._signals || !object._signals[signal]) return;
-  object._signals[signal].forEach((s) => s.callback(...args));
-}
-
 export const SignalFlags = {
   RUN_FIRST: 1 << 0,
   RUN_LAST: 1 << 1,
@@ -49,9 +28,6 @@ export function registerClass(klass) {
 }
 
 export default {
-  signal_connect,
-  signal_disconnect,
-  signal_emit,
   SignalFlags,
   Object: GObjectBase,
   registerClass,

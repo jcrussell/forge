@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { createEnum } from "../../../lib/extension/enum.js";
 import {
-  createEnum,
   rectContainsPoint,
   resolveWidth,
   resolveHeight,
@@ -11,6 +11,9 @@ import {
   directionFromGrab,
   removeGapOnRect,
   allowResizeGrabOp,
+  normalizeGrabOp,
+  resolveDirection,
+  oppositeDirectionOf,
   calculateDropRegions,
   detectDropZone,
   DROP_ZONES,
@@ -463,6 +466,67 @@ describe("Utility Functions", () => {
     });
   });
 
+  describe("normalizeGrabOp", () => {
+    it("should strip the UNCONSTRAINED flag (bit 1024)", () => {
+      expect(normalizeGrabOp(GrabOp.MOVING | 1024)).toBe(GrabOp.MOVING);
+      expect(normalizeGrabOp(GrabOp.RESIZING_N | 1024)).toBe(GrabOp.RESIZING_N);
+    });
+
+    it("should leave unflagged ops unchanged", () => {
+      expect(normalizeGrabOp(GrabOp.MOVING)).toBe(GrabOp.MOVING);
+      expect(normalizeGrabOp(GrabOp.RESIZING_E)).toBe(GrabOp.RESIZING_E);
+      expect(normalizeGrabOp(GrabOp.NONE)).toBe(GrabOp.NONE);
+    });
+  });
+
+  describe("resolveDirection", () => {
+    it("should resolve LEFT string to Meta.MotionDirection.LEFT", () => {
+      expect(resolveDirection("LEFT")).toBe(MotionDirection.LEFT);
+    });
+
+    it("should resolve RIGHT string to Meta.MotionDirection.RIGHT", () => {
+      expect(resolveDirection("RIGHT")).toBe(MotionDirection.RIGHT);
+    });
+
+    it("should resolve UP string to Meta.MotionDirection.UP", () => {
+      expect(resolveDirection("UP")).toBe(MotionDirection.UP);
+    });
+
+    it("should resolve DOWN string to Meta.MotionDirection.DOWN", () => {
+      expect(resolveDirection("DOWN")).toBe(MotionDirection.DOWN);
+    });
+
+    it("should be case-insensitive", () => {
+      expect(resolveDirection("left")).toBe(MotionDirection.LEFT);
+      expect(resolveDirection("Right")).toBe(MotionDirection.RIGHT);
+      expect(resolveDirection("uP")).toBe(MotionDirection.UP);
+      expect(resolveDirection("down")).toBe(MotionDirection.DOWN);
+    });
+
+    it("should return null for unknown direction", () => {
+      expect(resolveDirection("DIAGONAL")).toBeNull();
+      expect(resolveDirection("")).toBeNull();
+    });
+
+    it("should return null for null/undefined input", () => {
+      expect(resolveDirection(null)).toBeNull();
+      expect(resolveDirection(undefined)).toBeNull();
+    });
+  });
+
+  describe("allowResizeGrabOp with UNCONSTRAINED flag", () => {
+    it("should allow resize ops even with the 1024 flag set", () => {
+      expect(allowResizeGrabOp(GrabOp.RESIZING_N | 1024)).toBe(true);
+      expect(allowResizeGrabOp(GrabOp.RESIZING_SE | 1024)).toBe(true);
+      expect(allowResizeGrabOp(GrabOp.KEYBOARD_RESIZING_W | 1024)).toBe(true);
+    });
+
+    it("should still reject non-resize ops with the 1024 flag set", () => {
+      expect(allowResizeGrabOp(GrabOp.MOVING | 1024)).toBe(false);
+      expect(allowResizeGrabOp(GrabOp.NONE | 1024)).toBe(false);
+    });
+  });
+
   describe("detectDropZone", () => {
     // Standard test rectangle and regions
     const rect = { x: 0, y: 0, width: 1000, height: 800 };
@@ -519,6 +583,28 @@ describe("Utility Functions", () => {
       expect(detectDropZone(regions, [100, 700])).toBe(DROP_ZONES.LEFT);
       // Bottom-right corner
       expect(detectDropZone(regions, [900, 700])).toBe(DROP_ZONES.RIGHT);
+    });
+  });
+
+  describe("oppositeDirectionOf", () => {
+    it("should return RIGHT for LEFT", () => {
+      expect(oppositeDirectionOf(MotionDirection.LEFT)).toBe(MotionDirection.RIGHT);
+    });
+
+    it("should return LEFT for RIGHT", () => {
+      expect(oppositeDirectionOf(MotionDirection.RIGHT)).toBe(MotionDirection.LEFT);
+    });
+
+    it("should return DOWN for UP", () => {
+      expect(oppositeDirectionOf(MotionDirection.UP)).toBe(MotionDirection.DOWN);
+    });
+
+    it("should return UP for DOWN", () => {
+      expect(oppositeDirectionOf(MotionDirection.DOWN)).toBe(MotionDirection.UP);
+    });
+
+    it("should return undefined for unknown direction", () => {
+      expect(oppositeDirectionOf(999)).toBeUndefined();
     });
   });
 });

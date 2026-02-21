@@ -11,7 +11,11 @@ HAS_XGETTEXT := $(shell command -v xgettext &>/dev/null && echo yes || echo no)
 HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
 .PHONY: all clean install schemas uninstall enable disable log debug patchcss check-deps \
-	e2e-test e2e-test-all e2e-debug e2e-clean e2e-build e2e-versions
+	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
+	format lint unit-test unit-test-watch unit-test-coverage \
+	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
+	e2e-test e2e-test-all e2e-debug e2e-clean e2e-build e2e-versions \
+	horizontal-line journal help
 
 all: build install enable restart
 
@@ -189,10 +193,7 @@ format:
 	npm run format
 
 lint:
-	npm test
-
-check:
-	npx prettier --check "./**/*.{js,jsx,ts,tsx,json}"
+	npm run lint
 
 # Unit tests (local with mocked GNOME APIs)
 unit-test:
@@ -329,3 +330,46 @@ e2e-versions:
 	@echo "  make e2e-test FEDORA_VERSION=40  # Run with Fedora 40 (GNOME 46)"
 	@echo "  make e2e-test-all                # Run for all versions"
 	@echo "  make e2e-debug                   # Interactive debugging"
+
+help:
+	@echo "Forge GNOME Shell Extension - Build Targets"
+	@echo ""
+	@echo "Development:"
+	@echo "  dev              Build in debug mode and install locally"
+	@echo "  prod             Build, install, enable, and restart shell"
+	@echo "  test             Build and test in nested Wayland session"
+	@echo "  test-x           Build and test on X11 (restarts gnome-shell)"
+	@echo "  test-open        Open an app in the nested test session"
+	@echo "  log              Follow extension logs from journalctl"
+	@echo ""
+	@echo "Build:"
+	@echo "  build            Compile extension (schemas, translations, metadata)"
+	@echo "  clean            Remove build artifacts"
+	@echo "  dist             Build distributable zip"
+	@echo "  install          Install built extension to ~/.local/share/gnome-shell/extensions/"
+	@echo "  uninstall        Remove installed extension"
+	@echo "  check-deps       Verify build dependencies are installed"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  format           Format code with Prettier (writes changes)"
+	@echo "  lint             Check code formatting (no changes)"
+	@echo ""
+	@echo "Unit Tests:"
+	@echo "  unit-test              Run tests locally"
+	@echo "  unit-test-watch        Run tests in watch mode"
+	@echo "  unit-test-coverage     Run tests with coverage report"
+	@echo "  unit-test-docker       Run tests in Docker"
+	@echo "  unit-test-docker-watch Run tests in Docker (watch mode)"
+	@echo "  unit-test-docker-coverage  Run tests in Docker with coverage"
+	@echo ""
+	@echo "E2E Tests:"
+	@echo "  e2e-test         Run E2E tests (default GNOME 47)"
+	@echo "  e2e-test-all     Run E2E tests for all GNOME versions"
+	@echo "  e2e-debug        Interactive debugging in E2E container"
+	@echo "  e2e-clean        Remove E2E test artifacts and images"
+	@echo "  e2e-versions     List supported GNOME versions"
+	@echo ""
+	@echo "GNOME Shell:"
+	@echo "  enable           Enable the extension"
+	@echo "  disable          Disable the extension"
+	@echo "  restart          Restart GNOME Shell"

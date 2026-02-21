@@ -187,8 +187,8 @@ export class Window extends withSignals() {
     // Mock delete operation
   }
 
-  kill() {
-    // Mock kill operation
+  allows_resize() {
+    return this._allows_resize;
   }
 
   get_window_type() {
@@ -199,11 +199,23 @@ export class Window extends withSignals() {
     return this._transient_for;
   }
 
-  allows_resize() {
-    return this._allows_resize;
+  get_id() {
+    return this.id;
   }
 
-  get_id() {
+  get_display() {
+    return global.display || null;
+  }
+
+  move_to_monitor(monitorIndex) {
+    this._monitor = monitorIndex;
+  }
+
+  appears_focused() {
+    return this.appears_focused_value ?? false;
+  }
+
+  get_stable_sequence() {
     return this.id;
   }
 
@@ -249,21 +261,6 @@ export class Workspace extends withSignals() {
     return this._windows;
   }
 
-  add_window(window) {
-    if (!this._windows.includes(window)) {
-      this._windows.push(window);
-      window._workspace = this;
-    }
-  }
-
-  remove_window(window) {
-    const index = this._windows.indexOf(window);
-    if (index !== -1) {
-      this._windows.splice(index, 1);
-      window._workspace = null;
-    }
-  }
-
   get_work_area_for_monitor(monitorIndex) {
     // Return default work area for monitor
     return new Rectangle({ x: monitorIndex * 1920, y: 0, width: 1920, height: 1080 });
@@ -307,13 +304,6 @@ export const WindowType = {
   COMBO: 13,
   DND: 14,
   OVERRIDE_OTHER: 15,
-};
-
-export const DisplayCorner = {
-  TOPLEFT: 0,
-  TOPRIGHT: 1,
-  BOTTOMLEFT: 2,
-  BOTTOMRIGHT: 3,
 };
 
 export const DisplayDirection = {
@@ -399,7 +389,6 @@ export default {
   Workspace,
   Display,
   WindowType,
-  DisplayCorner,
   DisplayDirection,
   MotionDirection,
   Side,

@@ -7,6 +7,28 @@
 set -e
 
 DISPLAY_NUM="${1:-99}"
+
+# Pre-flight validation
+if ! id gnomeshell &>/dev/null; then
+    echo "ERROR: 'gnomeshell' user does not exist"
+    exit 1
+fi
+
+if ! command -v Xvfb &>/dev/null; then
+    echo "ERROR: Xvfb is not installed"
+    exit 1
+fi
+
+if ! command -v gnome-shell &>/dev/null; then
+    echo "ERROR: gnome-shell is not installed"
+    exit 1
+fi
+
+if ! command -v gdbus &>/dev/null; then
+    echo "ERROR: gdbus is not installed"
+    exit 1
+fi
+
 USER_ID=$(id -u gnomeshell)
 XDG_RUNTIME_DIR="/run/user/${USER_ID}"
 

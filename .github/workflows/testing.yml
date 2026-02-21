@@ -53,6 +53,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
+          cache: 'npm'
 
       - name: Install Node.js project dependencies
         run: npm ci --verbose
@@ -73,6 +74,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Security audit
+        run: npm audit --omit=dev || true
 
       - name: Test Packaging
         run: make dist

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import St from "gi://St";
 import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
-import { Bin, BoxLayout } from "../../mocks/gnome/St.js";
+import { Bin } from "../../mocks/gnome/St.js";
 import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
 
 /**
