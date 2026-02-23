@@ -1,8 +1,11 @@
 # Forge E2E Testing Container
-# Based on gnome-shell-pod for real GNOME Shell testing
+# Self-contained environment for real GNOME Shell testing.
+# Container setup derived from gnome-shell-pod (https://github.com/Schneegans/gnome-shell-pod),
+# MIT license, by Simon Schneegans.
 #
 # FEDORA_VERSION maps to GNOME version:
-#   39 -> GNOME 45, 40 -> GNOME 46, 41 -> GNOME 47
+#   39 -> GNOME 45, 40 -> GNOME 46, 41 -> GNOME 47,
+#   42 -> GNOME 48, 43 -> GNOME 49, rawhide -> GNOME 50 (alpha)
 #
 # Build extension first on host: make build
 # Then build container: docker build -f docker/Dockerfile.e2e -t forge-e2e .
@@ -12,17 +15,25 @@
 #   - Use docker exec to run tests: docker exec $POD set-env.sh /app/scripts/run-tests.sh
 #   - The Makefile handles this automatically with: make e2e-test
 
-ARG FEDORA_VERSION=41
-FROM ghcr.io/schneegans/gnome-shell-pod-${FEDORA_VERSION}
+ARG FEDORA_VERSION=43
+FROM registry.fedoraproject.org/fedora:${FEDORA_VERSION}
 
 LABEL maintainer="Forge <forge@jmmaranan.com>"
 LABEL description="E2E testing environment for Forge GNOME Shell extension"
 
-# Install minimal dependencies - most are already in the base image
-# ibus is needed for keyboard input services that GNOME Shell expects
-# gcc/python3-devel/dbus-devel are needed to build dbus-python from source
-# They are removed after pip install to keep the image small
+# Install GNOME Shell + test dependencies in a single layer.
+# gnome-shell: the shell itself plus gnome-extensions CLI.
+# dbus-daemon: explicit dep because Fedora defaults to dbus-broker which doesn't
+#   provide the dbus-daemon binary that start-user-session.sh uses.
+# xorg-x11-server-Xvfb: virtual X server (start-user-session.sh runs gnome-shell --x11 on Xvfb).
+# Forge test deps: xdotool, ImageMagick, gnome-text-editor, ibus, python3-pip, zenity.
+# Build deps for dbus-python (removed after pip install).
 RUN dnf install -y --setopt=install_weak_deps=False \
+    gnome-shell \
+    dbus-daemon \
+    xorg-x11-server-Xvfb \
+    mesa-dri-drivers \
+    sudo \
     python3-pip \
     ImageMagick \
     gnome-text-editor \
@@ -34,6 +45,16 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     && dnf remove -y gcc python3-devel dbus-devel glib2-devel \
     && dnf clean all \
     && rm -rf /var/cache/dnf
+
+# Create gnomeshell user with passwordless sudo (from gnome-shell-pod)
+RUN adduser -m -U -G users,adm gnomeshell && \
+    echo "gnomeshell     ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Configure systemd for container use (from gnome-shell-pod)
+RUN systemctl unmask systemd-logind.service && \
+    systemctl set-default multi-user.target && \
+    mkdir -p /etc/systemd/system/systemd-logind.service.d && \
+    printf '[Service]\nProtectHostname=no\n' > /etc/systemd/system/systemd-logind.service.d/override.conf
 
 # Set up extension directory
 ARG UUID=forge@jmmaranan.com
@@ -69,10 +90,10 @@ RUN mkdir -p /tmp/dconf-db && \
 RUN mkdir -p /var/lib/systemd/linger && \
     touch /var/lib/systemd/linger/gnomeshell
 
-# Copy the start-user-session.sh script (included with docker/scripts/)
-# and make it available in the standard path
+# Install helper scripts to standard path
 RUN cp /app/scripts/start-user-session.sh /usr/local/bin/start-user-session.sh && \
-    chmod +x /usr/local/bin/start-user-session.sh
+    cp /app/scripts/set-env.sh /usr/local/bin/set-env.sh && \
+    chmod +x /usr/local/bin/start-user-session.sh /usr/local/bin/set-env.sh
 
-# NOTE: Don't override CMD - container uses systemd by default which is required
-# for GNOME Shell to function properly. Use docker exec to run tests.
+# Systemd as PID 1 is required for GNOME Shell (systemd-logind, locale1, etc.)
+CMD [ "/usr/sbin/init", "systemd.unified_cgroup_hierarchy=0" ]

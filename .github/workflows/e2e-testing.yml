@@ -1,8 +1,9 @@
 # E2E Testing Workflow for Forge
-# Runs end-to-end tests against real GNOME Shell in containers
+# Runs end-to-end tests against real GNOME Shell in self-contained containers
 #
-# Uses Fedora version numbers (gnome-shell-pod naming convention):
-#   Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47
+# Uses Fedora version numbers:
+#   Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47,
+#   Fedora 42 = GNOME 48, Fedora 43 = GNOME 49
 
 name: e2e-testing
 
@@ -23,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       fedora_version:
-        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47)'
+        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47, 42=GNOME48, 43=GNOME49)'
         required: false
         default: ''
 
@@ -58,97 +59,56 @@ jobs:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
 
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/schneegans/gnome-shell-pod-${{ matrix.fedora_version }}
-      # Systemd requires privileged mode and proper cgroup support
-      options: --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          dnf install -y \
-            python3 \
-            python3-pip \
-            python3-gobject \
-            python3-dbus \
-            xdotool \
-            ImageMagick \
-            gnome-text-editor \
-            make \
-            zip \
-            gettext
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install Python test dependencies
+      - name: Install dependencies and build extension
         run: |
-          pip3 install --no-cache-dir -r tests/e2e/requirements.txt
-
-      - name: Build and install extension
-        run: |
+          npm ci
           make build
-          mkdir -p ~/.local/share/gnome-shell/extensions/forge@jmmaranan.com
-          cp -r temp/* ~/.local/share/gnome-shell/extensions/forge@jmmaranan.com/
 
-      - name: Enable extension
+      - name: Build E2E container
         run: |
-          mkdir -p ~/.config/dconf
-          cat > /tmp/forge-enable.conf << 'EOF'
-          [org/gnome/shell]
-          enabled-extensions=['forge@jmmaranan.com']
-          EOF
-          dconf load / < /tmp/forge-enable.conf || true
+          docker build -f docker/Dockerfile.e2e \
+            -t forge-e2e-fedora${{ matrix.fedora_version }} \
+            --build-arg FEDORA_VERSION=${{ matrix.fedora_version }} \
+            .
 
       - name: Run E2E tests
         id: e2e_tests
         run: |
-          mkdir -p e2e-results/screenshots
+          mkdir -p e2e-results
 
-          # Source container environment setup (provides D-Bus session)
-          source /local/bin/set-env.sh
+          # Start container with systemd as PID 1
+          POD=$(docker run --rm -td \
+            --privileged \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -e container=docker \
+            -v $(pwd)/e2e-results:/app/e2e-results \
+            forge-e2e-fedora${{ matrix.fedora_version }})
 
-          # Wait for D-Bus user bus
-          /local/bin/wait-user-bus.sh
+          # Ensure cleanup on exit
+          trap "docker stop $POD 2>/dev/null || true" EXIT
 
-          # Start GNOME Shell via systemd service
-          systemctl --user start "gnome-xsession@:99"
-          export DISPLAY=:99
+          echo "Container: $POD"
+          echo "Waiting for container to initialize..."
+          sleep 3
 
-          # Wait for GNOME Shell to be ready (configurable timeout)
-          MAX_WAIT=${GNOME_SHELL_STARTUP_TIMEOUT:-60}
-          WAITED=0
-          while [ $WAITED -lt $MAX_WAIT ]; do
-            if gdbus call --session \
-                --dest org.gnome.Shell \
-                --object-path /org/gnome/Shell \
-                --method org.gnome.Shell.Eval "1+1" 2>/dev/null | grep -q "true"; then
-              echo "GNOME Shell ready after ${WAITED}s"
-              break
-            fi
-            sleep 1
-            WAITED=$((WAITED + 1))
-          done
+          echo "Starting GNOME Shell session..."
+          docker exec $POD /usr/local/bin/start-user-session.sh 99
 
-          if [ $WAITED -ge $MAX_WAIT ]; then
-            echo "::error::GNOME Shell failed to start within ${MAX_WAIT}s"
-            exit 1
-          fi
-
-          # Enable Forge extension
-          gnome-extensions enable forge@jmmaranan.com || true
-          sleep 5
-
-          cd tests/e2e
-          python3 -m pytest tests/ \
-            --verbose \
-            --junitxml=../../e2e-results/junit-fedora${{ matrix.fedora_version }}.xml \
-            || TEST_EXIT=$?
-
-          # Stop GNOME Shell
-          systemctl --user stop "gnome-xsession@:99" 2>/dev/null || true
-
-          exit ${TEST_EXIT:-0}
+          echo "Running E2E tests..."
+          docker exec --user gnomeshell -e DISPLAY=:99 $POD \
+            set-env.sh /app/scripts/run-tests.sh
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

@@ -1,15 +1,23 @@
 """
 Input Simulator for E2E tests.
 
-Uses xdotool to simulate keyboard and mouse input for testing
-Forge keybindings and window interactions.
+Supports two backends for keyboard and mouse input:
+  - Clutter (via ShellProxy): Uses Clutter's VirtualInputDevice API through
+    D-Bus Shell.Eval. Works in both X11 and Wayland modes. Preferred backend.
+  - xdotool (legacy): X11-only, used when no ShellProxy is provided.
+
+The Clutter backend is required for Wayland headless mode (GNOME 49+/Fedora 43+)
+because xdotool cannot trigger compositor-level keybindings through XWayland.
 """
 
 import subprocess
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .constants import Timing
+
+if TYPE_CHECKING:
+    from .shell_proxy import ShellProxy
 
 
 class InputSimulatorError(Exception):
@@ -86,7 +94,11 @@ class InputSimulator:
     }
 
     def __init__(
-        self, display: Optional[str] = None, key_delay: int = Timing.KEY_DELAY_MS
+        self,
+        display: Optional[str] = None,
+        key_delay: int = Timing.KEY_DELAY_MS,
+        shell_proxy: Optional["ShellProxy"] = None,
+        idle_proxy: Optional["ShellProxy"] = None,
     ):
         """
         Initialize the input simulator.
@@ -94,10 +106,18 @@ class InputSimulator:
         Args:
             display: X11 DISPLAY value (e.g., ':99'). If None, uses environment.
             key_delay: Delay between key presses in milliseconds.
+            shell_proxy: Optional ShellProxy for Clutter-based input (required
+                for Wayland mode, also works in X11 mode).
+            idle_proxy: Optional ShellProxy used only for wait_for_idle() calls
+                after heavy layout operations. Use this in X11 mode where
+                xdotool handles input but idle waits are still needed.
         """
         self._display = display
         self._key_delay = key_delay
-        self._verify_xdotool()
+        self._shell_proxy = shell_proxy
+        self._idle_proxy = idle_proxy or shell_proxy
+        if not shell_proxy:
+            self._verify_xdotool()
 
     def _verify_xdotool(self) -> None:
         """Verify xdotool is available."""
@@ -148,10 +168,19 @@ class InputSimulator:
         """
         Press and release a key or key combination.
 
+        Uses Clutter VirtualInputDevice when any shell proxy is available
+        (both Wayland and X11 modes) to avoid triggering the GNOME overview
+        when Super key combos are sent. Falls back to xdotool only when no
+        proxy is available at all.
+
         Args:
             key_spec: Key specification (e.g., 'super+h', 'ctrl+shift+a').
         """
-        self._run_xdotool("key", "--delay", str(self._key_delay), key_spec)
+        proxy = self._shell_proxy or self._idle_proxy
+        if proxy:
+            proxy.simulate_key_combo(key_spec)
+        else:
+            self._run_xdotool("key", "--delay", str(self._key_delay), key_spec)
         time.sleep(Timing.KEY_AFTER_PRESS)
 
     def key_down(self, key: str) -> None:
@@ -170,7 +199,12 @@ class InputSimulator:
             text: Text to type.
             delay: Delay between characters in milliseconds.
         """
-        self._run_xdotool("type", "--delay", str(delay), text)
+        if self._shell_proxy:
+            for char in text:
+                self._shell_proxy.simulate_key_combo(char)
+                time.sleep(delay / 1000.0)
+        else:
+            self._run_xdotool("type", "--delay", str(delay), text)
 
     # Forge-specific keybinding methods
 
@@ -239,12 +273,34 @@ class InputSimulator:
         self.key("super+z")
 
     def toggle_stacked(self) -> None:
-        """Press Shift+Super+s to toggle stacked layout."""
-        self.key("shift+super+s")
+        """Toggle stacked layout.
+
+        Uses D-Bus invoke_forge_action when available to avoid triggering
+        the GNOME Shell overview via xdotool Super key press, which causes
+        Clutter allocation storms under Xvfb.
+        """
+        if self._idle_proxy:
+            self._idle_proxy.invoke_forge_action({"name": "LayoutStackedToggle"})
+        else:
+            self.key("shift+super+s")
+        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
+        if self._idle_proxy:
+            self._idle_proxy.wait_for_idle()
 
     def toggle_tabbed(self) -> None:
-        """Press Shift+Super+t to toggle tabbed layout."""
-        self.key("shift+super+t")
+        """Toggle tabbed layout.
+
+        Uses D-Bus invoke_forge_action when available to avoid triggering
+        the GNOME Shell overview via xdotool Super key press, which causes
+        Clutter allocation storms under Xvfb.
+        """
+        if self._idle_proxy:
+            self._idle_proxy.invoke_forge_action({"name": "LayoutTabbedToggle"})
+        else:
+            self.key("shift+super+t")
+        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
+        if self._idle_proxy:
+            self._idle_proxy.wait_for_idle()
 
     def workspace_prev(self) -> None:
         """Press Super+Page_Up to go to previous workspace."""
@@ -337,8 +393,11 @@ class InputSimulator:
             y: Y coordinate.
             button: Mouse button (1=left, 2=middle, 3=right).
         """
-        self._run_xdotool("mousemove", str(x), str(y))
-        self._run_xdotool("click", str(button))
+        if self._shell_proxy:
+            self._shell_proxy.simulate_click(x, y, button)
+        else:
+            self._run_xdotool("mousemove", str(x), str(y))
+            self._run_xdotool("click", str(button))
 
     def move_mouse(self, x: int, y: int) -> None:
         """
@@ -348,7 +407,10 @@ class InputSimulator:
             x: X coordinate.
             y: Y coordinate.
         """
-        self._run_xdotool("mousemove", str(x), str(y))
+        if self._shell_proxy:
+            self._shell_proxy.simulate_mouse_move(x, y)
+        else:
+            self._run_xdotool("mousemove", str(x), str(y))
 
     def drag(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
         """
@@ -360,12 +422,20 @@ class InputSimulator:
             end_x: Ending X coordinate.
             end_y: Ending Y coordinate.
         """
-        self._run_xdotool("mousemove", str(start_x), str(start_y))
-        self._run_xdotool("mousedown", "1")
-        time.sleep(0.1)
-        self._run_xdotool("mousemove", str(end_x), str(end_y))
-        time.sleep(0.1)
-        self._run_xdotool("mouseup", "1")
+        if self._shell_proxy:
+            self._shell_proxy.simulate_mouse_move(start_x, start_y)
+            self._shell_proxy.simulate_mouse_button(1, True)
+            time.sleep(0.1)
+            self._shell_proxy.simulate_mouse_move(end_x, end_y)
+            time.sleep(0.1)
+            self._shell_proxy.simulate_mouse_button(1, False)
+        else:
+            self._run_xdotool("mousemove", str(start_x), str(start_y))
+            self._run_xdotool("mousedown", "1")
+            time.sleep(0.1)
+            self._run_xdotool("mousemove", str(end_x), str(end_y))
+            time.sleep(0.1)
+            self._run_xdotool("mouseup", "1")
 
     def drag_window(
         self,
@@ -391,20 +461,32 @@ class InputSimulator:
             steps: Number of intermediate steps.
             step_delay: Delay between steps in seconds.
         """
-        self._run_xdotool("mousemove", str(start_x), str(start_y))
-        time.sleep(0.1)
-        self._run_xdotool("mousedown", "1")
-        time.sleep(0.1)
-
-        for i in range(1, steps + 1):
-            interp = i / steps
-            cur_x = int(start_x + (end_x - start_x) * interp)
-            cur_y = int(start_y + (end_y - start_y) * interp)
-            self._run_xdotool("mousemove", str(cur_x), str(cur_y))
-            time.sleep(step_delay)
-
-        time.sleep(0.1)
-        self._run_xdotool("mouseup", "1")
+        if self._shell_proxy:
+            self._shell_proxy.simulate_mouse_move(start_x, start_y)
+            time.sleep(0.1)
+            self._shell_proxy.simulate_mouse_button(1, True)
+            time.sleep(0.1)
+            for i in range(1, steps + 1):
+                interp = i / steps
+                cur_x = int(start_x + (end_x - start_x) * interp)
+                cur_y = int(start_y + (end_y - start_y) * interp)
+                self._shell_proxy.simulate_mouse_move(cur_x, cur_y)
+                time.sleep(step_delay)
+            time.sleep(0.1)
+            self._shell_proxy.simulate_mouse_button(1, False)
+        else:
+            self._run_xdotool("mousemove", str(start_x), str(start_y))
+            time.sleep(0.1)
+            self._run_xdotool("mousedown", "1")
+            time.sleep(0.1)
+            for i in range(1, steps + 1):
+                interp = i / steps
+                cur_x = int(start_x + (end_x - start_x) * interp)
+                cur_y = int(start_y + (end_y - start_y) * interp)
+                self._run_xdotool("mousemove", str(cur_x), str(cur_y))
+                time.sleep(step_delay)
+            time.sleep(0.1)
+            self._run_xdotool("mouseup", "1")
 
     # Window operations
 
@@ -413,9 +495,13 @@ class InputSimulator:
         Focus a specific window by ID.
 
         Args:
-            window_id: X11 window ID.
+            window_id: X11 window ID (xdotool) or ignored (Clutter mode
+                uses ShellProxy.ensure_focus instead).
         """
-        self._run_xdotool("windowfocus", window_id)
+        if self._shell_proxy:
+            self._shell_proxy.ensure_focus()
+        else:
+            self._run_xdotool("windowfocus", window_id)
         time.sleep(Timing.KEY_AFTER_PRESS)
 
     def activate_window(self, window_id: str) -> None:
@@ -423,9 +509,12 @@ class InputSimulator:
         Activate (focus and raise) a specific window by ID.
 
         Args:
-            window_id: X11 window ID.
+            window_id: X11 window ID (xdotool mode only).
         """
-        self._run_xdotool("windowactivate", window_id)
+        if self._shell_proxy:
+            self._shell_proxy.ensure_focus()
+        else:
+            self._run_xdotool("windowactivate", window_id)
         time.sleep(Timing.KEY_AFTER_PRESS)
 
     def get_active_window(self) -> str:
@@ -433,8 +522,10 @@ class InputSimulator:
         Get the currently active window ID.
 
         Returns:
-            X11 window ID as string.
+            X11 window ID as string, or 'clutter' in Clutter mode.
         """
+        if self._shell_proxy:
+            return "clutter"
         return self._run_xdotool("getactivewindow")
 
     def search_window(self, name: str) -> list:
@@ -447,6 +538,8 @@ class InputSimulator:
         Returns:
             List of matching window IDs.
         """
+        if self._shell_proxy:
+            return []
         try:
             output = self._run_xdotool("search", "--name", name)
             return output.split("\n") if output else []

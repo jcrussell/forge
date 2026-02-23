@@ -41,6 +41,19 @@ def pytest_configure(config):
     SCREENSHOT_DIR.mkdir(exist_ok=True)
 
 
+@pytest.fixture(autouse=True)
+def _check_shell_alive(shell_proxy):
+    """Abort test session immediately if gnome-shell has crashed.
+
+    Uses a lightweight D-Bus eval to detect both process death and D-Bus
+    connection loss, which is more reliable than pgrep in containers.
+    """
+    try:
+        shell_proxy.eval("1")
+    except Exception:
+        pytest.exit("gnome-shell is unreachable — aborting test session", returncode=1)
+
+
 def pytest_runtest_makereport(item, call):
     """Capture screenshot on test failure."""
     if call.when == "call" and call.excinfo is not None:
@@ -108,9 +121,17 @@ def check_forge_ready(shell_proxy):
 
 
 @pytest.fixture(scope="session")
-def input_sim(display) -> InputSimulator:
-    """Provide an InputSimulator instance."""
-    return InputSimulator(display=display)
+def input_sim(display, shell_proxy) -> InputSimulator:
+    """Provide an InputSimulator instance.
+
+    Uses Clutter virtual input (via shell_proxy) in Wayland headless mode
+    where xdotool cannot trigger compositor keybindings. Uses xdotool in
+    X11 mode where it's proven stable.
+    """
+    is_wayland = os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY")
+    if is_wayland:
+        return InputSimulator(display=display, shell_proxy=shell_proxy)
+    return InputSimulator(display=display, idle_proxy=shell_proxy)
 
 
 @pytest.fixture(scope="session")
@@ -164,13 +185,18 @@ def clean_workspace(shell_proxy) -> Generator[None, None, None]:
 
 
 def _close_all_windows(shell_proxy: ShellProxy) -> None:
-    """Close all windows on the current workspace via D-Bus."""
+    """Close all windows on the current workspace one-by-one via D-Bus.
+
+    Closing windows individually avoids overwhelming the rendering pipeline
+    under Xvfb, which can saturate the main loop and cause gnome-shell to
+    lose its D-Bus service channel name.
+    """
     for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
         try:
             windows = shell_proxy.get_windows()
             if not windows:
                 break
-            shell_proxy.close_all_windows()
+            shell_proxy.close_one_window()
             time.sleep(Timing.WINDOW_CLOSE)
         except Exception:
             break
@@ -239,8 +265,9 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
 
     # Ensure environment variables are passed to the subprocess
     env = os.environ.copy()
-    # Make sure DISPLAY is set
-    if "DISPLAY" not in env:
+    # For Wayland mode, WAYLAND_DISPLAY should be set by set-env.sh;
+    # only fall back to DISPLAY for X11 mode
+    if "WAYLAND_DISPLAY" not in env and "DISPLAY" not in env:
         env["DISPLAY"] = ":99"
     # Make sure D-Bus session is set
     if "DBUS_SESSION_BUS_ADDRESS" not in env:
@@ -267,9 +294,16 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
             return windows[-1] if windows else None
         return None
 
+    def has_valid_size(w):
+        """Check window exists and has non-zero size (Wayland configure received)."""
+        if w is None:
+            return False
+        rect = w.get("rect", {})
+        return rect.get("width", 0) > 0 and rect.get("height", 0) > 0
+
     return wait_for(
         find_new_window,
-        predicate=lambda w: w is not None,
+        predicate=has_valid_size,
         timeout=Timing.WINDOW_LAUNCH,
         interval=Timing.POLL_INTERVAL_WINDOW,
         message=f"Window for '{app}' did not appear",

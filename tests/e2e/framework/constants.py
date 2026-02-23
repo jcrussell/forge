@@ -21,6 +21,7 @@ class Timing:
 
     # Layout changes
     LAYOUT_CHANGE = 0.5       # Time for layout change to complete
+    STACKED_LAYOUT_CHANGE = 3.0  # Stacked/tabbed layouts need more time (heavy rendering under Xvfb)
     FOCUS_CHANGE = 0.2        # Time for focus change
 
     # Settings and resize

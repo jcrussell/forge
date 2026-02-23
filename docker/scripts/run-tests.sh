@@ -15,12 +15,25 @@ source "${SCRIPT_DIR}/lib.sh"
 PROJECT_DIR="${PROJECT_DIR:-/app}"
 TEST_DIR="${PROJECT_DIR}/tests/e2e"
 RESULTS_DIR="${PROJECT_DIR}/e2e-results"
-PYTEST_ARGS="${*:---verbose}"
+PYTEST_ARGS="${*:---verbose -x}"
 
 # Ensure environment is set for subprocess launching
-export DISPLAY="${DISPLAY:-:99}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+
+# Set display variables based on session type
+SESSION_TYPE_FILE="/tmp/forge-session-type"
+if [ -f "$SESSION_TYPE_FILE" ] && [ "$(cat $SESSION_TYPE_FILE)" = "wayland" ]; then
+    unset DISPLAY
+    if [ -z "$WAYLAND_DISPLAY" ]; then
+        WAYLAND_DISPLAY_FILE="/tmp/forge-wayland-display"
+        if [ -f "$WAYLAND_DISPLAY_FILE" ]; then
+            export WAYLAND_DISPLAY="$(cat $WAYLAND_DISPLAY_FILE)"
+        fi
+    fi
+else
+    export DISPLAY="${DISPLAY:-:99}"
+fi
 
 echo "=========================================="
 echo "Forge E2E Test Runner"
@@ -62,6 +75,18 @@ python3 -m pytest tests/ ${PYTEST_ARGS} \
 echo "=========================================="
 echo "Tests completed with exit code: ${TEST_EXIT:-0}"
 echo "=========================================="
+
+# Check if gnome-shell crashed during tests
+if ! pgrep -u gnomeshell gnome-shell > /dev/null 2>&1; then
+    echo "=========================================="
+    echo "WARNING: gnome-shell crashed during tests!"
+    cp /tmp/gnome-shell.log "${RESULTS_DIR}/gnome-shell.log" 2>/dev/null || true
+    echo "(Full log saved to e2e-results/gnome-shell.log)"
+    echo "--- gnome-shell log (last 200 lines) ---"
+    tail -200 /tmp/gnome-shell.log 2>/dev/null || echo "(no log file found)"
+    echo "--- end gnome-shell log ---"
+    echo "=========================================="
+fi
 
 # Copy any screenshots to results
 if [ -d "${TEST_DIR}/e2e-results/screenshots" ]; then

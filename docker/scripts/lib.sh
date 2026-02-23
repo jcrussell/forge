@@ -1,11 +1,36 @@
 #!/bin/bash
 # Shared utilities for E2E test scripts
 
-# Wait for X display to be available
+# Wait for display to be available (X11 or Wayland)
 # Usage: wait_for_display [max_wait_seconds]
 wait_for_display() {
     local max_wait=${1:-30}
     local waited=0
+
+    # Check session type
+    local session_type="x11"
+    if [ -f /tmp/forge-session-type ]; then
+        session_type=$(cat /tmp/forge-session-type)
+    fi
+
+    if [ "$session_type" = "wayland" ]; then
+        local xdg_runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        echo "Waiting for Wayland display (max ${max_wait}s)..."
+        while [ $waited -lt $max_wait ]; do
+            for f in "$xdg_runtime"/wayland-*; do
+                if [ -S "$f" ]; then
+                    echo "Wayland display ready after ${waited}s: $(basename "$f")"
+                    return 0
+                fi
+            done
+            sleep 0.5
+            waited=$((waited + 1))
+        done
+        echo "ERROR: Wayland display failed to start within ${max_wait}s"
+        return 1
+    fi
+
+    # X11 mode
     local display_num="${DISPLAY_NUM:-99}"
     local socket_path="/tmp/.X11-unix/X${display_num}"
 

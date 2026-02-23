@@ -2,8 +2,11 @@
   "fedora_to_gnome": {
     "39": 45,
     "40": 46,
-    "41": 47
+    "41": 47,
+    "42": 48,
+    "43": 49,
+    "rawhide": 50
   },
-  "supported_fedora": [39, 40, 41],
-  "default_fedora": 41
+  "supported_fedora": [39, 40, 41, 42, 43],
+  "default_fedora": 42
 }

@@ -9,6 +9,7 @@ Requires gnome-shell to be running with --unsafe-mode flag.
 
 import json
 import subprocess
+import time
 from typing import Any, Optional
 
 import gi
@@ -127,6 +128,39 @@ class ShellProxy:
             return output
         except GLib.Error as e:
             raise ShellProxyError(f"D-Bus call failed: {e.message}")
+
+    def wait_for_idle(self, timeout=5.0, interval=0.3, stable_count=3):
+        """Wait for gnome-shell to become responsive after heavy operations.
+
+        Polls gnome-shell with a trivial D-Bus eval until it responds
+        multiple times consecutively, confirming the main loop is not
+        saturated and the rendering pipeline has settled. This prevents
+        crashes caused by stacked/tabbed layout toggles overwhelming the
+        Clutter rendering pipeline under Xvfb.
+
+        Args:
+            timeout: Maximum time to wait in seconds.
+            interval: Time between polls in seconds.
+            stable_count: Number of consecutive successful pings required
+                before considering the shell idle.
+
+        Returns:
+            True if shell became responsive, False on timeout.
+        """
+        start = time.time()
+        consecutive = 0
+        while time.time() - start < timeout:
+            try:
+                if self.eval("1") is not None:
+                    consecutive += 1
+                    if consecutive >= stable_count:
+                        return True
+                else:
+                    consecutive = 0
+            except Exception:
+                consecutive = 0
+            time.sleep(interval)
+        return False
 
     def is_forge_enabled(self) -> bool:
         """Check if Forge extension is enabled."""
@@ -991,6 +1025,149 @@ class ShellProxy:
         })();
         """
         return self.eval(js)
+
+    # === Virtual Input Methods (Clutter) ===
+    # These use Clutter's VirtualInputDevice API via Shell.Eval to simulate
+    # keyboard and mouse input. Unlike xdotool, this works in both X11 and
+    # Wayland modes because it goes through Clutter's input pipeline directly.
+    #
+    # Virtual devices are created once and cached in globalThis._forgeTest*
+    # to avoid resource exhaustion from creating devices per key press.
+
+    _virtual_devices_initialized = False
+
+    def _ensure_virtual_devices(self) -> None:
+        """Create and cache virtual input devices in GNOME Shell's global scope."""
+        if self._virtual_devices_initialized:
+            return
+        js = """(function() {
+    const Clutter = imports.gi.Clutter;
+    const seat = Clutter.get_default_backend().get_default_seat();
+    if (!globalThis._forgeTestVKbd) {
+        globalThis._forgeTestVKbd = seat.create_virtual_device(
+            Clutter.InputDeviceType.KEYBOARD_DEVICE);
+    }
+    if (!globalThis._forgeTestVMouse) {
+        globalThis._forgeTestVMouse = seat.create_virtual_device(
+            Clutter.InputDeviceType.POINTER_DEVICE);
+    }
+    return 'ok';
+})();"""
+        self.eval(js)
+        self._virtual_devices_initialized = True
+
+    def simulate_key_combo(self, key_spec: str) -> None:
+        """
+        Simulate a key combination via Clutter virtual input device.
+
+        Args:
+            key_spec: Key specification in xdotool format (e.g., 'super+h',
+                      'ctrl+shift+a', 'Page_Up').
+        """
+        self._ensure_virtual_devices()
+
+        parts = key_spec.split("+")
+        key = parts[-1]
+        modifiers = parts[:-1] if len(parts) > 1 else []
+
+        # Build press/release sequence
+        press_lines = []
+        release_lines = []
+
+        for mod in modifiers:
+            clutter_name = self._to_clutter_keyname(mod)
+            press_lines.append(
+                f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_name}, "
+                f"Clutter.KeyState.PRESSED); t += dt;"
+            )
+            release_lines.insert(
+                0,
+                f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_name}, "
+                f"Clutter.KeyState.RELEASED); t += dt;",
+            )
+
+        clutter_key = self._to_clutter_keyname(key)
+        press_lines.append(
+            f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_key}, "
+            f"Clutter.KeyState.PRESSED); t += dt;"
+        )
+        release_lines.insert(
+            0,
+            f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_key}, "
+            f"Clutter.KeyState.RELEASED); t += dt;",
+        )
+
+        all_lines = "\n    ".join(press_lines + release_lines)
+        js = f"""(function() {{
+    const Clutter = imports.gi.Clutter;
+    const GLib = imports.gi.GLib;
+    const vkbd = globalThis._forgeTestVKbd;
+    let t = GLib.get_monotonic_time();
+    const dt = 10000;
+    {all_lines}
+    return 'ok';
+}})();"""
+        self.eval(js)
+
+    def simulate_mouse_move(self, x: int, y: int) -> None:
+        """Move the virtual mouse pointer to absolute coordinates."""
+        self._ensure_virtual_devices()
+        js = f"""(function() {{
+    const GLib = imports.gi.GLib;
+    globalThis._forgeTestVMouse.notify_absolute_motion(GLib.get_monotonic_time(), {x}, {y});
+    return 'ok';
+}})();"""
+        self.eval(js)
+
+    def simulate_mouse_button(self, button: int, pressed: bool) -> None:
+        """
+        Press or release a mouse button.
+
+        Args:
+            button: Mouse button (1=left, 2=middle, 3=right).
+            pressed: True to press, False to release.
+        """
+        self._ensure_virtual_devices()
+        # Map logical button numbers to evdev button codes
+        btn_code = {1: 0x110, 2: 0x112, 3: 0x111}.get(button, 0x110)
+        state = "PRESSED" if pressed else "RELEASED"
+        js = f"""(function() {{
+    const Clutter = imports.gi.Clutter;
+    const GLib = imports.gi.GLib;
+    globalThis._forgeTestVMouse.notify_button(
+        GLib.get_monotonic_time(), {btn_code}, Clutter.ButtonState.{state});
+    return 'ok';
+}})();"""
+        self.eval(js)
+
+    def simulate_click(self, x: int, y: int, button: int = 1) -> None:
+        """Click at specific coordinates."""
+        self._ensure_virtual_devices()
+        btn_code = {1: 0x110, 2: 0x112, 3: 0x111}.get(button, 0x110)
+        js = f"""(function() {{
+    const Clutter = imports.gi.Clutter;
+    const GLib = imports.gi.GLib;
+    const vm = globalThis._forgeTestVMouse;
+    let t = GLib.get_monotonic_time();
+    const dt = 10000;
+    vm.notify_absolute_motion(t, {x}, {y}); t += dt;
+    vm.notify_button(t, {btn_code}, Clutter.ButtonState.PRESSED); t += dt;
+    vm.notify_button(t, {btn_code}, Clutter.ButtonState.RELEASED);
+    return 'ok';
+}})();"""
+        self.eval(js)
+
+    @staticmethod
+    def _to_clutter_keyname(key_name: str) -> str:
+        """Convert xdotool key name to Clutter.KEY_* suffix."""
+        mapping = {
+            "super": "Super_L",
+            "ctrl": "Control_L",
+            "control": "Control_L",
+            "shift": "Shift_L",
+            "alt": "Alt_L",
+        }
+        return mapping.get(key_name.lower(), key_name)
 
     def get_container_children_count(self, wm_class: str) -> dict:
         """

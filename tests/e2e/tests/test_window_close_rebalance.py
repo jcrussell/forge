@@ -23,6 +23,7 @@ class TestWindowCloseRebalance:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1, f"Expected 1 window, got {len(windows)}"
@@ -40,6 +41,7 @@ class TestWindowCloseRebalance:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         window_helper.assert_windows_fill_workspace()
 
@@ -51,12 +53,14 @@ class TestWindowCloseRebalance:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
         window_helper.assert_windows_fill_workspace()
 
         # Close second window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1
@@ -74,6 +78,7 @@ class TestWindowCloseRebalance:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1
@@ -93,6 +98,7 @@ class TestTreeIntegrityAfterClose:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), (
@@ -103,6 +109,7 @@ class TestTreeIntegrityAfterClose:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), (
@@ -117,6 +124,7 @@ class TestTreeIntegrityAfterClose:
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
         time.sleep(Timing.LAYOUT_CHANGE)
+        shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), (

@@ -219,12 +219,13 @@ unit-test-docker-coverage: docker-test-build
 	docker run --rm -v $(PWD)/coverage:/app/coverage forge-test npm run test:coverage
 
 # E2E Testing (real GNOME Shell in containers)
-# gnome-shell-pod uses Fedora version numbers internally
-# Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47
-SUPPORTED_FEDORA_VERSIONS := 39 40 41
+# Uses Fedora base images; Fedora version determines GNOME version:
+# Fedora 39 = GNOME 45, 40 = GNOME 46, 41 = GNOME 47,
+# 42 = GNOME 48, 43 = GNOME 49, rawhide = GNOME 50 (alpha)
+SUPPORTED_FEDORA_VERSIONS := 39 40 41 42 43
 
 # Map GNOME versions to Fedora versions for user convenience
-# Usage: make e2e-test GNOME_VERSION=47  or  make e2e-test FEDORA_VERSION=41
+# Usage: make e2e-test GNOME_VERSION=49  or  make e2e-test FEDORA_VERSION=43
 ifdef GNOME_VERSION
   ifeq ($(GNOME_VERSION),45)
     FEDORA_VERSION := 39
@@ -232,18 +233,25 @@ ifdef GNOME_VERSION
     FEDORA_VERSION := 40
   else ifeq ($(GNOME_VERSION),47)
     FEDORA_VERSION := 41
+  else ifeq ($(GNOME_VERSION),48)
+    FEDORA_VERSION := 42
+  else ifeq ($(GNOME_VERSION),49)
+    FEDORA_VERSION := 43
+  else ifeq ($(GNOME_VERSION),50)
+    FEDORA_VERSION := rawhide
   else
-    $(error Unknown GNOME_VERSION=$(GNOME_VERSION). Supported: 45, 46, 47)
+    $(error Unknown GNOME_VERSION=$(GNOME_VERSION). Supported: 45, 46, 47, 48, 49, 50)
   endif
 endif
 
-# Default Fedora version for E2E tests (Fedora 41 = GNOME 47)
-FEDORA_VERSION ?= 41
+# Default Fedora version for E2E tests (Fedora 42 = GNOME 48)
+# Fedora 43 (GNOME 49) removed X11 support; headless Wayland mode is unstable.
+FEDORA_VERSION ?= 42
 E2E_IMAGE = forge-e2e-fedora$(FEDORA_VERSION)
 E2E_RESULTS_DIR = e2e-results
 DISPLAY_NUM ?= 99
 
-# Docker capabilities for gnome-shell-pod containers
+# Docker capabilities for E2E containers
 # --privileged is required for systemd to mount its filesystems
 # --cgroupns=host and cgroup mount are needed for systemd cgroup support
 # Container MUST run with systemd as PID 1 (detached mode)
@@ -262,7 +270,7 @@ e2e-build: build
 # This target runs the container in DETACHED mode with systemd as PID 1,
 # then uses docker exec to run tests. This is required because:
 # 1. GNOME Shell 45+ needs systemd-localed (org.freedesktop.locale1 D-Bus service)
-# 2. gnome-shell-pod containers expect systemd to manage services
+# 2. The container uses systemd to manage core services
 e2e-test: e2e-build
 	@mkdir -p $(E2E_RESULTS_DIR)
 	@echo "Starting E2E container in detached mode..."
@@ -322,14 +330,21 @@ e2e-versions:
 	@echo "Supported GNOME versions:"
 	@echo "  GNOME 45 (Fedora 39)"
 	@echo "  GNOME 46 (Fedora 40)"
-	@echo "  GNOME 47 (Fedora 41) - default"
+	@echo "  GNOME 47 (Fedora 41)"
+	@echo "  GNOME 48 (Fedora 42)"
+	@echo "  GNOME 49 (Fedora 43) - default"
+	@echo "  GNOME 50 (Fedora rawhide) - alpha"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make e2e-test                    # Run with default (GNOME 47)"
-	@echo "  make e2e-test GNOME_VERSION=45   # Run with GNOME 45"
-	@echo "  make e2e-test FEDORA_VERSION=40  # Run with Fedora 40 (GNOME 46)"
+	@echo "  make e2e-test                    # Run with default (GNOME 49)"
+	@echo "  make e2e-test GNOME_VERSION=48   # Run with GNOME 48"
+	@echo "  make e2e-test GNOME_VERSION=50   # Run with GNOME 50 (rawhide)"
+	@echo "  make e2e-test FEDORA_VERSION=42  # Run with Fedora 42 (GNOME 48)"
 	@echo "  make e2e-test-all                # Run for all versions"
 	@echo "  make e2e-debug                   # Interactive debugging"
+	@echo ""
+	@echo "Images are self-contained, built from Fedora base images."
+	@echo "To test rawhide manually: make e2e-test GNOME_VERSION=50"
 
 help:
 	@echo "Forge GNOME Shell Extension - Build Targets"
@@ -363,7 +378,7 @@ help:
 	@echo "  unit-test-docker-coverage  Run tests in Docker with coverage"
 	@echo ""
 	@echo "E2E Tests:"
-	@echo "  e2e-test         Run E2E tests (default GNOME 47)"
+	@echo "  e2e-test         Run E2E tests (default GNOME 49)"
 	@echo "  e2e-test-all     Run E2E tests for all GNOME versions"
 	@echo "  e2e-debug        Interactive debugging in E2E container"
 	@echo "  e2e-clean        Remove E2E test artifacts and images"
