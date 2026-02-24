@@ -283,6 +283,7 @@ e2e-test: e2e-build
 	sleep 3 && \
 	echo "Starting GNOME Shell session..." && \
 	docker exec $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "Running E2E tests..." && \
 	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $$POD set-env.sh /app/scripts/run-tests.sh
 
@@ -310,6 +311,7 @@ e2e-debug: e2e-build
 	sleep 3 && \
 	echo "Starting GNOME Shell session..." && \
 	docker exec $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "" && \
 	echo "========================================" && \
 	echo "Debug shell ready. GNOME Shell is running." && \

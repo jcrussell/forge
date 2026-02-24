@@ -106,6 +106,9 @@ jobs:
           echo "Starting GNOME Shell session..."
           docker exec $POD /usr/local/bin/start-user-session.sh 99
 
+          # Fix ownership of bind-mounted results directory
+          docker exec $POD chown -R gnomeshell:gnomeshell /app/e2e-results
+
           echo "Running E2E tests..."
           docker exec --user gnomeshell -e DISPLAY=:99 $POD \
             set-env.sh /app/scripts/run-tests.sh
