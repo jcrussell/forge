@@ -10,7 +10,11 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
-from framework.wait import wait_for_window_count
+from framework.wait import (
+    wait_for_layout_settled,
+    wait_for_window_count,
+    wait_for_window_fill,
+)
 
 
 class TestWindowCloseRebalance:
@@ -22,13 +26,13 @@ class TestWindowCloseRebalance:
         """Closing one of two tiled windows should make the remaining fill workspace."""
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
-        time.sleep(Timing.LAYOUT_CHANGE)
-        shell_proxy.wait_for_idle()
+
+        workspace = window_helper.get_workspace_rect()
+        wait_for_window_fill(shell_proxy, workspace)
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1, f"Expected 1 window, got {len(windows)}"
 
-        workspace = window_helper.get_workspace_rect()
         rect = windows[0].get("rect", {})
         assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE, (
             f"Remaining window width {rect['width']} should fill workspace {workspace['width']}"
@@ -40,8 +44,9 @@ class TestWindowCloseRebalance:
         """Closing one of three windows should rebalance remaining two."""
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        time.sleep(Timing.LAYOUT_CHANGE)
-        shell_proxy.wait_for_idle()
+
+        workspace = window_helper.get_workspace_rect()
+        wait_for_layout_settled(shell_proxy, workspace)
 
         window_helper.assert_windows_fill_workspace()
 
@@ -49,22 +54,21 @@ class TestWindowCloseRebalance:
         self, shell_proxy, window_helper, three_windows
     ):
         """Closing windows one by one should rebalance at each step."""
+        workspace = window_helper.get_workspace_rect()
+
         # Close first window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        time.sleep(Timing.LAYOUT_CHANGE)
-        shell_proxy.wait_for_idle()
+        wait_for_layout_settled(shell_proxy, workspace)
         window_helper.assert_windows_fill_workspace()
 
         # Close second window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
-        time.sleep(Timing.LAYOUT_CHANGE)
-        shell_proxy.wait_for_idle()
+        wait_for_window_fill(shell_proxy, workspace)
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1
-        workspace = window_helper.get_workspace_rect()
         rect = windows[0].get("rect", {})
         assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE
 
@@ -77,12 +81,12 @@ class TestWindowCloseRebalance:
 
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
-        time.sleep(Timing.LAYOUT_CHANGE)
-        shell_proxy.wait_for_idle()
+
+        workspace = window_helper.get_workspace_rect()
+        wait_for_window_fill(shell_proxy, workspace)
 
         windows = shell_proxy.get_windows()
         assert len(windows) == 1
-        workspace = window_helper.get_workspace_rect()
         rect = windows[0].get("rect", {})
         assert abs(rect["height"] - workspace["height"]) < Tolerance.SIZE, (
             f"Remaining window height {rect['height']} should fill workspace {workspace['height']}"

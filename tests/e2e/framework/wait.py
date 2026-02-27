@@ -8,7 +8,7 @@ Essential for handling async window operations in GNOME Shell.
 import time
 from typing import Any, Callable, Optional, TypeVar
 
-from .constants import Timeout, Timing
+from .constants import Timeout, Timing, Tolerance
 
 T = TypeVar("T")
 
@@ -216,4 +216,62 @@ def wait_for_layout(shell_proxy, expected: str, timeout: float = Timeout.LAYOUT)
         predicate=lambda layout: layout == expected,
         timeout=timeout,
         message=f"Layout did not change to '{expected}'",
+    )
+
+
+def wait_for_window_fill(
+    shell_proxy,
+    workspace_rect: dict,
+    tolerance: int = Tolerance.SIZE,
+    timeout: float = Timeout.LAYOUT,
+) -> dict:
+    """Wait until the single remaining window fills the workspace."""
+
+    def check():
+        windows = shell_proxy.get_windows()
+        if not isinstance(windows, list) or len(windows) != 1:
+            return None
+        rect = windows[0].get("rect", {})
+        width_ok = abs(rect.get("width", 0) - workspace_rect["width"]) < tolerance
+        height_ok = abs(rect.get("height", 0) - workspace_rect["height"]) < tolerance
+        if width_ok and height_ok:
+            return windows[0]
+        return None
+
+    return wait_for(
+        check,
+        predicate=lambda w: w is not None,
+        timeout=timeout,
+        interval=Timing.POLL_INTERVAL,
+        message=f"Window did not fill workspace ({workspace_rect['width']}x{workspace_rect['height']})",
+    )
+
+
+def wait_for_layout_settled(
+    shell_proxy,
+    workspace_rect: dict,
+    fill_ratio: float = Tolerance.FILL_RATIO,
+    timeout: float = Timeout.LAYOUT,
+) -> list:
+    """Wait until windows fill the expected portion of the workspace."""
+
+    def check():
+        windows = shell_proxy.get_windows()
+        if not isinstance(windows, list) or len(windows) == 0:
+            return None
+        total_area = sum(
+            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
+            for w in windows
+        )
+        ws_area = workspace_rect["width"] * workspace_rect["height"]
+        if ws_area > 0 and total_area / ws_area >= fill_ratio:
+            return windows
+        return None
+
+    return wait_for(
+        check,
+        predicate=lambda w: w is not None,
+        timeout=timeout,
+        interval=Timing.POLL_INTERVAL,
+        message="Layout did not settle (windows don't fill workspace)",
     )
