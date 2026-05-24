@@ -3,7 +3,7 @@
 #
 # Uses Fedora version numbers:
 #   Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47,
-#   Fedora 42 = GNOME 48, Fedora 43 = GNOME 49
+#   Fedora 42 = GNOME 48, Fedora 43 = GNOME 49, Fedora 44 = GNOME 50
 
 name: e2e-testing
 
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       fedora_version:
-        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47, 42=GNOME48, 43=GNOME49)'
+        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47, 42=GNOME48, 43=GNOME49, 44=GNOME50)'
         required: false
         default: ''
 

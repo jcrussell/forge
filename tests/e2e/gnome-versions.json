@@ -5,8 +5,9 @@
     "41": 47,
     "42": 48,
     "43": 49,
+    "44": 50,
     "rawhide": 50
   },
-  "supported_fedora": [39, 40, 41, 42, 43],
+  "supported_fedora": [39, 40, 41, 42, 43, 44],
   "default_fedora": 42
 }

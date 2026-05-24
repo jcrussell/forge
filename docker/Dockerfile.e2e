@@ -5,7 +5,7 @@
 #
 # FEDORA_VERSION maps to GNOME version:
 #   39 -> GNOME 45, 40 -> GNOME 46, 41 -> GNOME 47,
-#   42 -> GNOME 48, 43 -> GNOME 49, rawhide -> GNOME 50 (alpha)
+#   42 -> GNOME 48, 43 -> GNOME 49, 44 -> GNOME 50, rawhide -> next devel cycle
 #
 # Build extension first on host: make build
 # Then build container: docker build -f docker/Dockerfile.e2e -t forge-e2e .
