@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/lib.sh"
 PROJECT_DIR="${PROJECT_DIR:-/app}"
 TEST_DIR="${PROJECT_DIR}/tests/e2e"
 RESULTS_DIR="${PROJECT_DIR}/e2e-results"
-PYTEST_ARGS="${*:---verbose -x}"
+PYTEST_ARGS="${*:---verbose}"
 
 # Ensure environment is set for subprocess launching
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"

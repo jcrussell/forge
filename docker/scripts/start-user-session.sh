@@ -82,11 +82,20 @@ if [ "$SESSION_TYPE" = "x11" ]; then
     fi
 fi
 
-# Start dbus-daemon if socket doesn't exist
+# Start dbus-daemon if socket doesn't exist.
+# Launch via systemd-run so the process lives in its own transient service
+# under systemd's hierarchy and survives the exit of this bootstrap script.
+# Plain `su -c "... &"` puts the daemon in the docker-exec process tree, which
+# gets reaped when the exec returns — that took gnome-shell down with it on
+# Fedora 43 (headless Wayland), since the failing user@1000.service can't keep
+# orphans alive even with lingering enabled.
 BUS_SOCKET="$XDG_RUNTIME_DIR/bus"
 if [ ! -S "$BUS_SOCKET" ]; then
     echo "Starting D-Bus session daemon..."
-    su - gnomeshell -c "$BASE_ENV DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET dbus-daemon --session --address=unix:path=$BUS_SOCKET --nofork --nopidfile &"
+    systemd-run --unit=forge-dbus-session --uid=gnomeshell --gid=gnomeshell \
+        --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+        --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+        dbus-daemon --session --address="unix:path=$BUS_SOCKET" --nofork --nopidfile
     sleep 1
 fi
 
@@ -123,16 +132,28 @@ su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.wm.preferences num
 # org.gnome.Settings.desktop fails (IOErrorEnum: The connection is closed)
 su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.search-providers disable-external true" 2>/dev/null || true
 
-# Start GNOME Shell if not already running
+# Start GNOME Shell as a transient systemd service so it outlives this
+# bootstrap script (see dbus-daemon note above for the why).
+# Output is captured to /tmp/gnome-shell.log via the wrapping shell so existing
+# diagnostics (run-tests.sh tails this file on shell crash) keep working.
 if ! ps -u gnomeshell 2>/dev/null | grep -q "gnome-shell"; then
     if [ "$SESSION_TYPE" = "x11" ]; then
         echo "Starting GNOME Shell (X11 on :${DISPLAY_NUM})..."
         # MUTTER_DEBUG_DUMMY_MONITOR_SCALES: avoids monitor scale warnings
         # CLUTTER_VBLANK=none: prevents vblank waiting (no GPU in Xvfb)
-        su - gnomeshell -c "DISPLAY=:${DISPLAY_NUM} $DBUS_ENV MUTTER_DEBUG_DUMMY_MONITOR_SCALES=1 CLUTTER_VBLANK=none gnome-shell --x11 --unsafe-mode > /tmp/gnome-shell.log 2>&1 &"
+        systemd-run --unit=forge-gnome-shell --uid=gnomeshell --gid=gnomeshell \
+            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+            --setenv=DISPLAY=":${DISPLAY_NUM}" \
+            --setenv=MUTTER_DEBUG_DUMMY_MONITOR_SCALES=1 \
+            --setenv=CLUTTER_VBLANK=none \
+            sh -c "exec gnome-shell --x11 --unsafe-mode >/tmp/gnome-shell.log 2>&1"
     else
         echo "Starting GNOME Shell (headless Wayland)..."
-        su - gnomeshell -c "$DBUS_ENV gnome-shell --headless --wayland --virtual-monitor 1920x1080 --unsafe-mode > /tmp/gnome-shell.log 2>&1 &"
+        systemd-run --unit=forge-gnome-shell --uid=gnomeshell --gid=gnomeshell \
+            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+            sh -c "exec gnome-shell --headless --wayland --virtual-monitor 1920x1080 --unsafe-mode >/tmp/gnome-shell.log 2>&1"
     fi
     sleep 5
 fi
