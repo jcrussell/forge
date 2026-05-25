@@ -69,6 +69,7 @@ echo "Running E2E tests..."
 echo "=========================================="
 
 cd "${TEST_DIR}"
+export FORGE_E2E_RESULTS_DIR="${RESULTS_DIR}"
 python3 -m pytest tests/ ${PYTEST_ARGS} \
     --junitxml="${RESULTS_DIR}/junit.xml" || TEST_EXIT=$?
 

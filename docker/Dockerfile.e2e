@@ -26,6 +26,9 @@ LABEL description="E2E testing environment for Forge GNOME Shell extension"
 # dbus-daemon: explicit dep because Fedora defaults to dbus-broker which doesn't
 #   provide the dbus-daemon binary that start-user-session.sh uses.
 # xorg-x11-server-Xvfb: virtual X server (start-user-session.sh runs gnome-shell --x11 on Xvfb).
+# xdg-desktop-portal{,-gtk}: gnome-text-editor on GNOME 50 hangs 120s at
+#   GApplication.register() if it cannot activate org.freedesktop.portal.Desktop,
+#   which makes every --new-window after the first time out.
 # Forge test deps: xdotool, ImageMagick, gnome-text-editor, ibus, python3-pip, zenity.
 # Build deps for dbus-python (removed after pip install).
 RUN dnf install -y --setopt=install_weak_deps=False \
@@ -40,11 +43,19 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     ibus \
     xdotool \
     zenity \
+    xdg-desktop-portal \
+    xdg-desktop-portal-gtk \
     gcc python3-devel dbus-devel glib2-devel \
     && pip3 install --no-cache-dir pytest PyGObject Pillow dbus-python \
     && dnf remove -y gcc python3-devel dbus-devel glib2-devel \
     && dnf clean all \
     && rm -rf /var/cache/dnf
+
+# dbus-daemon (session, no user-systemd) would otherwise try to activate the
+# portal via `systemctl --user start xdg-desktop-portal.service` and block 120s
+# because there's no user systemd in the container. Strip the SystemdService=
+# line so dbus falls back to Exec= and spawns the portal directly.
+RUN sed -i '/^SystemdService=/d' /usr/share/dbus-1/services/org.freedesktop.portal.Desktop.service
 
 # Create gnomeshell user with passwordless sudo (from gnome-shell-pod)
 RUN adduser -m -U -G users,adm gnomeshell && \

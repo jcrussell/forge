@@ -31,7 +31,13 @@ from framework.wait import wait_for, WaitTimeoutError
 
 
 # Test configuration
-E2E_RESULTS_DIR = Path("e2e-results")
+# Honour FORGE_E2E_RESULTS_DIR so the docker runner can pin diagnostics to the
+# bind-mounted artifact dir; otherwise default to a stable path next to this
+# file so local runs do not depend on pytest's working directory.
+E2E_RESULTS_DIR = Path(
+    os.environ.get("FORGE_E2E_RESULTS_DIR")
+    or (Path(__file__).resolve().parent / "e2e-results")
+)
 SCREENSHOT_DIR = E2E_RESULTS_DIR / "screenshots"
 
 
@@ -191,12 +197,15 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     under Xvfb, which can saturate the main loop and cause gnome-shell to
     lose its D-Bus service channel name.
 
-    Then ask any lingering gnome-text-editor GApplication primary to Quit
-    over the session bus. On Mutter 50 headless Wayland the primary can stall
-    and silently drop subsequent --new-window activation requests, leaving
-    tests with no window to find. org.gtk.Application.Quit lets the app run
-    its own shutdown handlers (release bus name, drop hold count) so the next
-    --new-window starts a fresh primary.
+    We do NOT proactively Quit or SIGTERM the gnome-text-editor GApplication
+    primary. On Mutter 50 headless Wayland the .service file
+    (`Exec=gnome-text-editor --gapplication-service`) means any gdbus call to
+    `org.gnome.TextEditor` D-Bus-activates a fresh service-mode instance just
+    to receive the message — which itself races registration and hangs with
+    "Failed to register: Timeout was reached", blocking subsequent
+    `--new-window` launches indefinitely. Letting the primary stay alive and
+    serve `--new-window` activations is the only path that doesn't poison
+    the session bus.
     """
     for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
         try:
@@ -208,20 +217,6 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
         except Exception:
             break
     time.sleep(Timing.WINDOW_SETTLE)
-    subprocess.run(
-        [
-            "gdbus", "call",
-            "--session",
-            "--dest", "org.gnome.TextEditor",
-            "--object-path", "/org/gnome/TextEditor",
-            "--method", "org.gtk.Application.Quit",
-            "--timeout", "2",
-        ],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    time.sleep(0.3)
 
 
 @pytest.fixture
@@ -274,15 +269,17 @@ def restore_settings(forge_settings) -> Generator:
 
 
 def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> dict:
-    """Launch an application window and wait for it to appear."""
+    """Launch an application window and wait for it to appear.
+
+    On Mutter 50 headless Wayland the first few launches in a fresh session
+    can fail because gnome-text-editor's GApplication.register() hangs ~25s
+    on portal probes ("Failed to register: Timeout was reached") before the
+    portal is warmed up. We retry on timeout, killing the stuck subprocess
+    so it doesn't leak a half-registered process that fights subsequent
+    activations.
+    """
     if app_args is None:
         app_args = DEFAULT_TEST_APP_ARGS if app == DEFAULT_TEST_APP else []
-
-    try:
-        current = shell_proxy.get_windows()
-        initial_count = len(current) if isinstance(current, list) else 0
-    except Exception:
-        initial_count = 0
 
     # Ensure environment variables are passed to the subprocess
     env = os.environ.copy()
@@ -294,67 +291,99 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
     if "DBUS_SESSION_BUS_ADDRESS" not in env:
         xdg_runtime = env.get("XDG_RUNTIME_DIR", "/run/user/1000")
         env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={xdg_runtime}/bus"
+    # Bypass xdg-desktop-portal where possible (Gtk4 mostly ignores this, but
+    # it suppresses Gtk3 portal probes if any test app pulls Gtk3 in).
+    env.setdefault("GTK_USE_PORTAL", "0")
 
     cmd = [app] + app_args
     # Capture subprocess stderr to disk so launch failures can be diagnosed.
     # Append mode: a single rolling log per test session is sufficient.
     stderr_log = E2E_RESULTS_DIR / "subprocess-stderr.log"
     stderr_log.parent.mkdir(parents=True, exist_ok=True)
-    stderr_fp = stderr_log.open("a")
-    stderr_fp.write(f"--- {app} {app_args} @ {time.time():.3f} ---\n")
-    stderr_fp.flush()
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=stderr_fp,
-        env=env,
-    )
 
-    def find_new_window():
-        windows = shell_proxy.get_windows()
-        if isinstance(windows, list) and len(windows) > initial_count:
-            # Return the newest window (likely the one we just launched)
-            for w in windows:
-                wm_class = w.get("wmClass", "").lower()
-                if app.split("-")[0] in wm_class:
-                    return w
-            # Fallback: return any new window
-            return windows[-1] if windows else None
-        return None
-
-    def has_valid_size(w):
-        """Check window exists and has non-zero size (Wayland configure received)."""
-        if w is None:
-            return False
-        rect = w.get("rect", {})
-        return rect.get("width", 0) > 0 and rect.get("height", 0) > 0
-
-    try:
-        return wait_for(
-            find_new_window,
-            predicate=has_valid_size,
-            timeout=Timing.WINDOW_LAUNCH,
-            interval=Timing.POLL_INTERVAL_WINDOW,
-            message=f"Window for '{app}' did not appear",
-        )
-    except WaitTimeoutError:
-        # Capture probe result + subprocess state at the moment of failure.
-        # Lets the next CI run distinguish "primary stalled / no window opened"
-        # from "window opened but probe missed it" without another guess pass.
+    def _attempt(attempt: int) -> dict:
         try:
-            final_windows = shell_proxy.get_windows()
-        except Exception as e:
-            final_windows = f"<eval failed: {e}>"
-        diag_path = E2E_RESULTS_DIR / "launch-failures.log"
-        diag_path.parent.mkdir(parents=True, exist_ok=True)
-        with diag_path.open("a") as f:
-            f.write(f"--- {app} {app_args} @ {time.time():.3f} ---\n")
-            f.write(f"initial_count={initial_count}\n")
-            f.write(f"subprocess_returncode={proc.poll()!r}\n")
-            f.write(f"final_windows={final_windows!r}\n\n")
-        raise
-    finally:
-        stderr_fp.close()
+            current = shell_proxy.get_windows()
+            initial_count = len(current) if isinstance(current, list) else 0
+        except Exception:
+            initial_count = 0
+
+        stderr_fp = stderr_log.open("a")
+        stderr_fp.write(f"--- {app} {app_args} attempt={attempt} @ {time.time():.3f} ---\n")
+        stderr_fp.flush()
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_fp,
+            env=env,
+        )
+
+        def find_new_window():
+            windows = shell_proxy.get_windows()
+            if isinstance(windows, list) and len(windows) > initial_count:
+                for w in windows:
+                    wm_class = w.get("wmClass", "").lower()
+                    if app.split("-")[0] in wm_class:
+                        return w
+                return windows[-1] if windows else None
+            return None
+
+        def has_valid_size(w):
+            if w is None:
+                return False
+            rect = w.get("rect", {})
+            return rect.get("width", 0) > 0 and rect.get("height", 0) > 0
+
+        try:
+            return wait_for(
+                find_new_window,
+                predicate=has_valid_size,
+                timeout=Timing.WINDOW_LAUNCH,
+                interval=Timing.POLL_INTERVAL_WINDOW,
+                message=f"Window for '{app}' did not appear",
+            )
+        except WaitTimeoutError:
+            # Kill the hung subprocess so it doesn't claim the bus name later
+            # and starve subsequent activations.
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=1)
+                except (OSError, ProcessLookupError):
+                    pass
+            raise
+        finally:
+            stderr_fp.close()
+
+    max_attempts = 3
+    last_exc = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return _attempt(attempt)
+        except WaitTimeoutError as e:
+            last_exc = e
+            if attempt == max_attempts:
+                break
+            # Brief settle gap before retry so a half-started portal/primary
+            # has a moment to either finish or be cleared.
+            time.sleep(1)
+
+    # All attempts failed. Capture diagnostics so the artifact carries the
+    # decisive evidence (probe result at the moment of failure).
+    try:
+        final_windows = shell_proxy.get_windows()
+    except Exception as e:
+        final_windows = f"<eval failed: {e}>"
+    diag_path = E2E_RESULTS_DIR / "launch-failures.log"
+    diag_path.parent.mkdir(parents=True, exist_ok=True)
+    with diag_path.open("a") as f:
+        f.write(f"--- {app} {app_args} (after {max_attempts} attempts) @ {time.time():.3f} ---\n")
+        f.write(f"final_windows={final_windows!r}\n\n")
+    raise last_exc
 
 
 def pytest_collection_modifyitems(config, items):

@@ -180,6 +180,71 @@ if [ "$SESSION_TYPE" = "wayland" ]; then
     fi
 fi
 
+# Pre-launch xdg-desktop-portal under the session bus and (if present) Wayland.
+# gnome-text-editor on GNOME 50 blocks ~25s per --new-window during
+# GApplication.register() while Gtk waits on portal D-Bus methods. Lazy dbus
+# activation of org.freedesktop.portal.Desktop never claims the bus name in
+# headless containers (no DISPLAY/WAYLAND_DISPLAY/XDG_SESSION_TYPE in dbus's
+# exec env), so we start it ourselves with the right environment.
+if [ -x /usr/libexec/xdg-desktop-portal ]; then
+    if ! gdbus call --address="unix:path=$BUS_SOCKET" \
+            --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+            --method org.freedesktop.DBus.NameHasOwner org.freedesktop.portal.Desktop 2>/dev/null \
+            | grep -q true; then
+        echo "Pre-launching xdg-desktop-portal..."
+        PORTAL_ENV=(
+            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET"
+            --setenv=XDG_CURRENT_DESKTOP=GNOME
+            --setenv=XDG_SESSION_TYPE="$SESSION_TYPE"
+        )
+        if [ "$SESSION_TYPE" = "wayland" ] && [ -n "$WAYLAND_DISPLAY" ]; then
+            PORTAL_ENV+=(--setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY")
+        elif [ "$SESSION_TYPE" = "x11" ]; then
+            PORTAL_ENV+=(--setenv=DISPLAY=":${DISPLAY_NUM}")
+        fi
+        systemd-run --unit=forge-xdg-portal --uid=gnomeshell --gid=gnomeshell \
+            "${PORTAL_ENV[@]}" \
+            /usr/libexec/xdg-desktop-portal 2>/dev/null || true
+    fi
+fi
+
+# Pre-launch a persistent gnome-text-editor GApplication primary instance
+# (--gapplication-service runs without windows, just holds the bus name).
+# Subsequent test `gnome-text-editor --new-window` invocations become remote
+# D-Bus calls to this primary, bypassing GApplication.register() entirely.
+# Without this, every fresh --new-window blocks ~25s in register() while Gtk
+# waits on slow/missing portal calls on Mutter 50 headless Wayland.
+if command -v gnome-text-editor &>/dev/null; then
+    EDITOR_ENV=(
+        --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+        --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET"
+        --setenv=XDG_CURRENT_DESKTOP=GNOME
+        --setenv=XDG_SESSION_TYPE="$SESSION_TYPE"
+    )
+    if [ "$SESSION_TYPE" = "wayland" ] && [ -n "$WAYLAND_DISPLAY" ]; then
+        EDITOR_ENV+=(--setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY")
+    elif [ "$SESSION_TYPE" = "x11" ]; then
+        EDITOR_ENV+=(--setenv=DISPLAY=":${DISPLAY_NUM}")
+    fi
+    echo "Pre-launching gnome-text-editor GApplication primary..."
+    systemd-run --unit=forge-text-editor-primary --uid=gnomeshell --gid=gnomeshell \
+        "${EDITOR_ENV[@]}" \
+        gnome-text-editor --gapplication-service 2>/dev/null || true
+    # Wait for the primary to claim its bus name so test --new-window calls
+    # become remote activations instead of racing fresh register().
+    for i in {1..60}; do
+        if gdbus call --address="unix:path=$BUS_SOCKET" \
+                --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+                --method org.freedesktop.DBus.NameHasOwner org.gnome.TextEditor 2>/dev/null \
+                | grep -q true; then
+            echo "gnome-text-editor primary ready"
+            break
+        fi
+        sleep 0.5
+    done
+fi
+
 # Wait for GNOME Shell to be ready via D-Bus
 echo "Waiting for GNOME Shell to initialize..."
 SHELL_READY=0
