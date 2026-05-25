@@ -190,6 +190,11 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     Closing windows individually avoids overwhelming the rendering pipeline
     under Xvfb, which can saturate the main loop and cause gnome-shell to
     lose its D-Bus service channel name.
+
+    Also kills any lingering gnome-text-editor process. On Mutter 50 headless
+    Wayland the GApplication primary can stall and silently drop subsequent
+    --new-window activation requests, leaving tests with no window to find;
+    forcing a fresh process on every test side-steps that path.
     """
     for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
         try:
@@ -201,6 +206,8 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
         except Exception:
             break
     time.sleep(Timing.WINDOW_SETTLE)
+    subprocess.run(["pkill", "-x", "gnome-text-editor"], check=False)
+    time.sleep(0.3)
 
 
 @pytest.fixture
@@ -275,10 +282,17 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
         env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={xdg_runtime}/bus"
 
     cmd = [app] + app_args
-    subprocess.Popen(
+    # Capture subprocess stderr to disk so launch failures can be diagnosed.
+    # Append mode: a single rolling log per test session is sufficient.
+    stderr_log = E2E_RESULTS_DIR / "subprocess-stderr.log"
+    stderr_log.parent.mkdir(parents=True, exist_ok=True)
+    stderr_fp = stderr_log.open("a")
+    stderr_fp.write(f"--- {app} {app_args} @ {time.time():.3f} ---\n")
+    stderr_fp.flush()
+    proc = subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=stderr_fp,
         env=env,
     )
 
@@ -301,13 +315,32 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
         rect = w.get("rect", {})
         return rect.get("width", 0) > 0 and rect.get("height", 0) > 0
 
-    return wait_for(
-        find_new_window,
-        predicate=has_valid_size,
-        timeout=Timing.WINDOW_LAUNCH,
-        interval=Timing.POLL_INTERVAL_WINDOW,
-        message=f"Window for '{app}' did not appear",
-    )
+    try:
+        return wait_for(
+            find_new_window,
+            predicate=has_valid_size,
+            timeout=Timing.WINDOW_LAUNCH,
+            interval=Timing.POLL_INTERVAL_WINDOW,
+            message=f"Window for '{app}' did not appear",
+        )
+    except WaitTimeoutError:
+        # Capture probe result + subprocess state at the moment of failure.
+        # Lets the next CI run distinguish "primary stalled / no window opened"
+        # from "window opened but probe missed it" without another guess pass.
+        try:
+            final_windows = shell_proxy.get_windows()
+        except Exception as e:
+            final_windows = f"<eval failed: {e}>"
+        diag_path = E2E_RESULTS_DIR / "launch-failures.log"
+        diag_path.parent.mkdir(parents=True, exist_ok=True)
+        with diag_path.open("a") as f:
+            f.write(f"--- {app} {app_args} @ {time.time():.3f} ---\n")
+            f.write(f"initial_count={initial_count}\n")
+            f.write(f"subprocess_returncode={proc.poll()!r}\n")
+            f.write(f"final_windows={final_windows!r}\n\n")
+        raise
+    finally:
+        stderr_fp.close()
 
 
 def pytest_collection_modifyitems(config, items):
