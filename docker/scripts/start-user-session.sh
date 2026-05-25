@@ -238,6 +238,20 @@ if command -v gnome-text-editor &>/dev/null; then
                 --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
                 --method org.freedesktop.DBus.NameHasOwner org.gnome.TextEditor 2>/dev/null \
                 | grep -q true; then
+            break
+        fi
+        sleep 0.5
+    done
+    # NameHasOwner only proves the primary grabbed the bus name. Its
+    # GApplication may still be registering actions / loading settings for
+    # ~10s after that, and a test --new-window during that window can race
+    # silently. Probe a real method — org.gtk.Actions.List on the
+    # /org/gnome/TextEditor object — to confirm the GApplication is actually
+    # serving requests.
+    for i in {1..60}; do
+        if gdbus call --address="unix:path=$BUS_SOCKET" \
+                --dest org.gnome.TextEditor --object-path /org/gnome/TextEditor \
+                --method org.gtk.Actions.List 2>/dev/null | grep -q '^('; then
             echo "gnome-text-editor primary ready"
             break
         fi
