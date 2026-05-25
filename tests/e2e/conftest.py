@@ -191,10 +191,12 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     under Xvfb, which can saturate the main loop and cause gnome-shell to
     lose its D-Bus service channel name.
 
-    Also kills any lingering gnome-text-editor process. On Mutter 50 headless
-    Wayland the GApplication primary can stall and silently drop subsequent
-    --new-window activation requests, leaving tests with no window to find;
-    forcing a fresh process on every test side-steps that path.
+    Then ask any lingering gnome-text-editor GApplication primary to Quit
+    over the session bus. On Mutter 50 headless Wayland the primary can stall
+    and silently drop subsequent --new-window activation requests, leaving
+    tests with no window to find. org.gtk.Application.Quit lets the app run
+    its own shutdown handlers (release bus name, drop hold count) so the next
+    --new-window starts a fresh primary.
     """
     for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
         try:
@@ -206,7 +208,19 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
         except Exception:
             break
     time.sleep(Timing.WINDOW_SETTLE)
-    subprocess.run(["pkill", "-x", "gnome-text-editor"], check=False)
+    subprocess.run(
+        [
+            "gdbus", "call",
+            "--session",
+            "--dest", "org.gnome.TextEditor",
+            "--object-path", "/org/gnome/TextEditor",
+            "--method", "org.gtk.Application.Quit",
+            "--timeout", "2",
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     time.sleep(0.3)
 
 
