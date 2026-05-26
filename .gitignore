@@ -17,3 +17,11 @@ __pycache__/
 *.pyc
 .coverage
 htmlcov/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+
+# Local scratch / debugging artifacts (gitignored to prevent accidental commits)
+.scratch/
