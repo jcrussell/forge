@@ -77,11 +77,14 @@ echo "=========================================="
 echo "Tests completed with exit code: ${TEST_EXIT:-0}"
 echo "=========================================="
 
+# Always copy gnome-shell.log + extract forge debug trace for Phase 4 analysis.
+cp /tmp/gnome-shell.log "${RESULTS_DIR}/gnome-shell.log" 2>/dev/null || true
+grep '\[Forge\]' /tmp/gnome-shell.log > "${RESULTS_DIR}/forge-trace.log" 2>/dev/null || true
+
 # Check if gnome-shell crashed during tests
 if ! pgrep -u gnomeshell gnome-shell > /dev/null 2>&1; then
     echo "=========================================="
     echo "WARNING: gnome-shell crashed during tests!"
-    cp /tmp/gnome-shell.log "${RESULTS_DIR}/gnome-shell.log" 2>/dev/null || true
     echo "(Full log saved to e2e-results/gnome-shell.log)"
     echo "--- gnome-shell log (last 200 lines) ---"
     tail -200 /tmp/gnome-shell.log 2>/dev/null || echo "(no log file found)"

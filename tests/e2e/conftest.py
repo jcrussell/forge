@@ -126,6 +126,36 @@ def check_forge_ready(shell_proxy):
         warnings.warn(f"Could not check Forge status: {e}")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def enable_forge_debug_logging(shell_proxy, check_forge_ready):
+    """Enable forge debug logging for the E2E session.
+
+    Toggles the GSettings logging-enabled / log-level keys so forge's
+    Logger.debug() output reaches gnome-shell.log. run-tests.sh greps
+    that into forge-trace.log alongside the full log. Requires the
+    extension to be built with production=false (make debug after make
+    build) — otherwise Logger.debug is hard-disabled at compile time.
+    """
+    js = """
+    (function() {
+        try {
+            const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
+            const settings = ext && ext.stateObj && ext.stateObj.settings;
+            if (!settings) return 'no_settings';
+            settings.set_boolean('logging-enabled', true);
+            settings.set_uint('log-level', 5);  // DEBUG
+            return 'enabled';
+        } catch(e) { return 'error: ' + e.message; }
+    })();
+    """
+    try:
+        result = shell_proxy.eval(js)
+        if result != "enabled":
+            warnings.warn(f"Could not enable forge debug logging: {result}")
+    except Exception as e:
+        warnings.warn(f"Could not enable forge debug logging: {e}")
+
+
 @pytest.fixture(scope="session")
 def input_sim(display, shell_proxy) -> InputSimulator:
     """Provide an InputSimulator instance.
