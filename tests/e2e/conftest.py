@@ -41,6 +41,24 @@ E2E_RESULTS_DIR = Path(
 SCREENSHOT_DIR = E2E_RESULTS_DIR / "screenshots"
 
 
+def pytest_addoption(parser):
+    """Register the --dispatch-mode CLI option for InputSimulator.
+
+    Controls whether high-level input_sim methods (toggle_float, toggle_layout,
+    focus_*, swap_*, move_*, split_*) route via D-Bus invoke_forge_action
+    ("dbus") or via Clutter VirtualInputDevice synthetic keypress
+    ("keybinding"). Default "dbus" sidesteps the super+c contamination
+    documented in forge-3xz; the "keybinding" mode is intended for a dedicated
+    CI lane that preserves end-to-end keybinding coverage.
+    """
+    parser.addoption(
+        "--dispatch-mode",
+        default="dbus",
+        choices=["dbus", "keybinding"],
+        help="How InputSimulator routes high-level forge actions.",
+    )
+
+
 def pytest_configure(config):
     """Configure pytest."""
     E2E_RESULTS_DIR.mkdir(exist_ok=True)
@@ -157,7 +175,13 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
 
 
 @pytest.fixture(scope="session")
-def input_sim(display, shell_proxy) -> InputSimulator:
+def dispatch_mode(request) -> str:
+    """The --dispatch-mode option as a session-scoped fixture value."""
+    return request.config.getoption("--dispatch-mode")
+
+
+@pytest.fixture(scope="session")
+def input_sim(display, shell_proxy, dispatch_mode) -> InputSimulator:
     """Provide an InputSimulator instance.
 
     Uses Clutter virtual input (via shell_proxy) in Wayland headless mode
@@ -166,8 +190,12 @@ def input_sim(display, shell_proxy) -> InputSimulator:
     """
     is_wayland = os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY")
     if is_wayland:
-        return InputSimulator(display=display, shell_proxy=shell_proxy)
-    return InputSimulator(display=display, idle_proxy=shell_proxy)
+        return InputSimulator(
+            display=display, shell_proxy=shell_proxy, dispatch_mode=dispatch_mode
+        )
+    return InputSimulator(
+        display=display, idle_proxy=shell_proxy, dispatch_mode=dispatch_mode
+    )
 
 
 @pytest.fixture(scope="session")

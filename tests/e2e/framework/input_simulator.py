@@ -20,6 +20,19 @@ if TYPE_CHECKING:
     from .shell_proxy import ShellProxy
 
 
+# Mirror of DEFAULT_FLOAT_LAYOUT in lib/extension/keybindings.js:31 — the kwargs
+# the keybinding callback passes to extWm.command({name: "FloatToggle", ...}).
+# Kept in sync so the dbus dispatch path produces the same window geometry as
+# the keybinding path.
+DEFAULT_FLOAT_LAYOUT = {
+    "mode": "float",
+    "x": "center",
+    "y": "center",
+    "width": 0.65,
+    "height": 0.75,
+}
+
+
 class InputSimulatorError(Exception):
     """Exception raised when input simulation fails."""
 
@@ -99,6 +112,7 @@ class InputSimulator:
         key_delay: int = Timing.KEY_DELAY_MS,
         shell_proxy: Optional["ShellProxy"] = None,
         idle_proxy: Optional["ShellProxy"] = None,
+        dispatch_mode: str = "dbus",
     ):
         """
         Initialize the input simulator.
@@ -111,13 +125,55 @@ class InputSimulator:
             idle_proxy: Optional ShellProxy used only for wait_for_idle() calls
                 after heavy layout operations. Use this in X11 mode where
                 xdotool handles input but idle waits are still needed.
+            dispatch_mode: How methods with a forge action equivalent route
+                their request:
+                  "dbus" (default): invoke_forge_action via Shell.Eval.
+                  "keybinding": simulate_key_combo via Clutter VirtualInputDevice.
+                Methods without a forge action equivalent (close_active_window,
+                type_text, workspace_*, etc.) always use the synthetic key path
+                regardless of dispatch_mode.
         """
         self._display = display
         self._key_delay = key_delay
         self._shell_proxy = shell_proxy
         self._idle_proxy = idle_proxy or shell_proxy
+        if dispatch_mode not in ("dbus", "keybinding"):
+            raise InputSimulatorError(
+                f"Unknown dispatch_mode: {dispatch_mode!r} (expected 'dbus' or 'keybinding')"
+            )
+        self.dispatch_mode = dispatch_mode
         if not shell_proxy:
             self._verify_xdotool()
+
+    def _dispatch(
+        self,
+        action_name: Optional[str],
+        key_combo: str,
+        **action_kwargs,
+    ) -> None:
+        """
+        Dispatch a forge action either via D-Bus invoke_forge_action or via
+        synthetic keypress, depending on self.dispatch_mode.
+
+        If action_name is None, or no proxy is available, falls through to the
+        synthetic key path unconditionally.
+
+        Args:
+            action_name: Name of the forge action (e.g., "FloatToggle"), or
+                None if no forge-action equivalent exists for the binding.
+            key_combo: Synthetic key combination (e.g., "super+c") used in
+                "keybinding" mode or as fallback.
+            **action_kwargs: Additional parameters for invoke_forge_action.
+        """
+        if (
+            self.dispatch_mode == "dbus"
+            and action_name is not None
+            and self._idle_proxy is not None
+        ):
+            self._idle_proxy.invoke_forge_action({"name": action_name, **action_kwargs})
+            time.sleep(Timing.KEY_AFTER_PRESS)
+        else:
+            self.key(key_combo)
 
     def _verify_xdotool(self) -> None:
         """Verify xdotool is available."""
@@ -209,95 +265,85 @@ class InputSimulator:
     # Forge-specific keybinding methods
 
     def focus_left(self) -> None:
-        """Press Super+h to focus window to the left."""
-        self.key("super+h")
+        """Focus window to the left (Super+h / Focus direction=Left)."""
+        self._dispatch("Focus", "super+h", direction="Left")
 
     def focus_down(self) -> None:
-        """Press Super+j to focus window below."""
-        self.key("super+j")
+        """Focus window below (Super+j / Focus direction=Down)."""
+        self._dispatch("Focus", "super+j", direction="Down")
 
     def focus_up(self) -> None:
-        """Press Super+k to focus window above."""
-        self.key("super+k")
+        """Focus window above (Super+k / Focus direction=Up)."""
+        self._dispatch("Focus", "super+k", direction="Up")
 
     def focus_right(self) -> None:
-        """Press Super+l to focus window to the right."""
-        self.key("super+l")
+        """Focus window to the right (Super+l / Focus direction=Right)."""
+        self._dispatch("Focus", "super+l", direction="Right")
 
     def swap_left(self) -> None:
-        """Press Ctrl+Super+h to swap window left."""
-        self.key("ctrl+super+h")
+        """Swap window left (Ctrl+Super+h / Swap direction=Left)."""
+        self._dispatch("Swap", "ctrl+super+h", direction="Left")
 
     def swap_down(self) -> None:
-        """Press Ctrl+Super+j to swap window down."""
-        self.key("ctrl+super+j")
+        """Swap window down (Ctrl+Super+j / Swap direction=Down)."""
+        self._dispatch("Swap", "ctrl+super+j", direction="Down")
 
     def swap_up(self) -> None:
-        """Press Ctrl+Super+k to swap window up."""
-        self.key("ctrl+super+k")
+        """Swap window up (Ctrl+Super+k / Swap direction=Up)."""
+        self._dispatch("Swap", "ctrl+super+k", direction="Up")
 
     def swap_right(self) -> None:
-        """Press Ctrl+Super+l to swap window right."""
-        self.key("ctrl+super+l")
+        """Swap window right (Ctrl+Super+l / Swap direction=Right)."""
+        self._dispatch("Swap", "ctrl+super+l", direction="Right")
 
     def move_left(self) -> None:
-        """Press Shift+Super+h to move window to container on left."""
-        self.key("shift+super+h")
+        """Move window left (Shift+Super+h / Move direction=Left)."""
+        self._dispatch("Move", "shift+super+h", direction="Left")
 
     def move_down(self) -> None:
-        """Press Shift+Super+j to move window to container below."""
-        self.key("shift+super+j")
+        """Move window down (Shift+Super+j / Move direction=Down)."""
+        self._dispatch("Move", "shift+super+j", direction="Down")
 
     def move_up(self) -> None:
-        """Press Shift+Super+k to move window to container above."""
-        self.key("shift+super+k")
+        """Move window up (Shift+Super+k / Move direction=Up)."""
+        self._dispatch("Move", "shift+super+k", direction="Up")
 
     def move_right(self) -> None:
-        """Press Shift+Super+l to move window to container on right."""
-        self.key("shift+super+l")
+        """Move window right (Shift+Super+l / Move direction=Right)."""
+        self._dispatch("Move", "shift+super+l", direction="Right")
 
     def toggle_float(self) -> None:
-        """Press Super+c to toggle floating mode for focused window."""
-        self.key("super+c")
+        """Toggle floating mode for focused window (Super+c / FloatToggle).
+
+        Default dispatch_mode='dbus' avoids the synthetic super+c contamination
+        documented in forge-3xz root cause #2 (Mutter mutates focused-window
+        state when super+c arrives through Clutter VirtualInputDevice, even
+        before forge's keybinding handler runs).
+        """
+        self._dispatch("FloatToggle", "super+c", **DEFAULT_FLOAT_LAYOUT)
 
     def toggle_layout(self) -> None:
-        """Press Super+g to toggle between horizontal and vertical split."""
-        self.key("super+g")
+        """Toggle between horizontal and vertical split (Super+g / LayoutToggle)."""
+        self._dispatch("LayoutToggle", "super+g")
 
     def split_vertical(self) -> None:
-        """Press Super+v to set vertical split mode."""
-        self.key("super+v")
+        """Set vertical split mode (Super+v / Split orientation=vertical)."""
+        self._dispatch("Split", "super+v", orientation="vertical")
 
     def split_horizontal(self) -> None:
-        """Press Super+z to set horizontal split mode."""
-        self.key("super+z")
+        """Set horizontal split mode (Super+z / Split orientation=horizontal)."""
+        self._dispatch("Split", "super+z", orientation="horizontal")
 
     def toggle_stacked(self) -> None:
-        """Toggle stacked layout.
-
-        Uses D-Bus invoke_forge_action when available to avoid triggering
-        the GNOME Shell overview via xdotool Super key press, which causes
-        Clutter allocation storms under Xvfb.
-        """
-        if self._idle_proxy:
-            self._idle_proxy.invoke_forge_action({"name": "LayoutStackedToggle"})
-        else:
-            self.key("shift+super+s")
+        """Toggle stacked layout (Shift+Super+s / LayoutStackedToggle)."""
+        self._dispatch("LayoutStackedToggle", "shift+super+s")
         time.sleep(Timing.STACKED_LAYOUT_CHANGE)
         if self._idle_proxy:
             self._idle_proxy.wait_for_idle()
 
     def toggle_tabbed(self) -> None:
-        """Toggle tabbed layout.
-
-        Uses D-Bus invoke_forge_action when available to avoid triggering
-        the GNOME Shell overview via xdotool Super key press, which causes
-        Clutter allocation storms under Xvfb.
-        """
-        if self._idle_proxy:
-            self._idle_proxy.invoke_forge_action({"name": "LayoutTabbedToggle"})
-        else:
-            self.key("shift+super+t")
+        """Toggle tabbed layout (Shift+Super+t / LayoutTabbedToggle)."""
+        self._dispatch("LayoutTabbedToggle", "shift+super+t")
         time.sleep(Timing.STACKED_LAYOUT_CHANGE)
         if self._idle_proxy:
             self._idle_proxy.wait_for_idle()
