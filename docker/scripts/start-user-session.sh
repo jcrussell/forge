@@ -233,11 +233,13 @@ if command -v gnome-text-editor &>/dev/null; then
         gnome-text-editor --gapplication-service 2>/dev/null || true
     # Wait for the primary to claim its bus name so test --new-window calls
     # become remote activations instead of racing fresh register().
+    EDITOR_NAME_OWNED=0
     for i in {1..60}; do
         if gdbus call --address="unix:path=$BUS_SOCKET" \
                 --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
                 --method org.freedesktop.DBus.NameHasOwner org.gnome.TextEditor 2>/dev/null \
                 | grep -q true; then
+            EDITOR_NAME_OWNED=1
             break
         fi
         sleep 0.5
@@ -248,15 +250,27 @@ if command -v gnome-text-editor &>/dev/null; then
     # silently. Probe a real method — org.gtk.Actions.List on the
     # /org/gnome/TextEditor object — to confirm the GApplication is actually
     # serving requests.
+    EDITOR_ACTIONS_READY=0
     for i in {1..60}; do
         if gdbus call --address="unix:path=$BUS_SOCKET" \
                 --dest org.gnome.TextEditor --object-path /org/gnome/TextEditor \
                 --method org.gtk.Actions.List 2>/dev/null | grep -q '^('; then
             echo "gnome-text-editor primary ready"
+            EDITOR_ACTIONS_READY=1
             break
         fi
         sleep 0.5
     done
+    # Diagnostic only (no exit / no restart — the pytest warmup fixture + per-test
+    # retry/sweep handle a not-yet-ready primary). If either probe exhausted
+    # without success, surface it loudly so a later launch-race failure is
+    # debuggable from the lane log (forge-0gj). This runs on every lane.
+    if [ "$EDITOR_NAME_OWNED" -ne 1 ] || [ "$EDITOR_ACTIONS_READY" -ne 1 ]; then
+        echo "WARNING: gnome-text-editor primary not confirmed ready" \
+             "(name_owned=$EDITOR_NAME_OWNED actions_ready=$EDITOR_ACTIONS_READY)"
+        systemctl status forge-text-editor-primary --no-pager 2>&1 | head -20 || true
+        journalctl --no-pager -n 20 -u forge-text-editor-primary 2>/dev/null || true
+    fi
 fi
 
 # Wait for GNOME Shell to be ready via D-Bus

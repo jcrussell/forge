@@ -174,6 +174,45 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
         warnings.warn(f"Could not enable forge debug logging: {e}")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _warm_text_editor(shell_proxy, check_forge_ready):
+    """Front-load the gnome-text-editor GApplication launch race into session setup.
+
+    The first `gnome-text-editor --new-window` of a session can hit the ~25s
+    GApplication.register() / portal race on Mutter 50 headless Wayland (see
+    forge-0gj). Doing one real launch+close here — through the exact same
+    `_launch_window` path the tests use (same env, GTK_USE_PORTAL=0) — warms the
+    primary so the first actual test launches against an already-serving primary
+    instead of being the one that absorbs the race.
+
+    Best-effort: this never raises. A session-scoped autouse fixture that raised
+    would error *every* test (a worse cascade than the single early ERROR we're
+    fixing). On failure we warn loudly and sweep the workspace clean; the per-test
+    `_launch_window` retries+sweep (below) still protect each test independently.
+    This runs identically on every lane — it is not gated on Fedora/Mutter version.
+    """
+    try:
+        _launch_window(DEFAULT_TEST_APP, shell_proxy)
+    except Exception as e:
+        warnings.warn(f"gnome-text-editor warmup launch failed: {e}")
+    finally:
+        # Always leave a clean workspace for the first test, regardless of whether
+        # the warmup window appeared (a late/zombie window must not leak).
+        _close_all_windows(shell_proxy)
+
+    # The session runs with num-workspaces=2 / dynamic-workspaces=false, so
+    # workspace state is real. Make sure the warmup didn't leave us off ws 0.
+    try:
+        if shell_proxy.get_active_workspace_index() != 0:
+            shell_proxy.eval(
+                "(function(){"
+                "global.workspace_manager.get_workspace_by_index(0)"
+                ".activate(global.get_current_time()); return 'ok';})();"
+            )
+    except Exception as e:
+        warnings.warn(f"Could not restore active workspace to 0 after warmup: {e}")
+
+
 @pytest.fixture(scope="session")
 def dispatch_mode(request) -> str:
     """The --dispatch-mode option as a session-scoped fixture value."""
@@ -441,6 +480,16 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
     with diag_path.open("a") as f:
         f.write(f"--- {app} {app_args} (after {max_attempts} attempts) @ {time.time():.3f} ---\n")
         f.write(f"final_windows={final_windows!r}\n\n")
+
+    # Sweep the workspace to 0 windows before raising so a window that arrived
+    # late from a slow activation can't leak into the next test's baseline and
+    # cascade as a "did not fill" failure (forge-0gj). clean_workspace already
+    # guarantees "0 windows expected" entering each test, so sweep-to-0 (not to a
+    # captured baseline, which could itself contain the zombie) is the correct
+    # target. _close_all_windows closes via window.delete() and never pokes the
+    # gnome-text-editor primary, preserving the bus-poisoning invariant above.
+    _close_all_windows(shell_proxy)
+
     raise last_exc
 
 
