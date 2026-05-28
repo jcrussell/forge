@@ -82,7 +82,11 @@ class TestKeyboardResize:
         assert len(sorted_before) >= 2
         top_height_before = sorted_before[0].get("rect", {}).get("height", 0)
 
-        _invoke_resize(shell_proxy, "WindowResizeBottom")
+        # Pin the top pane as the resize target: WindowResizeBottom grows the
+        # focused window's south edge, and post-toggle natural focus is the bottom
+        # pane (the two_windows fixture focuses the second window). The explicit
+        # hint makes this deterministic across X11/Wayland (see shell_proxy).
+        _invoke_resize(shell_proxy, "WindowResizeBottom", focus_window="topmost")
 
         sorted_after = window_helper.get_windows_sorted_by_position("y")
         top_height_after = sorted_after[0].get("rect", {}).get("height", 0)

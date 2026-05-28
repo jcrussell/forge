@@ -540,9 +540,13 @@ class ShellProxy:
                 const wins = ws.list_windows();
                 const origFn = global.display.get_focus_window;
                 let focusMethod = 'natural';
+                const hint = {focus_hint_js};
 
-                if (!origFn.call(global.display) && wins.length > 0) {{
-                    const hint = {focus_hint_js};
+                // Override focus when an explicit hint is given (deterministic target
+                // regardless of X11/Wayland natural-focus differences), or when natural
+                // focus is null (Xvfb loses focus after synthetic input). Without a hint,
+                // the historical null-only behavior is preserved.
+                if ((hint || !origFn.call(global.display)) && wins.length > 0) {{
                     let targetWin = wins[0];
                     if (hint === 'leftmost') {{
                         targetWin = wins.reduce((best, w) =>
@@ -558,7 +562,7 @@ class ShellProxy:
                             w.get_frame_rect().y > best.get_frame_rect().y ? w : best, wins[0]);
                     }}
                     global.display.get_focus_window = function() {{ return targetWin; }};
-                    focusMethod = 'display_override';
+                    focusMethod = hint ? 'hint_override' : 'display_override';
                 }}
 
                 try {{

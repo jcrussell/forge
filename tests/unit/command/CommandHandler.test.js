@@ -505,7 +505,21 @@ describe("CommandHandler", () => {
         amount: 0.5,
       });
 
-      expect(mockWm.addFloatOverride).toHaveBeenCalledWith(mockMetaWindow, false);
+      // forge-qh2: snap floats the window instance (withWmId=true), not the whole
+      // wm_class, so windowDestroy's per-window removal can clean it up.
+      expect(mockWm.addFloatOverride).toHaveBeenCalledWith(mockMetaWindow, true);
+    });
+
+    it("should not add a float override if window is already floating", () => {
+      mockNodeWindow.isFloat.mockReturnValue(true);
+
+      commandHandler.execute({
+        name: "SnapLayoutMove",
+        direction: "right",
+        amount: 0.5,
+      });
+
+      expect(mockWm.addFloatOverride).not.toHaveBeenCalled();
     });
 
     it("should call move with calculated rect", () => {
