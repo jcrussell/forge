@@ -26,6 +26,10 @@ class ScreenshotCapture:
     Screenshots are saved with timestamps for easy identification.
     """
 
+    # Hard cap on any single backend so a hung tool (e.g. gnome-screenshot can
+    # hang indefinitely on headless Wayland) can never stall test teardown.
+    _CAPTURE_TIMEOUT = 15
+
     def __init__(
         self,
         output_dir: str = "e2e-results/screenshots",
@@ -118,11 +122,16 @@ class ScreenshotCapture:
                 capture_output=True,
                 check=True,
                 env=self._get_env(),
+                timeout=self._CAPTURE_TIMEOUT,
             )
             if output_path.exists():
                 return output_path
             raise ScreenshotError("gnome-screenshot did not create file")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ) as e:
             raise ScreenshotError(f"gnome-screenshot failed: {e}") from e
 
     def _capture_imagemagick(self, output_path: Path) -> Path:
@@ -133,11 +142,16 @@ class ScreenshotCapture:
                 capture_output=True,
                 check=True,
                 env=self._get_env(),
+                timeout=self._CAPTURE_TIMEOUT,
             )
             if output_path.exists():
                 return output_path
             raise ScreenshotError("ImageMagick import did not create file")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ) as e:
             raise ScreenshotError(f"ImageMagick import failed: {e}") from e
 
     def _capture_scrot(self, output_path: Path) -> Path:
@@ -148,11 +162,16 @@ class ScreenshotCapture:
                 capture_output=True,
                 check=True,
                 env=self._get_env(),
+                timeout=self._CAPTURE_TIMEOUT,
             )
             if output_path.exists():
                 return output_path
             raise ScreenshotError("scrot did not create file")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ) as e:
             raise ScreenshotError(f"scrot failed: {e}") from e
 
     def capture_on_failure(
@@ -205,11 +224,16 @@ class ScreenshotCapture:
                 capture_output=True,
                 check=True,
                 env=self._get_env(),
+                timeout=self._CAPTURE_TIMEOUT,
             )
             if output_path.exists():
                 return output_path
             raise ScreenshotError("Window capture did not create file")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ) as e:
             raise ScreenshotError(f"Window capture failed: {e}") from e
 
     def cleanup_old(self, max_age_hours: int = 24) -> int:
