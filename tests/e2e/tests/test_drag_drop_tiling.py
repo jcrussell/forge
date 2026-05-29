@@ -13,6 +13,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.wait import wait_for_window_count
 
 
 @pytest.mark.drag
@@ -23,7 +24,7 @@ class TestDragDropBasic:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Dragging a floated window to the right zone should tile it."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
 
         # Float the focused window
         input_sim.toggle_float()
@@ -75,7 +76,7 @@ class TestDragDropBasic:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Dragging a floated window to the bottom zone should create VSPLIT."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
 
         input_sim.toggle_float()
         time.sleep(Timing.LAYOUT_CHANGE)
@@ -123,7 +124,7 @@ class TestDragDropBasic:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Dragging a floated window to the left zone should tile on left."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
 
         input_sim.toggle_float()
         time.sleep(Timing.LAYOUT_CHANGE)
@@ -167,7 +168,7 @@ class TestDragDropBasic:
         self, shell_proxy, input_sim, two_windows
     ):
         """Drag operations should not create or destroy windows."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
         count_before = len(shell_proxy.get_windows())
 
         input_sim.toggle_float()

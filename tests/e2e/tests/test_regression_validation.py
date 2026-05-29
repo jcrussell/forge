@@ -11,11 +11,10 @@ This serves as a proof of concept for:
 3. Catching regressions that might slip through mock-based tests
 """
 
-import time
-
 import pytest
 
-from framework.constants import Timing, Tolerance
+from framework.constants import Tolerance
+from framework.wait import wait_for_window_count
 
 
 class TestBug125VerticalStackedTiling:
@@ -38,10 +37,7 @@ class TestBug125VerticalStackedTiling:
         window1, window2, window3 = three_windows
 
         # Wait for initial tiling
-        time.sleep(Timing.WINDOW_SETTLE)
-
-        # Get initial window positions (should be tiled side by side or stacked vertically)
-        windows_before = shell_proxy.get_windows()
+        windows_before = wait_for_window_count(shell_proxy, 3)
         assert len(windows_before) >= 3, f"Expected 3 windows, got {len(windows_before)}"
 
         # Calculate total width of windows before stacking
@@ -49,9 +45,9 @@ class TestBug125VerticalStackedTiling:
             w.get("rect", {}).get("width", 0) for w in windows_before
         )
 
-        # Toggle layout to stacked (Shift+Super+s is default keybinding)
+        # Toggle layout to stacked (Shift+Super+s is default keybinding).
+        # toggle_stacked() self-settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
         input_sim.toggle_stacked()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Get window positions after stacking
         windows_after = shell_proxy.get_windows()
@@ -75,11 +71,10 @@ class TestBug125VerticalStackedTiling:
         """In stacked mode, windows should have similar dimensions."""
         window1, window2, window3 = three_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 3)
 
-        # Toggle to stacked layout
+        # Toggle to stacked layout (self-settles).
         input_sim.toggle_stacked()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Get windows after stacking
         windows_after = shell_proxy.get_windows()
@@ -123,10 +118,8 @@ class TestBug305Resize:
         """Verify two windows split evenly and maintain valid proportions."""
         window1, window2 = two_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Get window info
-        windows = shell_proxy.get_windows()
+        windows = wait_for_window_count(shell_proxy, 2)
         assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
 
         # Get workspace dimensions
@@ -146,10 +139,8 @@ class TestBug305Resize:
         """Verify all three windows are tiled and visible."""
         window1, window2, window3 = three_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Get all windows
-        windows = shell_proxy.get_windows()
+        windows = wait_for_window_count(shell_proxy, 3)
         assert len(windows) >= 3, f"Expected 3 windows, got {len(windows)}"
 
         # All windows should have reasonable dimensions
@@ -166,12 +157,11 @@ class TestBug305Resize:
         """Verify windows together fill most of the workspace."""
         window1, window2, window3 = three_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
+        windows = wait_for_window_count(shell_proxy, 3)
 
         workspace = shell_proxy.get_workspace_rect()
         workspace_area = workspace["width"] * workspace["height"]
 
-        windows = shell_proxy.get_windows()
         total_window_area = sum(
             w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
             for w in windows
@@ -204,26 +194,20 @@ class TestBug057SplitConSiblings:
         """Verify toggling layout preserves window count."""
         window1, window2, window3 = three_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Get initial window count
-        initial_windows = shell_proxy.get_windows()
+        initial_windows = wait_for_window_count(shell_proxy, 3)
         initial_count = len(initial_windows)
         assert initial_count >= 3, f"Expected 3 windows, got {initial_count}"
 
-        # Toggle layout multiple times
+        # Toggle layout multiple times (count must stay stable across each).
         input_sim.toggle_layout()
-        time.sleep(Timing.LAYOUT_CHANGE)
-
-        after_toggle1 = shell_proxy.get_windows()
+        after_toggle1 = wait_for_window_count(shell_proxy, initial_count)
         assert len(after_toggle1) == initial_count, (
             f"Window count changed from {initial_count} to {len(after_toggle1)}"
         )
 
         input_sim.toggle_layout()
-        time.sleep(Timing.LAYOUT_CHANGE)
-
-        after_toggle2 = shell_proxy.get_windows()
+        after_toggle2 = wait_for_window_count(shell_proxy, initial_count)
         assert len(after_toggle2) == initial_count, (
             f"Window count changed from {initial_count} to {len(after_toggle2)}"
         )
@@ -234,11 +218,10 @@ class TestBug057SplitConSiblings:
         """Verify windows remain visible after toggling to stacked."""
         window1, window2, window3 = three_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 3)
 
-        # Toggle to stacked
+        # Toggle to stacked (self-settles)
         input_sim.toggle_stacked()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # All windows should still exist
         windows = shell_proxy.get_windows()
@@ -246,10 +229,9 @@ class TestBug057SplitConSiblings:
 
         # Toggle back to normal layout
         input_sim.toggle_layout()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # All windows should still exist
-        windows_after = shell_proxy.get_windows()
+        windows_after = wait_for_window_count(shell_proxy, 3)
         assert len(windows_after) >= 3, (
             f"Expected 3 windows after returning to split, got {len(windows_after)}"
         )
@@ -262,10 +244,8 @@ class TestLayoutModePreservation:
         """Verify default layout splits windows (not stacked/tabbed)."""
         window1, window2 = two_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Get window positions
-        windows = shell_proxy.get_windows()
+        windows = wait_for_window_count(shell_proxy, 2)
         assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
 
         # Sort by x position
@@ -301,10 +281,8 @@ class TestLayoutModePreservation:
         """Verify toggle_layout changes window dimensions (width/height ratio)."""
         window1, window2 = two_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Get initial window dimensions
-        windows_before = shell_proxy.get_windows()
+        windows_before = wait_for_window_count(shell_proxy, 2)
         dims_before = [
             (w.get("rect", {}).get("width", 0), w.get("rect", {}).get("height", 0))
             for w in windows_before
@@ -312,10 +290,9 @@ class TestLayoutModePreservation:
 
         # Toggle layout (HSPLIT -> VSPLIT or vice versa)
         input_sim.toggle_layout()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Get new window dimensions
-        windows_after = shell_proxy.get_windows()
+        windows_after = wait_for_window_count(shell_proxy, 2)
         dims_after = [
             (w.get("rect", {}).get("width", 0), w.get("rect", {}).get("height", 0))
             for w in windows_after
@@ -347,7 +324,7 @@ class TestWindowDimensions:
 
     def test_single_window_dimensions(self, shell_proxy, window_helper, test_window):
         """Verify single window fills workspace correctly."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 1)
 
         wm_class = test_window.get("wmClass")
         if wm_class:
@@ -357,9 +334,7 @@ class TestWindowDimensions:
         """Verify two tiled windows have approximately equal size."""
         window1, window2 = two_windows
 
-        time.sleep(Timing.WINDOW_SETTLE)
-
-        windows = shell_proxy.get_windows()
+        windows = wait_for_window_count(shell_proxy, 2)
         assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
 
         rect1 = windows[0].get("rect", {})
