@@ -22,7 +22,7 @@ jobs:
   publishing:
     strategy:
       matrix:
-        node_version: ["latest"]
+        node_version: ["22"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
