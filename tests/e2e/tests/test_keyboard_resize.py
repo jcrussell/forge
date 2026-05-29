@@ -10,6 +10,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.wait import wait_for_stable
 
 
 def _invoke_resize(shell_proxy, action_name, count=5, amount=50, focus_window=None):
@@ -32,7 +33,8 @@ class TestKeyboardResize:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Resize right increase should grow the focused window."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        # Wait for the initial two-window tiling to settle before measuring.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         sorted_before = window_helper.get_windows_sorted_by_position("x")
         assert len(sorted_before) >= 2
@@ -54,7 +56,8 @@ class TestKeyboardResize:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Resize left decrease should shrink the focused window."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        # Wait for the initial two-window tiling to settle before measuring.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         sorted_before = window_helper.get_windows_sorted_by_position("x")
         assert len(sorted_before) >= 2
@@ -76,7 +79,9 @@ class TestKeyboardResize:
     ):
         """Resizing vertically in VSPLIT should change heights."""
         input_sim.toggle_layout()  # Switch to VSPLIT
-        time.sleep(Timing.LAYOUT_CHANGE)
+        # Wait for the relayout to settle (windows restack vertically) rather than
+        # polling get_container_layout, which returns NO_NODE headless.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("y"))
 
         sorted_before = window_helper.get_windows_sorted_by_position("y")
         assert len(sorted_before) >= 2
@@ -99,7 +104,8 @@ class TestKeyboardResize:
         self, shell_proxy, window_helper, two_windows
     ):
         """Windows should still fill workspace after resize."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        # Wait for the initial two-window tiling to settle before resizing.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         _invoke_resize(shell_proxy, "WindowResizeRight")
 
@@ -113,14 +119,15 @@ class TestResetSizes:
         self, shell_proxy, window_helper, two_windows
     ):
         """WindowResetSizes should reset windows to equal sizes after resize."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        # Wait for the initial two-window tiling to settle before resizing.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         # Make windows unequal via D-Bus action
         _invoke_resize(shell_proxy, "WindowResizeRight")
 
         # Reset via D-Bus action
         shell_proxy.invoke_forge_action({"name": "WindowResetSizes"})
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         sorted_wins = window_helper.get_windows_sorted_by_position("x")
         assert len(sorted_wins) >= 2

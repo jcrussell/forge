@@ -5,12 +5,15 @@ Tests workspace navigation, per-workspace tiling toggle,
 and moving windows between workspaces.
 """
 
-import time
-
 import pytest
 
-from framework.constants import Timing, Tolerance
-from framework.wait import wait_for_window_count
+from framework.constants import Tolerance
+from framework.wait import (
+    wait_for,
+    wait_for_stable,
+    wait_for_window_count,
+    wait_for_window_fill,
+)
 
 
 class TestWorkspaceNavigation:
@@ -22,12 +25,14 @@ class TestWorkspaceNavigation:
         """Switching away and back should preserve window position."""
         wm_class = test_window.get("wmClass")
         rect_before = window_helper.get_window_rect(wm_class)
+        start_ws = shell_proxy.get_active_workspace_index()
 
-        # Switch to next workspace and back
+        # Switch to next workspace and back, waiting for each switch to land.
         input_sim.workspace_next()
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i != start_ws)
         input_sim.workspace_prev()
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i == start_ws)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect_after = window_helper.get_window_rect(wm_class)
 
@@ -42,14 +47,16 @@ class TestWorkspaceNavigation:
         self, shell_proxy, input_sim, window_helper, two_windows
     ):
         """Two-window layout should be preserved after workspace roundtrip."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
         sorted_before = window_helper.get_windows_sorted_by_position("x")
         rects_before = [w.get("rect", {}) for w in sorted_before]
+        start_ws = shell_proxy.get_active_workspace_index()
 
         input_sim.workspace_next()
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i != start_ws)
         input_sim.workspace_prev()
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i == start_ws)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         sorted_after = window_helper.get_windows_sorted_by_position("x")
         rects_after = [w.get("rect", {}) for w in sorted_after]
@@ -68,7 +75,7 @@ class TestWorkspaceTileToggle:
         ws_index = shell_proxy.get_active_workspace_index()
 
         shell_proxy.invoke_forge_action({"name": "WorkspaceActiveTileToggle"})
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for(lambda: shell_proxy.is_workspace_tiling_skipped(ws_index), predicate=bool)
 
         is_skipped = shell_proxy.is_workspace_tiling_skipped(ws_index)
         assert is_skipped, (
@@ -77,16 +84,22 @@ class TestWorkspaceTileToggle:
 
         # Toggle back to clean up
         shell_proxy.invoke_forge_action({"name": "WorkspaceActiveTileToggle"})
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for(
+            lambda: shell_proxy.is_workspace_tiling_skipped(ws_index),
+            predicate=lambda v: not v,
+        )
 
     def test_double_toggle_restores_tiling(self, shell_proxy, test_window):
         """Toggling workspace tiling twice should restore tiling."""
         ws_index = shell_proxy.get_active_workspace_index()
 
         shell_proxy.invoke_forge_action({"name": "WorkspaceActiveTileToggle"})
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for(lambda: shell_proxy.is_workspace_tiling_skipped(ws_index), predicate=bool)
         shell_proxy.invoke_forge_action({"name": "WorkspaceActiveTileToggle"})
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for(
+            lambda: shell_proxy.is_workspace_tiling_skipped(ws_index),
+            predicate=lambda v: not v,
+        )
 
         is_skipped = shell_proxy.is_workspace_tiling_skipped(ws_index)
         assert not is_skipped, f"Workspace {ws_index} should not be in skip-tile list"
@@ -99,25 +112,25 @@ class TestMoveWindowBetweenWorkspaces:
         self, shell_proxy, window_helper, two_windows
     ):
         """Moving a window to next workspace should reduce count on current."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
         count_before = len(shell_proxy.get_windows())
         ws_index = shell_proxy.get_active_workspace_index()
 
         # Move window via D-Bus (bypasses unreliable xdotool keybinding)
         shell_proxy.move_window_to_workspace(ws_index + 1)
-        time.sleep(Timing.WORKSPACE_SWITCH)
-
-        windows = shell_proxy.get_windows()
+        windows = wait_for_window_count(shell_proxy, count_before - 1)
         count_after = len(windows)
 
         assert count_after == count_before - 1, (
             f"Window count should decrease by 1: {count_before} -> {count_after}"
         )
 
-        # Remaining window should fill workspace
+        # Remaining window should fill workspace. Count hit 1, but the window may
+        # still be re-tiling — wait for the fill before asserting.
         if count_after == 1:
             workspace = window_helper.get_workspace_rect()
-            rect = windows[0].get("rect", {})
+            filled = wait_for_window_fill(shell_proxy, workspace)
+            rect = filled.get("rect", {})
             assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE
 
         # Clean up: switch to target workspace and move window back
@@ -134,17 +147,17 @@ class TestMoveWindowBetweenWorkspaces:
             return 'OK';
         }})();
         """)
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for_window_count(shell_proxy, count_before)
 
     def test_move_and_return(self, shell_proxy, two_windows):
         """Moving a window away and back should restore the original count."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_window_count(shell_proxy, 2)
         count_original = len(shell_proxy.get_windows())
         ws_index = shell_proxy.get_active_workspace_index()
 
         # Move window to next workspace via D-Bus
         shell_proxy.move_window_to_workspace(ws_index + 1)
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for_window_count(shell_proxy, count_original - 1)
 
         # Move it back
         shell_proxy.eval(f"""
@@ -160,7 +173,7 @@ class TestMoveWindowBetweenWorkspaces:
             return 'OK';
         }})();
         """)
-        time.sleep(Timing.WORKSPACE_SWITCH)
+        wait_for_window_count(shell_proxy, count_original)
 
         count_final = len(shell_proxy.get_windows())
         assert count_final == count_original, (

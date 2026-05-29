@@ -5,13 +5,12 @@ Tests that closing windows causes remaining windows to expand
 and fill the freed space correctly.
 """
 
-import time
-
 import pytest
 
-from framework.constants import Timing, Tolerance
+from framework.constants import Tolerance
 from framework.wait import (
     wait_for_layout_settled,
+    wait_for_stable,
     wait_for_window_count,
     wait_for_window_fill,
 )
@@ -77,7 +76,9 @@ class TestWindowCloseRebalance:
     ):
         """Closing a window in VSPLIT should make the remaining fill workspace."""
         input_sim.toggle_layout()  # Switch to VSPLIT
-        time.sleep(Timing.LAYOUT_CHANGE)
+        # Wait for the relayout to settle (windows restack vertically) rather than
+        # polling get_container_layout, which returns NO_NODE headless.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("y"))
 
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
@@ -101,7 +102,6 @@ class TestTreeIntegrityAfterClose:
         # Close one window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        time.sleep(Timing.LAYOUT_CHANGE)
         shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
@@ -112,7 +112,6 @@ class TestTreeIntegrityAfterClose:
         # Close another window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
-        time.sleep(Timing.LAYOUT_CHANGE)
         shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
@@ -122,12 +121,11 @@ class TestTreeIntegrityAfterClose:
 
     def test_close_in_stacked_layout(self, shell_proxy, input_sim, three_windows):
         """Tree should remain valid after closing a window in stacked layout."""
+        # toggle_stacked() already settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
         input_sim.toggle_stacked()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        time.sleep(Timing.LAYOUT_CHANGE)
         shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
