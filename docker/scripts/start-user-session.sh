@@ -75,7 +75,9 @@ chown -R gnomeshell:gnomeshell /home/gnomeshell/.local
 
 # Start Xvfb for X11 mode only
 if [ "$SESSION_TYPE" = "x11" ]; then
-    if ! ps aux 2>/dev/null | grep -v grep | grep -q "Xvfb :${DISPLAY_NUM}"; then
+    # Detect a running Xvfb by its X socket (the image has no procps-ng, so
+    # ps/pgrep are unavailable); same socket path lib.sh:wait_for_display checks.
+    if [ ! -e "/tmp/.X11-unix/X${DISPLAY_NUM}" ]; then
         echo "Starting Xvfb on display :${DISPLAY_NUM}..."
         Xvfb ":${DISPLAY_NUM}" -screen 0 1920x1080x24 -ac &
         sleep 2
@@ -136,7 +138,9 @@ su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.search-providers d
 # bootstrap script (see dbus-daemon note above for the why).
 # Output is captured to /tmp/gnome-shell.log via the wrapping shell so existing
 # diagnostics (run-tests.sh tails this file on shell crash) keep working.
-if ! ps -u gnomeshell 2>/dev/null | grep -q "gnome-shell"; then
+# Skip if our gnome-shell unit is already running (no ps/pgrep in the image —
+# query the systemd unit we launch below instead).
+if ! systemctl is-active --quiet forge-gnome-shell; then
     if [ "$SESSION_TYPE" = "x11" ]; then
         echo "Starting GNOME Shell (X11 on :${DISPLAY_NUM})..."
         # MUTTER_DEBUG_DUMMY_MONITOR_SCALES: avoids monitor scale warnings
@@ -287,8 +291,8 @@ done
 if [ $SHELL_READY -eq 0 ]; then
     echo "ERROR: GNOME Shell failed to start"
     # Print diagnostic info
-    echo "--- gnome-shell process status ---"
-    ps aux 2>/dev/null | grep gnome-shell || echo "(no gnome-shell process found)"
+    echo "--- gnome-shell unit status ---"
+    systemctl status forge-gnome-shell --no-pager 2>&1 | head -20 || echo "(forge-gnome-shell unit not found)"
     echo "--- journal errors ---"
     journalctl --no-pager -n 20 2>/dev/null || true
     exit 1

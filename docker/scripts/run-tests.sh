@@ -81,8 +81,12 @@ echo "=========================================="
 cp /tmp/gnome-shell.log "${RESULTS_DIR}/gnome-shell.log" 2>/dev/null || true
 grep '\[Forge\]' /tmp/gnome-shell.log > "${RESULTS_DIR}/forge-trace.log" 2>/dev/null || true
 
-# Check if gnome-shell crashed during tests
-if ! pgrep -u gnomeshell gnome-shell > /dev/null 2>&1; then
+# Check if gnome-shell crashed during tests. Probe via gdbus (org.gnome.Shell.Eval),
+# the same liveness check lib.sh:wait_for_shell uses. The image ships no procps-ng,
+# so ps/pgrep/pidof are all absent — the old `pgrep` check errored and fired a false
+# "crashed" warning on every lane (including green ones). gdbus is always present.
+if ! gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
+        --method org.gnome.Shell.Eval "1+1" 2>/dev/null | grep -q "true"; then
     echo "=========================================="
     echo "WARNING: gnome-shell crashed during tests!"
     echo "(Full log saved to e2e-results/gnome-shell.log)"
