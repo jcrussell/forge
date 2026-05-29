@@ -16,3 +16,5 @@ po
 .vscode
 node_modules
 .github
+.beads
+.claude
