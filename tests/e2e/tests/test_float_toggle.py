@@ -9,6 +9,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.wait import wait_for, wait_for_stable
 
 
 class TestFloatToggle:
@@ -34,7 +35,8 @@ class TestFloatToggle:
             "width": 0.65,
             "height": 0.75,
         })
-        time.sleep(Timing.LAYOUT_CHANGE)
+        # Poll until the float resize settles instead of a fixed sleep.
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         # Floating window should be smaller (default 65% x 75%)
         rect_after = window_helper.get_window_rect(wm_class)
@@ -56,11 +58,11 @@ class TestFloatToggle:
         # Toggle to float then back to tiled
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect_final = window_helper.get_window_rect(wm_class)
 
@@ -77,7 +79,7 @@ class TestFloatToggle:
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
@@ -106,15 +108,19 @@ class TestFloatWithMultipleWindows:
         # Use D-Bus action (xdotool focus unreliable in Xvfb)
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        time.sleep(Timing.LAYOUT_CHANGE)
 
-        # One window should be large (tiled, filling space)
-        windows = shell_proxy.get_windows()
-        has_large_window = any(
-            w.get("rect", {}).get("width", 0) > workspace["width"] * 0.8
-            for w in windows
+        # Poll until a window has expanded to fill the freed space.
+        def has_large_window(windows):
+            return isinstance(windows, list) and any(
+                w.get("rect", {}).get("width", 0) > workspace["width"] * 0.8 for w in windows
+            )
+
+        windows = wait_for(
+            shell_proxy.get_windows,
+            predicate=has_large_window,
+            message="Remaining tiled window did not fill workspace",
         )
-        assert has_large_window, "Remaining tiled window should fill workspace"
+        assert has_large_window(windows), "Remaining tiled window should fill workspace"
 
     def test_float_preserves_other_windows(self, shell_proxy, input_sim, two_windows):
         """Floating a window should not affect other window count."""
@@ -122,6 +128,8 @@ class TestFloatWithMultipleWindows:
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        # fixed: count-preservation has no positive post-condition to poll (count is
+        # unchanged by design); brief settle lets any erroneous create/destroy surface.
         time.sleep(Timing.LAYOUT_CHANGE)
 
         count_after = len(shell_proxy.get_windows())
@@ -136,7 +144,8 @@ class TestFloatWithMultipleWindows:
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        time.sleep(Timing.LAYOUT_CHANGE)
+        # Poll until the focused window reports floating, rather than a fixed sleep.
+        wait_for(lambda: shell_proxy.is_window_floating(focused_class), predicate=bool)
 
         # Focus should still be on the same window
         focused_after = shell_proxy.get_focused_window()

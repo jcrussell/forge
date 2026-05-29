@@ -5,11 +5,10 @@ Tests preset snap positions (center, thirds) via D-Bus action invocation.
 Uses invoke_forge_action() to bypass unreliable xdotool focus in Xvfb.
 """
 
-import time
-
 import pytest
 
-from framework.constants import Timing, Tolerance
+from framework.constants import Tolerance
+from framework.wait import wait_for_stable
 
 
 class TestSnapCenter:
@@ -19,21 +18,20 @@ class TestSnapCenter:
         self, shell_proxy, window_helper, test_window
     ):
         """SnapLayoutMove Center should center the window in the workspace."""
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wm_class = test_window.get("wmClass")
 
         # Snap to left third first to make window smaller than workspace
         # (Center preserves current dimensions, so a full-width tiled window stays full)
         shell_proxy.invoke_forge_action(
             {"name": "SnapLayoutMove", "direction": "Left", "amount": 0.333}
         )
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         shell_proxy.invoke_forge_action(
             {"name": "SnapLayoutMove", "direction": "Center"}
         )
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
-        wm_class = test_window.get("wmClass")
         rect = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
 
@@ -80,11 +78,11 @@ class TestSnapThirds:
         expected_edge,
     ):
         """Snap action should position window at the expected ratio and edge."""
-        time.sleep(Timing.RESIZE_SETTLE)
-        shell_proxy.invoke_forge_action(action)
-        time.sleep(Timing.LAYOUT_CHANGE)
-
         wm_class = test_window.get("wmClass")
+
+        shell_proxy.invoke_forge_action(action)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
+
         rect = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
 
@@ -123,18 +121,16 @@ class TestSnapTransitions:
         """Snapping left then right should move the window."""
         wm_class = test_window.get("wmClass")
 
-        time.sleep(Timing.RESIZE_SETTLE)
         shell_proxy.invoke_forge_action(
             {"name": "SnapLayoutMove", "direction": "Left", "amount": 0.333}
         )
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
         rect_left = window_helper.get_window_rect(wm_class)
 
-        time.sleep(Timing.RESIZE_SETTLE)
         shell_proxy.invoke_forge_action(
             {"name": "SnapLayoutMove", "direction": "Right", "amount": 0.333}
         )
-        time.sleep(Timing.LAYOUT_CHANGE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
         rect_right = window_helper.get_window_rect(wm_class)
 
         # X position should have changed significantly

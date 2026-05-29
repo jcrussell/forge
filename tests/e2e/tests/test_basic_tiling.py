@@ -9,7 +9,8 @@ Tests fundamental tiling behavior:
 
 import pytest
 
-from framework.constants import Timing, Tolerance
+from framework.constants import Tolerance
+from framework.wait import wait_for_window_count
 
 
 class TestBasicTiling:
@@ -23,12 +24,8 @@ class TestBasicTiling:
 
     def test_two_windows_split_horizontally(self, shell_proxy, window_helper, two_windows):
         """Two windows should split the workspace 50/50 horizontally by default."""
-        import time
-        time.sleep(0.5)  # Wait for Forge to tile
-
-        # Fetch fresh window positions from GNOME Shell (fixtures have stale data)
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
+        # Fetch fresh window positions once tiling settles (fixtures have stale data)
+        windows = wait_for_window_count(shell_proxy, 2)
 
         workspace = window_helper.get_workspace_rect()
         expected_width = workspace["width"] // 2
@@ -77,12 +74,8 @@ class TestBasicTiling:
 
     def test_windows_dont_overlap(self, shell_proxy, two_windows):
         """Tiled windows should not overlap."""
-        import time
-        time.sleep(0.5)  # Wait for Forge to tile
-
-        # Fetch fresh window positions
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
+        # Fetch fresh window positions once tiling settles
+        windows = wait_for_window_count(shell_proxy, 2)
 
         rect1 = windows[0].get("rect", {})
         rect2 = windows[1].get("rect", {})
@@ -126,12 +119,8 @@ class TestWindowGaps:
 
     def test_gaps_between_windows(self, shell_proxy, two_windows):
         """Windows should have gaps between them when configured."""
-        import time
-        time.sleep(0.5)  # Wait for Forge to tile
-
-        # Fetch fresh window positions
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
+        # Fetch fresh window positions once tiling settles
+        windows = wait_for_window_count(shell_proxy, 2)
 
         # Sort by x position to determine left/right
         sorted_windows = sorted(windows, key=lambda w: w.get("rect", {}).get("x", 0))
