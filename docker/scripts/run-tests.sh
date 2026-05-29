@@ -17,6 +17,13 @@ TEST_DIR="${PROJECT_DIR}/tests/e2e"
 RESULTS_DIR="${PROJECT_DIR}/e2e-results"
 PYTEST_ARGS="${*:---verbose}"
 
+# How InputSimulator routes high-level Forge actions: "dbus" (default, contamination-free) or
+# "keybinding" (synthetic Clutter super-modifier keypresses). Pass `-e DISPATCH_MODE=keybinding`
+# on the `docker exec`. Defaults to dbus so existing lanes are unchanged. See conftest.py's
+# --dispatch-mode option and memory mutter-virtualinputdevice-super-modifier-tilesnap for why
+# keybinding mode contaminates across test boundaries (forge-ehq).
+DISPATCH_MODE="${DISPATCH_MODE:-dbus}"
+
 # Ensure environment is set for subprocess launching
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
@@ -71,6 +78,7 @@ echo "=========================================="
 cd "${TEST_DIR}"
 export FORGE_E2E_RESULTS_DIR="${RESULTS_DIR}"
 python3 -m pytest tests/ ${PYTEST_ARGS} \
+    --dispatch-mode "${DISPATCH_MODE}" \
     --junitxml="${RESULTS_DIR}/junit.xml" || TEST_EXIT=$?
 
 echo "=========================================="
