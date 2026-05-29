@@ -9,6 +9,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.wait import wait_for, wait_for_stable
 
 
 class TestGapSizeSettings:
@@ -18,14 +19,16 @@ class TestGapSizeSettings:
         self, shell_proxy, window_helper, restore_settings, two_windows
     ):
         """Increasing gap size should increase space between windows."""
-        time.sleep(Timing.WINDOW_SETTLE)
-
+        # Wait for the two-window tiling (and its gap) to settle before measuring.
+        wait_for_stable(lambda: window_helper.measure_gap_between())
         gap_before = window_helper.measure_gap_between()
 
         restore_settings.set_window_gap_size(20)
-        time.sleep(Timing.SETTINGS_SETTLE)
-
-        gap_after = window_helper.measure_gap_between()
+        gap_after = wait_for(
+            lambda: window_helper.measure_gap_between(),
+            predicate=lambda g: g > gap_before,
+            message="Gap did not grow after increasing gap size",
+        )
 
         assert gap_after > gap_before, (
             f"Gap should increase: was {gap_before}, now {gap_after}"
@@ -36,9 +39,11 @@ class TestGapSizeSettings:
     ):
         """Setting gap to 0 should make windows nearly touch."""
         restore_settings.set_window_gap_size(0)
-        time.sleep(Timing.SETTINGS_SETTLE)
-
-        gap = window_helper.measure_gap_between()
+        gap = wait_for(
+            lambda: window_helper.measure_gap_between(),
+            predicate=lambda g: abs(g) < Tolerance.POSITION,
+            message="Windows did not close the gap after setting gap=0",
+        )
 
         assert abs(gap) < Tolerance.POSITION, (
             f"Windows should nearly touch with gap=0, actual gap: {gap}"
@@ -48,11 +53,11 @@ class TestGapSizeSettings:
         self, shell_proxy, window_helper, restore_settings, test_window
     ):
         """With gap-hidden-on-single, a single window should still fill workspace."""
+        wm_class = test_window.get("wmClass")
         restore_settings.set_window_gap_size(20)
         restore_settings.set_window_gap_hidden_on_single(True)
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
-        wm_class = test_window.get("wmClass")
         workspace = window_helper.get_workspace_rect()
         rect = window_helper.get_window_rect(wm_class)
 
@@ -64,11 +69,11 @@ class TestGapSizeSettings:
         self, shell_proxy, window_helper, restore_settings, test_window
     ):
         """With gap-hidden-on-single=false, a single window should be smaller."""
+        wm_class = test_window.get("wmClass")
         restore_settings.set_window_gap_size(20)
         restore_settings.set_window_gap_hidden_on_single(False)
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
-        wm_class = test_window.get("wmClass")
         workspace = window_helper.get_workspace_rect()
         rect = window_helper.get_window_rect(wm_class)
 
@@ -86,11 +91,13 @@ class TestTilingModeToggle:
         self, shell_proxy, window_helper, restore_settings, two_windows
     ):
         """Disabling tiling mode should stop managing windows."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
         sorted_before = window_helper.get_windows_sorted_by_position("x")
         widths_before = [w.get("rect", {}).get("width", 0) for w in sorted_before]
 
         restore_settings.set_tiling_mode_enabled(False)
+        # fixed: disabling tiling has no positive post-condition to poll — existing
+        # windows stay where they are; we only assert they still exist.
         time.sleep(Timing.SETTINGS_SETTLE)
 
         # Windows may remain where they are, but new behavior would be untiled.
@@ -102,13 +109,14 @@ class TestTilingModeToggle:
         self, shell_proxy, window_helper, restore_settings, two_windows
     ):
         """Re-enabling tiling should re-tile windows."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         # Disable then re-enable
         restore_settings.set_tiling_mode_enabled(False)
+        # fixed: intermediate settle so the disable registers before we re-enable.
         time.sleep(Timing.SETTINGS_SETTLE)
         restore_settings.set_tiling_mode_enabled(True)
-        time.sleep(Timing.SETTINGS_SETTLE)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         window_helper.assert_windows_fill_workspace()
 
@@ -135,15 +143,14 @@ class TestStackedTabbedSettings:
         toggle_method,
     ):
         """Disabling stacked/tabbed setting should prevent toggling to that mode."""
-        time.sleep(Timing.WINDOW_SETTLE)
-
         # Disable the mode via settings
         getattr(restore_settings, setting_method)(False)
+        # fixed: GSetting propagation to Forge has no clean observable to poll before
+        # the toggle attempt; the toggle itself (toggle_method) self-settles.
         time.sleep(Timing.SETTINGS_SETTLE)
 
-        # Try to toggle to the disabled mode
+        # Try to toggle to the disabled mode (toggle_stacked/tabbed self-settle)
         getattr(input_sim, toggle_method)()
-        time.sleep(Timing.LAYOUT_CHANGE)
 
         # Layout should not be the disabled mode
         layout = shell_proxy.get_container_layout()

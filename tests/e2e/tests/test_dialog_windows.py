@@ -12,6 +12,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.wait import wait_for, wait_for_stable, wait_for_window_count
 
 
 def _safe_terminate(proc):
@@ -37,6 +38,13 @@ def _open_zenity_dialog(display=None):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         env=env,
+    )
+
+
+def _zenity_present(windows):
+    """True when a zenity window is present (wmClass is case-insensitive)."""
+    return isinstance(windows, list) and any(
+        w.get("wmClass", "").lower() == "zenity" for w in windows
     )
 
 
@@ -69,9 +77,10 @@ class TestDialogWindows:
         rect_before = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
 
-        # Open a dialog
+        # Open a dialog and wait for it to actually appear.
         proc = _open_zenity_dialog()
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for(shell_proxy.get_windows, predicate=_zenity_present,
+                 message="zenity dialog did not appear")
 
         try:
             # Parent window should still be large (not shrunk by dialog tiling)
@@ -82,18 +91,20 @@ class TestDialogWindows:
             )
         finally:
             _safe_terminate(proc)
+            # fixed: subprocess teardown settle, no observable post-condition.
             time.sleep(Timing.WINDOW_CLOSE)
 
     def test_dialog_preserves_tiling(
         self, shell_proxy, input_sim, window_helper, two_windows, zenity_available
     ):
         """Opening a dialog should not change existing tiled windows' positions."""
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
         sorted_before = window_helper.get_windows_sorted_by_position("x")
         rects_before = [w.get("rect", {}) for w in sorted_before]
 
         proc = _open_zenity_dialog()
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for(shell_proxy.get_windows, predicate=_zenity_present,
+                 message="zenity dialog did not appear")
 
         try:
             # Get only the tiled windows (exclude dialog)
@@ -110,6 +121,7 @@ class TestDialogWindows:
                 )
         finally:
             _safe_terminate(proc)
+            # fixed: subprocess teardown settle, no observable post-condition.
             time.sleep(Timing.WINDOW_CLOSE)
 
     def test_dialog_window_type_detected(
@@ -117,7 +129,8 @@ class TestDialogWindows:
     ):
         """At least one dialog window should be detected by window type."""
         proc = _open_zenity_dialog()
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for(shell_proxy.get_windows, predicate=_zenity_present,
+                 message="zenity dialog did not appear")
 
         try:
             js = """
@@ -153,6 +166,7 @@ class TestDialogWindows:
             )
         finally:
             _safe_terminate(proc)
+            # fixed: subprocess teardown settle, no observable post-condition.
             time.sleep(Timing.WINDOW_CLOSE)
 
 
@@ -166,12 +180,13 @@ class TestDialogCloseBehavior:
         count_before = len(shell_proxy.get_windows())
 
         proc = _open_zenity_dialog()
-        time.sleep(Timing.WINDOW_SETTLE)
+        wait_for(shell_proxy.get_windows, predicate=_zenity_present,
+                 message="zenity dialog did not appear")
 
         _safe_terminate(proc)
-        time.sleep(Timing.WINDOW_CLOSE)
+        windows = wait_for_window_count(shell_proxy, count_before)
 
-        count_after = len(shell_proxy.get_windows())
+        count_after = len(windows)
         assert count_after == count_before, (
             f"Window count should be restored: {count_before} -> {count_after}"
         )
@@ -184,8 +199,10 @@ class TestDialogCloseBehavior:
 
         for _ in range(3):
             proc = _open_zenity_dialog()
-            time.sleep(Timing.WINDOW_SETTLE)
+            wait_for(shell_proxy.get_windows, predicate=_zenity_present,
+                     message="zenity dialog did not appear")
             _safe_terminate(proc)
+            # fixed: subprocess teardown settle between iterations.
             time.sleep(Timing.WINDOW_CLOSE)
 
         # Single window should still fill workspace
