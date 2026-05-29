@@ -67,6 +67,20 @@ RUN systemctl unmask systemd-logind.service && \
     mkdir -p /etc/systemd/system/systemd-logind.service.d && \
     printf '[Service]\nProtectHostname=no\n' > /etc/systemd/system/systemd-logind.service.d/override.conf
 
+# Mask the per-user systemd units for UID 1000 (gnomeshell). The session is
+# brought up entirely via `systemd-run --uid=gnomeshell` transient system-slice
+# units (see start-user-session.sh) plus a hand-made /run/user/1000 — it never
+# needs user@.service. Leaving these unmasked breaks the lane (notably Fedora 40
+# / GNOME 46, X11): every `su - gnomeshell` login session in start-user-session.sh
+# fires pam_systemd, which starts user-runtime-dir@1000.service. That service
+# mounts a tmpfs over /run/user/1000 on session-open and unmounts it on
+# session-close, destroying the running gnome-shell's bus/socket dir (dconf
+# "Permission denied", then "GNOME Shell failed to start"). user@1000.service
+# also always fails PAM (status 224) in this container regardless. Masking both
+# so the hand-made /run/user/1000 is never shadowed/torn down fixes F40 and is a
+# no-op on the versions that already pass.
+RUN systemctl mask user@1000.service user-runtime-dir@1000.service
+
 # Set up extension directory
 ARG UUID=forge@jmmaranan.com
 ENV EXTENSION_PATH=/home/gnomeshell/.local/share/gnome-shell/extensions/${UUID}
@@ -96,10 +110,6 @@ RUN mkdir -p /tmp/dconf-db && \
     dconf compile /home/gnomeshell/.config/dconf/user /tmp/dconf-db && \
     chown gnomeshell:gnomeshell /home/gnomeshell/.config/dconf/user && \
     rm -rf /tmp/dconf-db
-
-# Enable lingering for gnomeshell user so user services can run without login
-RUN mkdir -p /var/lib/systemd/linger && \
-    touch /var/lib/systemd/linger/gnomeshell
 
 # Install helper scripts to standard path
 RUN cp /app/scripts/start-user-session.sh /usr/local/bin/start-user-session.sh && \
