@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { MaximizeFlags } from "../../mocks/gnome/Meta.js";
+import { MaximizeFlags, Window } from "../../mocks/gnome/Meta.js";
 
 // Compat dispatches on IS_MUTTER_49_PLUS which is computed from
 // PACKAGE_VERSION at module load. tests/setup.js mocks that resource
@@ -84,6 +84,35 @@ describe("compat (Mutter 49+ branch)", () => {
     it("returns get_maximize_flags() value", () => {
       const w = { get_maximize_flags: vi.fn(() => MaximizeFlags.BOTH) };
       expect(Compat.getMaximizeFlags(w)).toBe(MaximizeFlags.BOTH);
+    });
+  });
+
+  // Drives a REAL Meta.Window mock (not inline vi.fn() stubs) end-to-end through
+  // the 49+ shim path — proves the mock exposes is_maximized/set_maximize_flags/
+  // get_maximize_flags and that they stay self-consistent. This is the coverage
+  // forge-bc1 builds on.
+  describe("with a real Meta.Window mock", () => {
+    it("maximize(BOTH) then unmaximize round-trips through the shims", () => {
+      const w = new Window();
+      expect(Compat.isNotMaximized(w)).toBe(true);
+
+      Compat.maximize(w);
+      expect(Compat.isMaximized(w)).toBe(true);
+      expect(Compat.getMaximizeFlags(w)).toBe(MaximizeFlags.BOTH);
+
+      Compat.unmaximize(w);
+      expect(Compat.isNotMaximized(w)).toBe(true);
+      expect(Compat.getMaximizeFlags(w)).toBe(0);
+    });
+
+    it("partial maximize(HORIZONTAL) round-trips without being reported fully maximized", () => {
+      const w = new Window();
+      Compat.maximize(w, MaximizeFlags.HORIZONTAL);
+      // set_maximize_flags(HORIZONTAL) then maximize() must NOT clobber to BOTH.
+      expect(Compat.getMaximizeFlags(w)).toBe(MaximizeFlags.HORIZONTAL);
+      // On 49+, is_maximized() is both-axes, so a partial maximize is "not maximized".
+      expect(Compat.isMaximized(w)).toBe(false);
+      expect(Compat.isNotMaximized(w)).toBe(true);
     });
   });
 });

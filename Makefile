@@ -262,7 +262,9 @@ E2E_DOCKER_OPTS = --privileged \
 
 # Build E2E test container (builds extension first, then Docker image)
 e2e-build: build
-	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) --build-arg FEDORA_VERSION=$(FEDORA_VERSION) .
+	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) \
+		--build-arg FEDORA_VERSION=$(FEDORA_VERSION) \
+		--build-arg GIT_SHA=$$(git rev-parse HEAD 2>/dev/null || echo unknown) .
 
 # Run E2E tests for a specific GNOME/Fedora version
 # Usage: make e2e-test GNOME_VERSION=47  (or FEDORA_VERSION=41)

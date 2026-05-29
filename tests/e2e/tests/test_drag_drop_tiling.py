@@ -4,8 +4,9 @@ Drag and Drop Tiling Tests for Forge.
 Tests drag-and-drop tiling with drop zone detection.
 
 Note: xdotool mouse operations may not trigger Mutter's grab-op protocol
-in all environments. These tests are best-effort and may be skipped if
-drag-and-drop detection doesn't work via xdotool simulation.
+in all environments. When drop-zone detection does not fire, these tests
+report xfail (not skip) so the coverage gap is visible in the report rather
+than masquerading as green; when the drag lands they pass normally.
 """
 
 import time
@@ -31,6 +32,9 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
+        # Legitimate runtime guard: the drag scenario is undefined without two
+        # windows. The two_windows fixture should guarantee this, so a skip here
+        # signals a fixture/launch problem, not a masked drag failure.
         if len(windows) < 2:
             pytest.skip("Not enough windows for drag test")
 
@@ -68,8 +72,15 @@ class TestDragDropBasic:
             right_reasonable = right.get("width", 0) > workspace["width"] * 0.2
 
             if not (left_reasonable and right_reasonable):
-                pytest.skip(
-                    "Drag-and-drop zone detection did not trigger via xdotool"
+                # Reported as xfail (not skip) so the report shows this as a
+                # known-failing path instead of masquerading as green. xdotool
+                # mouse motion does not reliably trigger Mutter's grab-op
+                # drop-zone protocol; see memory
+                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
+                # drag DOES land, the test passes normally (xpass is expected
+                # and allowed here — see forge-q0k).
+                pytest.xfail(
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
                 )
 
     def test_drag_float_to_bottom_zone(
@@ -82,6 +93,9 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
+        # Legitimate runtime guard: the drag scenario is undefined without two
+        # windows. The two_windows fixture should guarantee this, so a skip here
+        # signals a fixture/launch problem, not a masked drag failure.
         if len(windows) < 2:
             pytest.skip("Not enough windows for drag test")
 
@@ -116,8 +130,15 @@ class TestDragDropBasic:
             bottom_reasonable = bottom.get("height", 0) > workspace["height"] * 0.2
 
             if not (top_reasonable and bottom_reasonable):
-                pytest.skip(
-                    "Drag-and-drop zone detection did not trigger via xdotool"
+                # Reported as xfail (not skip) so the report shows this as a
+                # known-failing path instead of masquerading as green. xdotool
+                # mouse motion does not reliably trigger Mutter's grab-op
+                # drop-zone protocol; see memory
+                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
+                # drag DOES land, the test passes normally (xpass is expected
+                # and allowed here — see forge-q0k).
+                pytest.xfail(
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
                 )
 
     def test_drag_float_to_left_zone(
@@ -130,6 +151,9 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
+        # Legitimate runtime guard: the drag scenario is undefined without two
+        # windows. The two_windows fixture should guarantee this, so a skip here
+        # signals a fixture/launch problem, not a masked drag failure.
         if len(windows) < 2:
             pytest.skip("Not enough windows for drag test")
 
@@ -160,8 +184,15 @@ class TestDragDropBasic:
             left_reasonable = sorted_after[0].get("rect", {}).get("width", 0) > workspace["width"] * 0.2
 
             if not left_reasonable:
-                pytest.skip(
-                    "Drag-and-drop zone detection did not trigger via xdotool"
+                # Reported as xfail (not skip) so the report shows this as a
+                # known-failing path instead of masquerading as green. xdotool
+                # mouse motion does not reliably trigger Mutter's grab-op
+                # drop-zone protocol; see memory
+                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
+                # drag DOES land, the test passes normally (xpass is expected
+                # and allowed here — see forge-q0k).
+                pytest.xfail(
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
                 )
 
     def test_drag_preserves_window_count(
@@ -175,6 +206,9 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
+        # Legitimate runtime guard: the drag scenario is undefined without two
+        # windows. The two_windows fixture should guarantee this, so a skip here
+        # signals a fixture/launch problem, not a masked drag failure.
         if len(windows) < 2:
             pytest.skip("Not enough windows for drag test")
 

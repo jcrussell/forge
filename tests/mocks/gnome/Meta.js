@@ -120,8 +120,14 @@ export class Window extends withSignals() {
   }
 
   maximize(directions) {
-    this.maximized_horizontally = true;
-    this.maximized_vertically = true;
+    // Mutter 48 calls maximize(flags); Mutter 49+ calls set_maximize_flags(flags)
+    // then maximize() with no args. Honor an explicit `directions` arg, else any
+    // flags staged via set_maximize_flags(), else default to BOTH — so partial
+    // maximize round-trips through get_maximize_flags()/get_maximized().
+    const flags = directions ?? this._pendingMaximizeFlags ?? MaximizeFlags.BOTH;
+    this.maximized_horizontally = Boolean(flags & MaximizeFlags.HORIZONTAL);
+    this.maximized_vertically = Boolean(flags & MaximizeFlags.VERTICAL);
+    this._pendingMaximizeFlags = null;
   }
 
   unmaximize(directions) {
@@ -243,6 +249,21 @@ export class Window extends withSignals() {
 
   set_unmaximize_flags(flags) {
     // GNOME 49+ method
+  }
+
+  // Mutter 49+ Meta.Window API (see lib/extension/compat.js). On real Mutter 49+,
+  // maximize state is staged with set_maximize_flags() and applied by maximize().
+  set_maximize_flags(flags) {
+    this._pendingMaximizeFlags = flags;
+  }
+
+  is_maximized() {
+    return this.maximized_horizontally && this.maximized_vertically;
+  }
+
+  get_maximize_flags() {
+    // Same packed-flags representation as get_maximized().
+    return this.get_maximized();
   }
 }
 

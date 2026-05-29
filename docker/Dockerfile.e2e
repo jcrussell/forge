@@ -85,6 +85,12 @@ RUN systemctl mask user@1000.service user-runtime-dir@1000.service
 ARG UUID=forge@jmmaranan.com
 ENV EXTENSION_PATH=/home/gnomeshell/.local/share/gnome-shell/extensions/${UUID}
 
+# Stamp the host git SHA the image was built from so E2E results are traceable
+# to an exact commit (build-provenance hygiene, forge-q0k). The image carries no
+# .git, so this MUST be captured at build time, not via git at test time.
+ARG GIT_SHA=unknown
+ENV FORGE_BUILD_SHA=${GIT_SHA}
+
 # Copy pre-built extension (build on host first with: make build)
 COPY --chown=gnomeshell:gnomeshell temp/ ${EXTENSION_PATH}/
 

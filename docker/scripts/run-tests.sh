@@ -49,6 +49,13 @@ echo "=========================================="
 # Create results directories
 mkdir -p "${RESULTS_DIR}/screenshots"
 
+# Stamp the build-provenance SHA into the results bundle (forge-q0k). This is the
+# git SHA the image was built from (baked in at build time via the GIT_SHA
+# build-arg), NOT a test-time value — the image has no .git. Any future
+# unexplained xfail/xpass anomaly can be traced back to this commit.
+echo "${FORGE_BUILD_SHA:-unknown}" > "${RESULTS_DIR}/GIT_SHA.txt"
+echo "Build provenance SHA: ${FORGE_BUILD_SHA:-unknown}"
+
 # Print environment info
 print_system_info
 
