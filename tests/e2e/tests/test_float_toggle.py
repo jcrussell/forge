@@ -144,8 +144,10 @@ class TestFloatWithMultipleWindows:
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        # Poll until the focused window reports floating, rather than a fixed sleep.
-        wait_for(lambda: shell_proxy.is_window_floating(focused_class), predicate=bool)
+        # Poll until the FOCUSED window reports floating. Use the identity-based
+        # check, not is_window_floating(focused_class): with two same-class windows
+        # the class lookup is first-match and may inspect the still-tiled window.
+        wait_for(shell_proxy.is_focused_window_floating, predicate=bool)
 
         # Focus should still be on the same window
         focused_after = shell_proxy.get_focused_window()

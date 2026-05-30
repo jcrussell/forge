@@ -462,6 +462,33 @@ class ShellProxy:
         result = self.eval(js)
         return result == "true"
 
+    def is_focused_window_floating(self) -> bool:
+        """Whether the currently FOCUSED window is floating (resolved by identity).
+
+        is_window_floating(wm_class) is first-match by class, so it's ambiguous
+        when several windows share a wm_class (e.g. two gnome-text-editor windows).
+        This resolves the focused Meta.Window's own tree node and reads its mode —
+        the right check after floating "the focused window".
+        """
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'false'")
+            + _TREE_WALKERS_JS
+            + """
+                const fw = global.display.get_focus_window();
+                if (!fw) return 'false';
+                const node = findNodeByWindow(__root, fw);
+                if (!node) return 'false';
+                return node.mode === 'FLOAT' ? 'true' : 'false';
+            } catch(e) {
+                return 'false';
+            }
+        })();
+        """
+        )
+        result = self.eval(js)
+        return result == "true"
+
     def count_windows_of_class(self, wm_class: str) -> int:
         """Count windows of a wm_class on the active workspace.
 
