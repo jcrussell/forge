@@ -440,6 +440,130 @@ class ShellProxy:
         result = self.eval(js)
         return result == "true"
 
+    def count_windows_of_class(self, wm_class: str) -> int:
+        """Count windows of a wm_class on the active workspace.
+
+        Unlike is_window_floating/get_forge_node_for_window (first-match only),
+        this counts EVERY window of the class — needed to reason about multiple
+        same-class windows (forge-a34.2).
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const ws = global.workspace_manager.get_active_workspace();
+                const wins = ws.list_windows();
+                let n = 0;
+                for (const w of wins) {{
+                    if (w.get_wm_class() === {json.dumps(wm_class)}) n++;
+                }}
+                return String(n);
+            }} catch(e) {{ return '-1'; }}
+        }})();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return -1
+
+    def count_tiled_windows_of_class(self, wm_class: str) -> int:
+        """Count tree window-nodes of a wm_class that are NOT floating.
+
+        Float state is the node's mode (WINDOW_MODES.FLOAT). A floating window
+        KEEPS its tree node — the `float` setter only flips `mode`, it never
+        detaches the node (tree.js `set float`), and findNode walks the whole
+        tree — so we count by `mode !== 'FLOAT'` rather than tree membership
+        (which is why is_window_floating's membership check is not used here).
+        A class-wide FloatClassToggle drives this to 0 for the toggled class;
+        toggling again restores the full count.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj) return '-1';
+                const ext = forge.stateObj;
+                if (!ext.extWm || !ext.extWm.tree) return '-1';
+                let tiled = 0;
+                function walk(node) {{
+                    if (!node) return;
+                    const v = node.nodeValue;
+                    if (node.nodeType === 'WINDOW' && v && v.get_wm_class &&
+                        v.get_wm_class() === {json.dumps(wm_class)} && node.mode !== 'FLOAT') {{
+                        tiled++;
+                    }}
+                    for (const c of (node.childNodes || [])) walk(c);
+                }}
+                // The Tree instance IS the root node (Tree extends Node); there
+                // is no `.tree.root` property — walk the tree object itself.
+                walk(ext.extWm.tree);
+                return String(tiled);
+            }} catch(e) {{ return '-1'; }}
+        }})();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return -1
+
+    def get_float_overrides(self) -> list:
+        """Return the live window-property overrides array from the extension.
+
+        Reads forge.stateObj.configMgr.windowProps.overrides — the getter
+        re-parses windows.json on each access (settings.js) and
+        addFloatOverride/removeFloatOverride save synchronously, so this
+        reflects current state right after invoke_forge_action returns. NOTE:
+        windows.json ships ~40 default overrides, so callers MUST scope
+        assertions to a specific wm_class, never to the total count.
+        """
+        js = """
+        (function() {
+            try {
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '[]';
+                const props = forge.stateObj.configMgr.windowProps;
+                const overrides = (props && props.overrides) ? props.overrides : [];
+                return JSON.stringify(overrides);
+            } catch(e) { return '[]'; }
+        })();
+        """
+        result = self.eval(js)
+        return result if isinstance(result, list) else []
+
+    def remove_class_float_override(self, wm_class: str) -> int:
+        """Strip any class-wide float override (no wmId, no wmTitle) for wm_class.
+
+        Teardown helper for class-float tests: a class-wide override is never
+        removed by windowDestroy (it calls removeFloatOverride withWmId=true,
+        matching only per-instance wmId entries) and clean_workspace never
+        touches windows.json — so a test that floats the editor class and then
+        fails mid-run would leak a persistent float into every later test.
+        Returns the number of overrides removed.
+        """
+        js = f"""
+        (function() {{
+            try {{
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '0';
+                const cfg = forge.stateObj.configMgr;
+                const props = cfg.windowProps;
+                const all = (props && props.overrides) ? props.overrides : [];
+                const before = all.length;
+                props.overrides = all.filter(o => !(
+                    o.wmClass === {json.dumps(wm_class)} && !o.wmId && !o.wmTitle && o.mode === 'float'
+                ));
+                cfg.windowProps = props;
+                return String(before - props.overrides.length);
+            }} catch(e) {{ return '0'; }}
+        }})();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
     def close_all_windows(self) -> int:
         """
         Close all windows on the current workspace via D-Bus.
