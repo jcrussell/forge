@@ -524,6 +524,45 @@ class ShellProxy:
         except (ValueError, TypeError):
             return -1
 
+    def get_config_dir(self) -> str:
+        """Return Forge's user config dir (configMgr.confDir), e.g. ~/.config/forge.
+
+        Read from the live extension so it matches whatever XDG_CONFIG_HOME the
+        gnome-shell process uses, rather than guessing the path test-side.
+        """
+        js = """
+        (function() {
+            try {
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '';
+                return forge.stateObj.configMgr.confDir;
+            } catch(e) { return ''; }
+        })();
+        """
+        return self.eval(js)
+
+    def get_wm_override_classes(self) -> list:
+        """Return wmClass values from the WM's CACHED window overrides.
+
+        Reads ext.extWm.windowProps.overrides — the in-memory copy refreshed only
+        by ConfigReload / the prefs reload trigger / startup (window.js
+        reloadWindowOverrides). This is distinct from get_float_overrides (which
+        reads configMgr.windowProps and re-parses windows.json every access), so
+        it's the right probe for "did config reload re-read the file?".
+        """
+        js = """
+        (function() {
+            try {
+                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                if (!forge || !forge.stateObj || !forge.stateObj.extWm) return '[]';
+                const wp = forge.stateObj.extWm.windowProps;
+                const ov = (wp && wp.overrides) ? wp.overrides : [];
+                return JSON.stringify(ov.map(o => o.wmClass));
+            } catch(e) { return '[]'; }
+        })();
+        """
+        return self.eval(js)
+
     def get_float_overrides(self) -> list:
         """Return the live window-property overrides array from the extension.
 
