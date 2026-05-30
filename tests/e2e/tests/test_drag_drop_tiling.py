@@ -32,11 +32,11 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
-        # Legitimate runtime guard: the drag scenario is undefined without two
-        # windows. The two_windows fixture should guarantee this, so a skip here
-        # signals a fixture/launch problem, not a masked drag failure.
-        if len(windows) < 2:
-            pytest.skip("Not enough windows for drag test")
+        # wait_for_window_count(2) above already guarantees two windows, and
+        # toggle_float() cannot change the count — so a shortfall here is a real
+        # regression (a window vanished), not a drag precondition worth skipping.
+        # Assert (not skip) so it fails loudly instead of masquerading as green.
+        assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
         # Find floating and tiled windows by size
         sorted_by_width = sorted(
@@ -93,11 +93,11 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
-        # Legitimate runtime guard: the drag scenario is undefined without two
-        # windows. The two_windows fixture should guarantee this, so a skip here
-        # signals a fixture/launch problem, not a masked drag failure.
-        if len(windows) < 2:
-            pytest.skip("Not enough windows for drag test")
+        # wait_for_window_count(2) above already guarantees two windows, and
+        # toggle_float() cannot change the count — so a shortfall here is a real
+        # regression (a window vanished), not a drag precondition worth skipping.
+        # Assert (not skip) so it fails loudly instead of masquerading as green.
+        assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
         sorted_by_width = sorted(
             windows, key=lambda w: w.get("rect", {}).get("width", 0)
@@ -151,11 +151,11 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
-        # Legitimate runtime guard: the drag scenario is undefined without two
-        # windows. The two_windows fixture should guarantee this, so a skip here
-        # signals a fixture/launch problem, not a masked drag failure.
-        if len(windows) < 2:
-            pytest.skip("Not enough windows for drag test")
+        # wait_for_window_count(2) above already guarantees two windows, and
+        # toggle_float() cannot change the count — so a shortfall here is a real
+        # regression (a window vanished), not a drag precondition worth skipping.
+        # Assert (not skip) so it fails loudly instead of masquerading as green.
+        assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
         sorted_by_width = sorted(
             windows, key=lambda w: w.get("rect", {}).get("width", 0)
@@ -206,11 +206,11 @@ class TestDragDropBasic:
         time.sleep(Timing.LAYOUT_CHANGE)
 
         windows = shell_proxy.get_windows()
-        # Legitimate runtime guard: the drag scenario is undefined without two
-        # windows. The two_windows fixture should guarantee this, so a skip here
-        # signals a fixture/launch problem, not a masked drag failure.
-        if len(windows) < 2:
-            pytest.skip("Not enough windows for drag test")
+        # wait_for_window_count(2) above already guarantees two windows, and
+        # toggle_float() cannot change the count — so a shortfall here is a real
+        # regression (a window vanished), not a drag precondition worth skipping.
+        # Assert (not skip) so it fails loudly instead of masquerading as green.
+        assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
         sorted_by_width = sorted(
             windows, key=lambda w: w.get("rect", {}).get("width", 0)
