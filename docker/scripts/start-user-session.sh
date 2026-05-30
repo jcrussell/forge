@@ -152,6 +152,15 @@ su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.search-providers d
 # diagnostics (run-tests.sh tails this file on shell crash) keep working.
 # Skip if our gnome-shell unit is already running (no ps/pgrep in the image —
 # query the systemd unit we launch below instead).
+# Multi-monitor opt-in (forge-a34.1): default to a single 1920x1080 virtual
+# monitor; set FORGE_E2E_VIRTUAL_MONITORS=2 to add a second virtual output so
+# multi-monitor tiling tests can run. Wayland-headless only — X11/Xvfb here is a
+# single screen. Default stays single-monitor so existing lanes are unchanged.
+VIRTUAL_MONITOR_ARGS="--virtual-monitor 1920x1080"
+if [ "${FORGE_E2E_VIRTUAL_MONITORS:-1}" = "2" ]; then
+    VIRTUAL_MONITOR_ARGS="--virtual-monitor 1920x1080 --virtual-monitor 1920x1080"
+fi
+
 if ! systemctl is-active --quiet forge-gnome-shell; then
     if [ "$SESSION_TYPE" = "x11" ]; then
         echo "Starting GNOME Shell (X11 on :${DISPLAY_NUM})..."
@@ -171,7 +180,7 @@ if ! systemctl is-active --quiet forge-gnome-shell; then
             --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
             --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
             "${GL_ENV[@]}" \
-            sh -c "exec gnome-shell --headless --wayland --virtual-monitor 1920x1080 --unsafe-mode >/tmp/gnome-shell.log 2>&1"
+            sh -c "exec gnome-shell --headless --wayland ${VIRTUAL_MONITOR_ARGS} --unsafe-mode >/tmp/gnome-shell.log 2>&1"
     fi
     sleep 5
 fi

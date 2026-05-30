@@ -524,6 +524,28 @@ class ShellProxy:
         except (ValueError, TypeError):
             return -1
 
+    def get_monitor_count(self) -> int:
+        """Return the number of monitors GNOME sees (global.display.get_n_monitors())."""
+        js = "(function(){ try { return String(global.display.get_n_monitors()); } catch(e){ return '-1'; } })();"
+        try:
+            return int(self.eval(js))
+        except (ValueError, TypeError):
+            return -1
+
+    def move_focused_window_to_monitor(self, monitor_index: int) -> str:
+        """Move the focused window to another monitor via Mutter (move_to_monitor)."""
+        js = f"""
+        (function() {{
+            try {{
+                const w = global.display.get_focus_window();
+                if (!w) return 'NO_FOCUS';
+                w.move_to_monitor({int(monitor_index)});
+                return 'ok';
+            }} catch(e) {{ return 'ERR ' + e; }}
+        }})();
+        """
+        return self.eval(js)
+
     def count_maximized_windows(self) -> int:
         """Count maximized windows on the active workspace, per Mutter's own state.
 

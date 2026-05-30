@@ -14,7 +14,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
-	e2e-test e2e-test-all e2e-debug e2e-clean e2e-build e2e-versions \
+	e2e-test e2e-test-all e2e-test-multimonitor e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
 
 all: build install enable restart
@@ -284,10 +284,16 @@ e2e-test: e2e-build
 	echo "Waiting for container to initialize..." && \
 	sleep 3 && \
 	echo "Starting GNOME Shell session..." && \
-	docker exec $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	docker exec $(if $(MULTIMONITOR),-e FORGE_E2E_VIRTUAL_MONITORS=2,) $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
 	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "Running E2E tests..." && \
 	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $$POD set-env.sh /app/scripts/run-tests.sh
+
+# Run E2E tests with two virtual monitors (forge-a34.1, headless Wayland only).
+# Boots the session with a second 1920x1080 output so test_multi_monitor runs;
+# every other test is unaffected by the extra monitor.
+e2e-test-multimonitor:
+	@$(MAKE) e2e-test MULTIMONITOR=1
 
 # Run E2E tests for all supported versions
 e2e-test-all:
