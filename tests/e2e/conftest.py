@@ -40,6 +40,12 @@ E2E_RESULTS_DIR = Path(
 )
 SCREENSHOT_DIR = E2E_RESULTS_DIR / "screenshots"
 
+# Per-step timeout when polling for window-close progress during teardown
+# (forge-zsk). Generous vs. a normal close (<300ms under Xvfb) but bounded so a
+# window that refuses to close can't stall teardown for long; WINDOW_CLOSE_ATTEMPTS
+# caps the number of steps.
+CLOSE_POLL_TIMEOUT = 1.5
+
 
 def pytest_addoption(parser):
     """Register the --dispatch-mode CLI option for InputSimulator.
@@ -309,17 +315,49 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
             windows = shell_proxy.get_windows()
             if not windows:
                 break
+            count_before = len(windows)
             shell_proxy.close_one_window()
-            time.sleep(Timing.WINDOW_CLOSE)
+            # Poll for the window count to actually drop rather than a fixed
+            # WINDOW_CLOSE sleep (forge-zsk). get_windows() is a read-only
+            # Shell.Eval, so this never pokes the gnome-text-editor primary —
+            # the bus-poisoning invariant above is preserved. Short timeout so a
+            # window that won't close can't stall teardown; the attempt cap
+            # bounds total work and the next iteration re-reads state.
+            try:
+                wait_for(
+                    shell_proxy.get_windows,
+                    predicate=lambda w: isinstance(w, list) and len(w) < count_before,
+                    timeout=CLOSE_POLL_TIMEOUT,
+                    interval=Timing.POLL_INTERVAL_WINDOW,
+                )
+            except WaitTimeoutError:
+                # No progress this round; let the loop re-attempt (bounded).
+                pass
         except Exception:
             break
-    time.sleep(Timing.WINDOW_SETTLE)
+    # Final settle: wait for a fully empty workspace instead of a fixed sleep.
+    # Swallow the timeout — a non-empty result is tolerated here exactly as the
+    # old unconditional WINDOW_SETTLE sleep tolerated it (best-effort teardown).
+    try:
+        wait_for(
+            shell_proxy.get_windows,
+            predicate=lambda w: isinstance(w, list) and len(w) == 0,
+            timeout=CLOSE_POLL_TIMEOUT,
+            interval=Timing.POLL_INTERVAL_WINDOW,
+        )
+    except WaitTimeoutError:
+        pass
 
 
 @pytest.fixture
 def test_window(shell_proxy, clean_workspace) -> Generator[dict, None, None]:
     """Launch a single test window."""
     window = _launch_window(DEFAULT_TEST_APP, shell_proxy)
+    # Structural settle (forge-zsk): _launch_window already polled for the window
+    # to appear with a valid size; this brief pause lets the tiling layout
+    # animation settle before the test reads geometry. Left as a fixed delay —
+    # polling it would couple the generic fixture to per-test layout assertions.
+    # The two/three/four_windows fixtures below repeat this pattern.
     time.sleep(Timing.WINDOW_SETTLE)
     yield window
 
@@ -362,6 +400,10 @@ def restore_settings(forge_settings) -> Generator:
     """Yield forge_settings and restore all changes after test."""
     yield forge_settings
     forge_settings.restore_all()
+    # Structural settle (forge-zsk): GSettings writes propagate to the extension
+    # asynchronously via the GSettings 'changed' signal; there is no queryable
+    # post-condition to poll on for "all overrides reverted", so this stays a
+    # fixed delay.
     time.sleep(Timing.SETTINGS_SETTLE)
 
 
