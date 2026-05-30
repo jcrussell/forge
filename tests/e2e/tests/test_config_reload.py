@@ -1,7 +1,7 @@
-"""Config reload (Shift+Super+r / ConfigReload) E2E tests.
+"""Config sync E2E tests: ConfigReload (forge-a34.5) and ConfigExport (forge-og5).
 
-forge-a34.5: assert that triggering ConfigReload re-reads windows.json overrides
-into the WindowManager's cached windowProps.
+ConfigReload re-reads windows.json overrides into the WindowManager's cached
+windowProps; ConfigExport writes the current GSettings to portable config files.
 """
 
 import json
@@ -70,3 +70,45 @@ class TestConfigReload:
             elif os.path.exists(win_json):
                 os.remove(win_json)
             shell_proxy.invoke_forge_action({"name": "ConfigReload"})
+
+
+class TestConfigExport:
+    def test_export_writes_portable_config(self, shell_proxy, restore_settings):
+        """ConfigExport should write settings.json + keybindings.json and flip sync on.
+
+        ConfigExport -> configSync.enablePortableConfig() -> exportAll(), which
+        writes both portable files into confDir/config and sets
+        config-file-sync-enabled=true (config-sync.js).
+        """
+        config_dir = shell_proxy.get_config_dir()
+        assert config_dir, "could not resolve Forge config dir from the extension"
+        settings_json = os.path.join(config_dir, "config", "settings.json")
+        keybindings_json = os.path.join(config_dir, "config", "keybindings.json")
+
+        # Capture prior state so the test leaves no portable config behind.
+        saved = {}
+        for path in (settings_json, keybindings_json):
+            saved[path] = (
+                open(path, encoding="utf-8").read() if os.path.exists(path) else None
+            )
+        # Recording the flag via restore_settings ensures it's reset on teardown.
+        restore_settings.set("config-file-sync-enabled", False)
+
+        try:
+            shell_proxy.invoke_forge_action({"name": "ConfigExport"})
+
+            for path in (settings_json, keybindings_json):
+                assert os.path.exists(path), f"ConfigExport should write {path}"
+            wait_for(
+                lambda: restore_settings.get("config-file-sync-enabled"),
+                predicate=bool,
+                message="ConfigExport should enable config-file-sync-enabled",
+            )
+        finally:
+            for path, content in saved.items():
+                if content is None:
+                    if os.path.exists(path):
+                        os.remove(path)
+                else:
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(content)
