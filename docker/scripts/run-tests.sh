@@ -28,6 +28,13 @@ DISPATCH_MODE="${DISPATCH_MODE:-dbus}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
 
+# Force software GL for any app subprocess pytest launches (forge-4wl). The
+# session units get this via systemd-run --setenv in start-user-session.sh; this
+# covers the test-side `gnome-text-editor --new-window` subprocesses, which
+# inherit os.environ via _launch_window.
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export GALLIUM_DRIVER="${GALLIUM_DRIVER:-llvmpipe}"
+
 # Set display variables based on session type
 SESSION_TYPE_FILE="/tmp/forge-session-type"
 if [ -f "$SESSION_TYPE_FILE" ] && [ "$(cat $SESSION_TYPE_FILE)" = "wayland" ]; then

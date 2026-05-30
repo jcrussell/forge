@@ -45,6 +45,18 @@ echo "Session type: $SESSION_TYPE"
 echo "$SESSION_TYPE" > /tmp/forge-session-type
 chmod 644 /tmp/forge-session-type
 
+# Force software GL (llvmpipe) for every session process (forge-4wl). On
+# F44/GNOME50 rawhide, gnome-text-editor attempts a ZINK/Vulkan GL path that has
+# no device in the headless container; the failing vkCreateInstance probe slows
+# the first cold --new-window enough to blow the launch timeout (transient
+# first-test ERROR). These vars must be passed via systemd-run --setenv — the
+# shell, portal, and editor primary run as transient units that do NOT inherit
+# this script's (or the Dockerfile's) environment. Spliced into each unit below.
+GL_ENV=(
+    --setenv=LIBGL_ALWAYS_SOFTWARE=1
+    --setenv=GALLIUM_DRIVER=llvmpipe
+)
+
 # X11 mode requires Xvfb
 if [ "$SESSION_TYPE" = "x11" ] && ! command -v Xvfb &>/dev/null; then
     echo "ERROR: Xvfb is not installed (required for X11 mode)"
@@ -151,12 +163,14 @@ if ! systemctl is-active --quiet forge-gnome-shell; then
             --setenv=DISPLAY=":${DISPLAY_NUM}" \
             --setenv=MUTTER_DEBUG_DUMMY_MONITOR_SCALES=1 \
             --setenv=CLUTTER_VBLANK=none \
+            "${GL_ENV[@]}" \
             sh -c "exec gnome-shell --x11 --unsafe-mode >/tmp/gnome-shell.log 2>&1"
     else
         echo "Starting GNOME Shell (headless Wayland)..."
         systemd-run --unit=forge-gnome-shell --uid=gnomeshell --gid=gnomeshell \
             --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
             --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+            "${GL_ENV[@]}" \
             sh -c "exec gnome-shell --headless --wayland --virtual-monitor 1920x1080 --unsafe-mode >/tmp/gnome-shell.log 2>&1"
     fi
     sleep 5
@@ -225,6 +239,9 @@ if command -v gnome-text-editor &>/dev/null; then
         --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET"
         --setenv=XDG_CURRENT_DESKTOP=GNOME
         --setenv=XDG_SESSION_TYPE="$SESSION_TYPE"
+        # Software GL so the editor primary (which renders every --new-window)
+        # never attempts the failing ZINK/Vulkan cold path on F44 (forge-4wl).
+        "${GL_ENV[@]}"
     )
     if [ "$SESSION_TYPE" = "wayland" ] && [ -n "$WAYLAND_DISPLAY" ]; then
         EDITOR_ENV+=(--setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY")
