@@ -24,6 +24,57 @@ class ShellProxyError(Exception):
     pass
 
 
+def _forge_root_js(fail_expr: str) -> str:
+    """JS prelude that resolves the Forge extension and binds the tree root.
+
+    `class Tree extends Node` and its constructor calls super(NODE_TYPES.ROOT, ...)
+    (lib/extension/tree.js), so the Tree instance IS the root node — there is no
+    `.root` property. Every tree walk roots at `ext.extWm.tree` itself, named here
+    in exactly ONE place so a bad root expression can't be copy-pasted across the
+    query helpers again (this was forge-g14: `ext.extWm.tree.root` was undefined at
+    13 sites).
+
+    `fail_expr` is the JS returned when Forge or its tree is unavailable; callers
+    use different sentinels ('0', '-1', 'ERROR', 'false', JSON error objects).
+    """
+    return (
+        "                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');\n"
+        f"                if (!forge || !forge.stateObj) return {fail_expr};\n"
+        "                const ext = forge.stateObj;\n"
+        f"                if (!ext.extWm || !ext.extWm.tree) return {fail_expr};\n"
+        "                const __root = ext.extWm.tree;\n"
+    )
+
+
+# The two genuinely-identical recursive finders, defined once and concatenated into
+# eval bodies that need them. `findNodeByClass` returns the matching WINDOW node;
+# only windows expose get_wm_class(), so non-window nodes (monitor/workspace/con)
+# never match. `findNodeByWindow` matches by Meta.Window identity. Both are
+# first-match in pre-order walk (callers needing every match — e.g.
+# count_tiled_windows_of_class — keep their own counting walk).
+_TREE_WALKERS_JS = """
+                function findNodeByClass(node, wmClass) {
+                    if (!node) return null;
+                    const v = node.nodeValue;
+                    if (v && v.get_wm_class && v.get_wm_class() === wmClass) return node;
+                    for (const child of (node.childNodes || [])) {
+                        const found = findNodeByClass(child, wmClass);
+                        if (found) return found;
+                    }
+                    return null;
+                }
+                function findNodeByWindow(node, metaWindow) {
+                    if (!node) return null;
+                    if (node.nodeValue === metaWindow) return node;
+                    for (const child of (node.childNodes || [])) {
+                        const found = findNodeByWindow(child, metaWindow);
+                        if (found) return found;
+                    }
+                    return null;
+                }
+"""
+
+
 class ShellProxy:
     """
     Proxy for interacting with GNOME Shell via D-Bus.
@@ -187,14 +238,10 @@ class ShellProxy:
         Returns:
             Dictionary representation of the window tree.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + """
                 function serializeNode(node) {
                     if (!node) return null;
                     return {
@@ -212,12 +259,13 @@ class ShellProxy:
                     };
                 }
 
-                return JSON.stringify(serializeNode(ext.extWm.tree.root));
+                return JSON.stringify(serializeNode(__root));
             } catch(e) {
                 return JSON.stringify({error: e.message});
             }
         })();
         """
+        )
         return self.eval(js)
 
     def get_focused_window(self) -> dict:
@@ -319,37 +367,26 @@ class ShellProxy:
         Returns:
             Dictionary with node info including layout type.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) {{
-                        return {{
-                            nodeType: node.nodeType,
-                            layout: node.layout,
-                            parentLayout: node.parentNode?.layout,
-                            rect: node.rect
-                        }};
-                    }}
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                return JSON.stringify(findNode(ext.extWm.tree.root, '{wm_class}'));
-            }} catch(e) {{
-                return JSON.stringify({{error: e.message}});
-            }}
-        }})();
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const node = findNodeByClass(__root, __wmClass);
+                if (!node) return JSON.stringify(null);
+                return JSON.stringify({
+                    nodeType: node.nodeType,
+                    layout: node.layout,
+                    parentLayout: node.parentNode?.layout,
+                    rect: node.rect
+                });
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
         """
+        )
         return self.eval(js)
 
     def get_container_layout(self) -> str:
@@ -359,14 +396,11 @@ class ShellProxy:
         Returns:
             Layout type: 'HSPLIT', 'VSPLIT', 'STACKED', or 'TABBED'.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return 'ERROR';
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return 'ERROR';
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'ERROR'")
+            + _TREE_WALKERS_JS
+            + """
                 var focusWindow = global.display.get_focus_window();
                 if (!focusWindow) {
                     var ws = global.workspace_manager.get_active_workspace();
@@ -378,17 +412,7 @@ class ShellProxy:
                 }
                 if (!focusWindow) return 'NO_FOCUS';
 
-                function findNodeByWindow(node, metaWindow) {
-                    if (!node) return null;
-                    if (node.nodeValue === metaWindow) return node;
-                    for (const child of (node.childNodes || [])) {
-                        const found = findNodeByWindow(child, metaWindow);
-                        if (found) return found;
-                    }
-                    return null;
-                }
-
-                const windowNode = findNodeByWindow(ext.extWm.tree.root, focusWindow);
+                const windowNode = findNodeByWindow(__root, focusWindow);
                 if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
 
                 // Layout is a string enum value (HSPLIT, VSPLIT, STACKED, TABBED)
@@ -398,45 +422,43 @@ class ShellProxy:
             }
         })();
         """
+        )
         return self.eval(js)
 
     def is_window_floating(self, wm_class: str) -> bool:
         """
         Check if a window is in floating mode.
 
+        Float state is the tree node's `mode` (WINDOW_MODES.FLOAT), NOT tree
+        membership: the `float` setter (tree.js `set float`) only flips `mode` and
+        never detaches the node, so floating windows keep their tree node. We find
+        the node via the shared walk and test `mode === 'FLOAT'` (GRAB_TILE/DEFAULT
+        therefore read as not-floating), mirroring count_tiled_windows_of_class.
+
+        First-match only: with multiple same-class windows this reports the first in
+        walk order (see count_windows_of_class for a count-all variant).
+
         Args:
             wm_class: The WM_CLASS of the window to check.
 
         Returns:
-            True if floating, False if tiled.
+            True if floating, False if tiled (or no matching tree node).
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return 'false';
-                const ext = forge.stateObj;
-
-                const windows = global.get_window_actors().map(a => a.meta_window);
-                const targetWindow = windows.find(w => w.get_wm_class() === '{wm_class}');
-                if (!targetWindow) return 'false';
-
-                // Check if window is in the tree (tiled) or not (floating)
-                function isInTree(node, metaWindow) {{
-                    if (!node) return false;
-                    if (node.nodeValue === metaWindow) return true;
-                    for (const child of (node.childNodes || [])) {{
-                        if (isInTree(child, metaWindow)) return true;
-                    }}
-                    return false;
-                }}
-
-                return !isInTree(ext.extWm.tree.root, targetWindow) ? 'true' : 'false';
-            }} catch(e) {{
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'false'")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const node = findNodeByClass(__root, __wmClass);
+                if (!node) return 'false';
+                return node.mode === 'FLOAT' ? 'true' : 'false';
+            } catch(e) {
                 return 'false';
-            }}
-        }})();
+            }
+        })();
         """
+        )
         result = self.eval(js)
         return result == "true"
 
@@ -469,38 +491,33 @@ class ShellProxy:
     def count_tiled_windows_of_class(self, wm_class: str) -> int:
         """Count tree window-nodes of a wm_class that are NOT floating.
 
-        Float state is the node's mode (WINDOW_MODES.FLOAT). A floating window
-        KEEPS its tree node — the `float` setter only flips `mode`, it never
-        detaches the node (tree.js `set float`), and findNode walks the whole
-        tree — so we count by `mode !== 'FLOAT'` rather than tree membership
-        (which is why is_window_floating's membership check is not used here).
-        A class-wide FloatClassToggle drives this to 0 for the toggled class;
-        toggling again restores the full count.
+        Float state is the node's mode (WINDOW_MODES.FLOAT), same basis as
+        is_window_floating: a floating window KEEPS its tree node (the `float`
+        setter only flips `mode`, never detaches), so we count by `mode !== 'FLOAT'`
+        across every match rather than first-match. A class-wide FloatClassToggle
+        drives this to 0 for the toggled class; toggling again restores the count.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return '-1';
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return '-1';
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'-1'")
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
                 let tiled = 0;
-                function walk(node) {{
+                function walk(node) {
                     if (!node) return;
                     const v = node.nodeValue;
                     if (node.nodeType === 'WINDOW' && v && v.get_wm_class &&
-                        v.get_wm_class() === {json.dumps(wm_class)} && node.mode !== 'FLOAT') {{
+                        v.get_wm_class() === __wmClass && node.mode !== 'FLOAT') {
                         tiled++;
-                    }}
+                    }
                     for (const c of (node.childNodes || [])) walk(c);
-                }}
-                // The Tree instance IS the root node (Tree extends Node); there
-                // is no `.tree.root` property — walk the tree object itself.
-                walk(ext.extWm.tree);
+                }
+                walk(__root);
                 return String(tiled);
-            }} catch(e) {{ return '-1'; }}
-        }})();
+            } catch(e) { return '-1'; }
+        })();
         """
+        )
         result = self.eval(js)
         try:
             return int(result)
@@ -746,14 +763,10 @@ class ShellProxy:
         Returns:
             Number of tiled windows.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return '0';
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return '0';
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'0'")
+            + """
                 function countWindows(node) {
                     if (!node) return 0;
                     if (node.nodeType === 'WINDOW') return 1;
@@ -764,12 +777,13 @@ class ShellProxy:
                     return count;
                 }
 
-                return String(countWindows(ext.extWm.tree.root));
+                return String(countWindows(__root));
             } catch(e) {
                 return '0';
             }
         })();
         """
+        )
         result = self.eval(js)
         try:
             return int(result)
@@ -858,48 +872,35 @@ class ShellProxy:
             Dictionary with node info including nodeType, layout, parentLayout,
             siblingCount, and rect.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) {{
-                        return node;
-                    }}
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
-                if (!windowNode) return JSON.stringify({{error: 'Window not found in tree'}});
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const windowNode = findNodeByClass(__root, __wmClass);
+                if (!windowNode) return JSON.stringify({error: 'Window not found in tree'});
 
                 const parent = windowNode.parentNode;
-                return JSON.stringify({{
+                return JSON.stringify({
                     nodeType: windowNode.nodeType,
                     layout: windowNode.layout,
                     parentNodeType: parent?.nodeType || null,
                     parentLayout: parent?.layout || null,
                     siblingCount: parent ? parent.childNodes.length : 0,
-                    rect: windowNode.rect ? {{
+                    rect: windowNode.rect ? {
                         x: windowNode.rect.x,
                         y: windowNode.rect.y,
                         width: windowNode.rect.width,
                         height: windowNode.rect.height
-                    }} : null
-                }});
-            }} catch(e) {{
-                return JSON.stringify({{error: e.message}});
-            }}
-        }})();
+                    } : null
+                });
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
         """
+        )
         return self.eval(js)
 
     def get_parent_layout(self, wm_class: str) -> str:
@@ -912,33 +913,22 @@ class ShellProxy:
         Returns:
             Layout type string: 'HSPLIT', 'VSPLIT', 'STACKED', 'TABBED', or 'ERROR'.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return 'ERROR';
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return 'ERROR';
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'ERROR'")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const windowNode = findNodeByClass(__root, __wmClass);
                 if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
 
                 return windowNode.parentNode.layout || 'UNKNOWN';
-            }} catch(e) {{
+            } catch(e) {
                 return 'ERROR';
-            }}
-        }})();
+            }
+        })();
         """
+        )
         return self.eval(js)
 
     def get_sibling_count(self, wm_class: str) -> int:
@@ -951,33 +941,22 @@ class ShellProxy:
         Returns:
             Number of siblings in the same parent container.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return '0';
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return '0';
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("'0'")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const windowNode = findNodeByClass(__root, __wmClass);
                 if (!windowNode || !windowNode.parentNode) return '0';
 
                 return String(windowNode.parentNode.childNodes.length);
-            }} catch(e) {{
+            } catch(e) {
                 return '0';
-            }}
-        }})();
+            }
+        })();
         """
+        )
         result = self.eval(js)
         try:
             return int(result)
@@ -992,14 +971,10 @@ class ShellProxy:
             Dictionary with nested structure showing nodeType, layout,
             and children for each node in the tree.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + """
                 function serializeNode(node, depth = 0) {
                     if (!node || depth > 10) return null;
                     return {
@@ -1012,12 +987,13 @@ class ShellProxy:
                     };
                 }
 
-                return JSON.stringify(serializeNode(ext.extWm.tree.root));
+                return JSON.stringify(serializeNode(__root));
             } catch(e) {
                 return JSON.stringify({error: e.message});
             }
         })();
         """
+        )
         return self.eval(js)
 
     def get_focused_node_path(self) -> list:
@@ -1027,14 +1003,10 @@ class ShellProxy:
         Returns:
             List of node types/layouts from root to focused window.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({error: 'Tree not available'});
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + """
                 const focusWindow = global.display.get_focus_window();
                 if (!focusWindow) return JSON.stringify({error: 'No focused window'});
 
@@ -1049,13 +1021,14 @@ class ShellProxy:
                     return null;
                 }
 
-                const nodePath = findNodePath(ext.extWm.tree.root, focusWindow);
+                const nodePath = findNodePath(__root, focusWindow);
                 return JSON.stringify(nodePath || []);
             } catch(e) {
                 return JSON.stringify({error: e.message});
             }
         })();
         """
+        )
         return self.eval(js)
 
     def get_window_siblings(self, wm_class: str) -> list:
@@ -1068,45 +1041,34 @@ class ShellProxy:
         Returns:
             List of sibling info with nodeType, wmClass, and rect.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                const windowNode = findNodeByClass(__root, __wmClass);
                 if (!windowNode || !windowNode.parentNode) return JSON.stringify([]);
 
-                const siblings = windowNode.parentNode.childNodes.map(sibling => ({{
+                const siblings = windowNode.parentNode.childNodes.map(sibling => ({
                     nodeType: sibling.nodeType,
                     wmClass: sibling.nodeValue?.get_wm_class?.() || null,
-                    rect: sibling.rect ? {{
+                    rect: sibling.rect ? {
                         x: sibling.rect.x,
                         y: sibling.rect.y,
                         width: sibling.rect.width,
                         height: sibling.rect.height
-                    }} : null,
+                    } : null,
                     childCount: sibling.childNodes ? sibling.childNodes.length : 0
-                }}));
+                }));
 
                 return JSON.stringify(siblings);
-            }} catch(e) {{
-                return JSON.stringify({{error: e.message}});
-            }}
-        }})();
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
         """
+        )
         return self.eval(js)
 
     def verify_tree_integrity(self) -> dict:
@@ -1116,16 +1078,15 @@ class ShellProxy:
         Returns:
             Dictionary with 'valid' bool and any 'errors' list.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({valid: false, errors: ['Forge not loaded']});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({valid: false, errors: ['Tree not available']});
-
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({valid: false, errors: ['Tree not available']})")
+            + """
                 const errors = [];
-                const stack = [{node: ext.extWm.tree.root, parent: null, depth: 0}];
+                // Root's _parent is null (tree.js Node ctor), and the walk seeds
+                // parent:null, so the root's parentNode check is null===null (no
+                // spurious depth-0 error).
+                const stack = [{node: __root, parent: null, depth: 0}];
 
                 while (stack.length > 0) {
                     const item = stack.pop();
@@ -1152,6 +1113,7 @@ class ShellProxy:
             }
         })();
         """
+        )
         return self.eval(js)
 
     # === Virtual Input Methods (Clutter) ===
@@ -1309,46 +1271,35 @@ class ShellProxy:
         Returns:
             Dictionary with directChildren and totalDescendants counts.
         """
-        js = f"""
-        (function() {{
-            try {{
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return JSON.stringify({{error: 'Forge not loaded'}});
-                const ext = forge.stateObj;
-                if (!ext.extWm || !ext.extWm.tree) return JSON.stringify({{error: 'Tree not available'}});
-
-                function findNode(node, wmClass) {{
-                    if (!node) return null;
-                    if (node.nodeValue?.get_wm_class?.() === wmClass) return node;
-                    for (const child of (node.childNodes || [])) {{
-                        const found = findNode(child, wmClass);
-                        if (found) return found;
-                    }}
-                    return null;
-                }}
-
-                function countDescendants(node) {{
+        js = (
+            "        (function() {\n            try {\n"
+            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
+            + _TREE_WALKERS_JS
+            + f"                const __wmClass = {json.dumps(wm_class)};\n"
+            + """
+                function countDescendants(node) {
                     if (!node) return 0;
                     let count = 0;
-                    for (const child of (node.childNodes || [])) {{
+                    for (const child of (node.childNodes || [])) {
                         count += 1 + countDescendants(child);
-                    }}
+                    }
                     return count;
-                }}
+                }
 
-                const windowNode = findNode(ext.extWm.tree.root, '{wm_class}');
-                if (!windowNode || !windowNode.parentNode) return JSON.stringify({{error: 'Window or parent not found'}});
+                const windowNode = findNodeByClass(__root, __wmClass);
+                if (!windowNode || !windowNode.parentNode) return JSON.stringify({error: 'Window or parent not found'});
 
                 const parent = windowNode.parentNode;
-                return JSON.stringify({{
+                return JSON.stringify({
                     directChildren: parent.childNodes.length,
                     totalDescendants: countDescendants(parent),
                     parentLayout: parent.layout,
                     parentNodeType: parent.nodeType
-                }});
-            }} catch(e) {{
-                return JSON.stringify({{error: e.message}});
-            }}
-        }})();
+                });
+            } catch(e) {
+                return JSON.stringify({error: e.message});
+            }
+        })();
         """
+        )
         return self.eval(js)
