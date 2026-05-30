@@ -79,8 +79,9 @@ class TestKeyboardResize:
     ):
         """Resizing vertically in VSPLIT should change heights."""
         input_sim.toggle_layout()  # Switch to VSPLIT
-        # Wait for the relayout to settle (windows restack vertically) rather than
-        # polling get_container_layout, which returns NO_NODE headless.
+        # Wait for the relayout to settle by polling window positions (windows
+        # restack vertically); this also covers geometry settling, not just the
+        # layout-attr flip.
         wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("y"))
 
         sorted_before = window_helper.get_windows_sorted_by_position("y")

@@ -4,27 +4,42 @@ Stacked and Tabbed Layout Tests for Forge.
 Tests stacked (Shift+Super+s) and tabbed (Shift+Super+t) layouts.
 """
 
+import time
+
 import pytest
 
-from framework.constants import Tolerance
+from framework.constants import Timing, Tolerance
+from framework.wait import wait_for_layout
+
+
+@pytest.fixture(autouse=True)
+def _enable_stacked_tabbed_modes(restore_settings):
+    """Enable stacked + tabbed tiling for every test in this module.
+
+    Both modes default to OFF in the gschema, so StackedLayoutToggle /
+    TabbedLayoutToggle bail early (command.js) and toggle_stacked()/toggle_tabbed()
+    are silent no-ops — which is why these tests historically accepted HSPLIT/NO_NODE
+    and never actually exercised stacked/tabbed. restore_settings reverts after each
+    test; the settle lets the GSetting reach Forge before the first toggle.
+    """
+    restore_settings.set_stacked_tiling_mode_enabled(True)
+    restore_settings.set_tabbed_tiling_mode_enabled(True)
+    time.sleep(Timing.SETTINGS_SETTLE)
 
 
 class TestStackedLayout:
     """Test stacked layout functionality."""
 
     def test_toggle_stacked_mode(self, shell_proxy, input_sim, two_windows):
-        """Shift+Super+s should toggle stacked layout."""
+        """Shift+Super+s should toggle the container to STACKED."""
         input_sim.toggle_stacked()
 
-        # Both windows should still exist
+        # The focused window's container must actually report STACKED (raises on
+        # timeout). This is what forge-g14 + the disabled mode previously masked.
+        wait_for_layout(shell_proxy, "STACKED")
+
         windows = shell_proxy.get_windows()
         assert len(windows) >= 2, "Both windows should exist in stacked mode"
-
-        # Layout should be valid
-        layout = shell_proxy.get_container_layout()
-        assert layout in ["STACKED", "HSPLIT", "VSPLIT", "TABBED", "NO_NODE", "ERROR"], (
-            f"Unexpected layout: {layout}"
-        )
 
     def test_stacked_windows_valid(self, shell_proxy, input_sim, two_windows):
         """In stacked mode, windows should have valid dimensions."""
@@ -70,16 +85,14 @@ class TestTabbedLayout:
     """Test tabbed layout functionality."""
 
     def test_toggle_tabbed_mode(self, shell_proxy, input_sim, two_windows):
-        """Shift+Super+t should toggle tabbed layout."""
+        """Shift+Super+t should toggle the container to TABBED."""
         input_sim.toggle_tabbed()
+
+        # The focused window's container must actually report TABBED (raises on timeout).
+        wait_for_layout(shell_proxy, "TABBED")
 
         windows = shell_proxy.get_windows()
         assert len(windows) >= 2, "Both windows should exist in tabbed mode"
-
-        layout = shell_proxy.get_container_layout()
-        assert layout in ["TABBED", "STACKED", "HSPLIT", "VSPLIT", "NO_NODE", "ERROR"], (
-            f"Unexpected layout: {layout}"
-        )
 
     def test_tabbed_windows_valid(self, shell_proxy, input_sim, two_windows):
         """In tabbed mode, windows should have valid dimensions."""
@@ -113,11 +126,13 @@ class TestLayoutTransitions:
         """Should transition between all layout types."""
         # Switch to stacked
         input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")
         windows = shell_proxy.get_windows()
         assert len(windows) >= 2, "Windows should exist after stacked"
 
         # Switch to tabbed
         input_sim.toggle_tabbed()
+        wait_for_layout(shell_proxy, "TABBED")
         windows = shell_proxy.get_windows()
         assert len(windows) >= 2, "Windows should exist after tabbed"
 
