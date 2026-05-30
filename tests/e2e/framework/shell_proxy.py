@@ -524,6 +524,36 @@ class ShellProxy:
         except (ValueError, TypeError):
             return -1
 
+    def count_maximized_windows(self) -> int:
+        """Count maximized windows on the active workspace, per Mutter's own state.
+
+        Uses feature detection — is_maximized() on Mutter 49+, else
+        get_maximized() === BOTH — so it reads Mutter truth on any version without
+        a version-number module. This is the independent ground truth that Forge's
+        compat.js maximize/unmaximize shims are validated against (forge-bc1).
+        """
+        js = """
+        (function() {
+            try {
+                const Meta = imports.gi.Meta;
+                const ws = global.workspace_manager.get_active_workspace();
+                let n = 0;
+                for (const w of ws.list_windows()) {
+                    const maxed = (typeof w.is_maximized === 'function')
+                        ? w.is_maximized()
+                        : (w.get_maximized() === Meta.MaximizeFlags.BOTH);
+                    if (maxed) n++;
+                }
+                return String(n);
+            } catch(e) { return '-1'; }
+        })();
+        """
+        result = self.eval(js)
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return -1
+
     def get_config_dir(self) -> str:
         """Return Forge's user config dir (configMgr.confDir), e.g. ~/.config/forge.
 
