@@ -396,6 +396,24 @@ def four_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
 
 
 @pytest.fixture
+def launch_window(shell_proxy, clean_workspace):
+    """Return a callable that launches a test window mid-test.
+
+    Unlike the two/three/four_windows fixtures (which launch up-front), this lets
+    a test open windows AFTER changing state — needed for settings like
+    auto-split that only act on newly-tracked windows. clean_workspace handles
+    teardown, so launched windows are closed with the rest.
+    """
+
+    def _launch(app: str = DEFAULT_TEST_APP) -> dict:
+        window = _launch_window(app, shell_proxy)
+        time.sleep(Timing.WINDOW_SETTLE)
+        return window
+
+    return _launch
+
+
+@pytest.fixture
 def restore_settings(forge_settings) -> Generator:
     """Yield forge_settings and restore all changes after test."""
     yield forge_settings
