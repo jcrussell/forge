@@ -80,6 +80,7 @@ jobs:
           docker build -f docker/Dockerfile.e2e \
             -t forge-e2e-fedora${{ matrix.fedora_version }} \
             --build-arg FEDORA_VERSION=${{ matrix.fedora_version }} \
+            --build-arg GIT_SHA=${{ github.sha }} \
             .
 
       - name: Run E2E tests
@@ -129,8 +130,76 @@ jobs:
           path: e2e-results/screenshots/
           retention-days: 7
 
+  # Gating keybinding-dispatch lane (forge-5qh). The full suite runs in dbus
+  # dispatch mode (contamination-free); keybinding mode drives Forge via synthetic
+  # Clutter super-modifier keypresses, which leak across test boundaries and break
+  # ~13 of the 90 tests when run as a suite (see memory
+  # mutter-virtualinputdevice-super-modifier-tilesnap). A single isolated test has
+  # no *cross-test* contamination by construction, so this lane runs exactly ONE
+  # keybinding test (Super+h / Super+l focus) under DISPATCH_MODE=keybinding and
+  # GATES on it (no continue-on-error). It verifies the keybinding dispatch path
+  # actually fires end-to-end without poisoning compositor tile state. Pinned to
+  # Fedora 43 (GNOME 49, stable headless Wayland); verified reliable (3/3 local).
+  e2e-keybinding-gate:
+    needs: setup
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      KB_FEDORA_VERSION: 43
+      KB_TEST: test_focus_left_right
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies and build extension
+        run: |
+          npm ci
+          make build
+
+      - name: Build E2E container
+        run: |
+          docker build -f docker/Dockerfile.e2e \
+            -t forge-e2e-fedora${KB_FEDORA_VERSION} \
+            --build-arg FEDORA_VERSION=${KB_FEDORA_VERSION} \
+            --build-arg GIT_SHA=${{ github.sha }} \
+            .
+
+      - name: Run single keybinding test (gating)
+        run: |
+          mkdir -p e2e-results
+          POD=$(docker run --rm -td \
+            --privileged \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -e container=docker \
+            -v $(pwd)/e2e-results:/app/e2e-results \
+            forge-e2e-fedora${KB_FEDORA_VERSION})
+          trap "docker stop $POD 2>/dev/null || true" EXIT
+          sleep 3
+          docker exec $POD /usr/local/bin/start-user-session.sh 99
+          docker exec $POD chown -R gnomeshell:gnomeshell /app/e2e-results
+          # DISPATCH_MODE=keybinding routes input_sim via synthetic keypresses;
+          # -k isolates ONE test (run-tests.sh runs `pytest tests/ $ARGS`, so a
+          # node id would be appended and run the whole suite — use -k).
+          docker exec --user gnomeshell -e DISPLAY=:99 -e DISPATCH_MODE=keybinding $POD \
+            set-env.sh /app/scripts/run-tests.sh -k ${KB_TEST}
+
+      - name: Upload keybinding-gate results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-keybinding-gate-results
+          path: e2e-results/
+          retention-days: 14
+
   e2e-summary:
-    needs: [setup, e2e-tests]
+    needs: [setup, e2e-tests, e2e-keybinding-gate]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -138,6 +207,9 @@ jobs:
         run: |
           if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
             echo "::error::Some E2E tests failed"
+            exit 1
+          elif [ "${{ needs.e2e-keybinding-gate.result }}" == "failure" ]; then
+            echo "::error::Keybinding-dispatch gate failed"
             exit 1
           elif [ "${{ needs.e2e-tests.result }}" == "cancelled" ]; then
             echo "::warning::E2E tests were cancelled"
