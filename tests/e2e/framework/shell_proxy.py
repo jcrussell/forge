@@ -10,6 +10,7 @@ Requires gnome-shell to be running with --unsafe-mode flag.
 import json
 import subprocess
 import time
+from string import Template
 from typing import Any, Optional
 
 import gi
@@ -496,19 +497,19 @@ class ShellProxy:
         this counts EVERY window of the class — needed to reason about multiple
         same-class windows (forge-a34.2).
         """
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const ws = global.workspace_manager.get_active_workspace();
                 const wins = ws.list_windows();
                 let n = 0;
-                for (const w of wins) {{
-                    if (w.get_wm_class() === {json.dumps(wm_class)}) n++;
-                }}
+                for (const w of wins) {
+                    if (w.get_wm_class() === ${wm_class}) n++;
+                }
                 return String(n);
-            }} catch(e) {{ return '-1'; }}
-        }})();
-        """
+            } catch(e) { return '-1'; }
+        })();
+        """).substitute(wm_class=json.dumps(wm_class))
         result = self.eval(js)
         try:
             return int(result)
@@ -561,16 +562,16 @@ class ShellProxy:
 
     def move_focused_window_to_monitor(self, monitor_index: int) -> str:
         """Move the focused window to another monitor via Mutter (move_to_monitor)."""
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const w = global.display.get_focus_window();
                 if (!w) return 'NO_FOCUS';
-                w.move_to_monitor({int(monitor_index)});
+                w.move_to_monitor(${monitor_index});
                 return 'ok';
-            }} catch(e) {{ return 'ERR ' + e; }}
-        }})();
-        """
+            } catch(e) { return 'ERR ' + e; }
+        })();
+        """).substitute(monitor_index=int(monitor_index))
         return self.eval(js)
 
     def count_maximized_windows(self) -> int:
@@ -676,9 +677,9 @@ class ShellProxy:
         fails mid-run would leak a persistent float into every later test.
         Returns the number of overrides removed.
         """
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '0';
                 const cfg = forge.stateObj.configMgr;
@@ -686,13 +687,13 @@ class ShellProxy:
                 const all = (props && props.overrides) ? props.overrides : [];
                 const before = all.length;
                 props.overrides = all.filter(o => !(
-                    o.wmClass === {json.dumps(wm_class)} && !o.wmId && !o.wmTitle && o.mode === 'float'
+                    o.wmClass === ${wm_class} && !o.wmId && !o.wmTitle && o.mode === 'float'
                 ));
                 cfg.windowProps = props;
                 return String(before - props.overrides.length);
-            }} catch(e) {{ return '0'; }}
-        }})();
-        """
+            } catch(e) { return '0'; }
+        })();
+        """).substitute(wm_class=json.dumps(wm_class))
         result = self.eval(js)
         try:
             return int(result)
@@ -802,9 +803,9 @@ class ShellProxy:
         action_json = json.dumps(action)
         focus_hint_js = json.dumps(focus_window) if focus_window else "null"
         also_activate_js = "true" if also_activate else "false"
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return 'Error: Forge not loaded';
                 const ext = forge.stateObj;
@@ -814,48 +815,50 @@ class ShellProxy:
                 const wins = ws.list_windows();
                 const origFn = global.display.get_focus_window;
                 let focusMethod = 'natural';
-                const hint = {focus_hint_js};
+                const hint = ${focus_hint};
 
                 // Override focus when an explicit hint is given (deterministic target
                 // regardless of X11/Wayland natural-focus differences), or when natural
                 // focus is null (Xvfb loses focus after synthetic input). Without a hint,
                 // the historical null-only behavior is preserved.
-                if ((hint || !origFn.call(global.display)) && wins.length > 0) {{
+                if ((hint || !origFn.call(global.display)) && wins.length > 0) {
                     let targetWin = wins[0];
-                    if (hint === 'leftmost') {{
+                    if (hint === 'leftmost') {
                         targetWin = wins.reduce((best, w) =>
                             w.get_frame_rect().x < best.get_frame_rect().x ? w : best, wins[0]);
-                    }} else if (hint === 'rightmost') {{
+                    } else if (hint === 'rightmost') {
                         targetWin = wins.reduce((best, w) =>
                             w.get_frame_rect().x > best.get_frame_rect().x ? w : best, wins[0]);
-                    }} else if (hint === 'topmost') {{
+                    } else if (hint === 'topmost') {
                         targetWin = wins.reduce((best, w) =>
                             w.get_frame_rect().y < best.get_frame_rect().y ? w : best, wins[0]);
-                    }} else if (hint === 'bottommost') {{
+                    } else if (hint === 'bottommost') {
                         targetWin = wins.reduce((best, w) =>
                             w.get_frame_rect().y > best.get_frame_rect().y ? w : best, wins[0]);
-                    }}
-                    global.display.get_focus_window = function() {{ return targetWin; }};
+                    }
+                    global.display.get_focus_window = function() { return targetWin; };
                     focusMethod = hint ? 'hint_override' : 'display_override';
                     // Genuinely focus the target so async finalizers (resize tree
                     // split-ratio update via 'size-changed') see it as the real
                     // focus after the override is restored below (forge-2n0).
-                    if ({also_activate_js}) {{
-                        try {{ targetWin.focus(global.get_current_time()); }} catch(e) {{}}
-                    }}
-                }}
+                    if (${also_activate}) {
+                        try { targetWin.focus(global.get_current_time()); } catch(e) {}
+                    }
+                }
 
-                try {{
-                    ext.extWm.command({action_json});
+                try {
+                    ext.extWm.command(${action});
                     return 'OK_' + focusMethod;
-                }} finally {{
+                } finally {
                     global.display.get_focus_window = origFn;
-                }}
-            }} catch(e) {{
+                }
+            } catch(e) {
                 return 'Error: ' + e.message;
-            }}
-        }})();
-        """
+            }
+        })();
+        """).substitute(
+            focus_hint=focus_hint_js, also_activate=also_activate_js, action=action_json
+        )
         result = self.eval(js)
         if isinstance(result, str) and result.startswith("Error:"):
             raise ShellProxyError(
@@ -875,24 +878,24 @@ class ShellProxy:
         Returns:
             Result string.
         """
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const wsMgr = global.workspace_manager;
                 const ws = wsMgr.get_active_workspace();
                 const windows = ws.list_windows();
                 if (windows.length === 0) return 'No windows';
                 // Ensure target workspace exists
-                while (wsMgr.get_n_workspaces() <= {ws_index}) {{
+                while (wsMgr.get_n_workspaces() <= ${ws_index}) {
                     wsMgr.append_new_workspace(false, global.get_current_time());
-                }}
-                windows[0].change_workspace_by_index({ws_index}, false);
+                }
+                windows[0].change_workspace_by_index(${ws_index}, false);
                 return 'OK';
-            }} catch(e) {{
+            } catch(e) {
                 return 'Error: ' + e.message;
-            }}
-        }})();
-        """
+            }
+        })();
+        """).substitute(ws_index=int(ws_index))
         return self.eval(js)
 
     def get_window_count(self) -> int:
@@ -977,24 +980,24 @@ class ShellProxy:
         Returns:
             True if tiling is skipped for this workspace.
         """
-        js = f"""
-        (function() {{
-            try {{
+        js = Template("""
+        (function() {
+            try {
                 const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
                 if (!forge || !forge.stateObj) return 'false';
                 const ext = forge.stateObj;
                 const skipStr = ext.settings.get_string('workspace-skip-tile');
                 if (!skipStr) return 'false';
                 const indices = skipStr.split(',');
-                for (let i = 0; i < indices.length; i++) {{
-                    if (indices[i].trim() === String({ws_index})) return 'true';
-                }}
+                for (let i = 0; i < indices.length; i++) {
+                    if (indices[i].trim() === String(${ws_index})) return 'true';
+                }
                 return 'false';
-            }} catch(e) {{
+            } catch(e) {
                 return 'false';
-            }}
-        }})();
-        """
+            }
+        })();
+        """).substitute(ws_index=int(ws_index))
         result = self.eval(js)
         return result == "true" or result is True
 
@@ -1327,25 +1330,25 @@ class ShellProxy:
         )
 
         all_lines = "\n    ".join(press_lines + release_lines)
-        js = f"""(function() {{
+        js = Template("""(function() {
     const Clutter = imports.gi.Clutter;
     const GLib = imports.gi.GLib;
     const vkbd = globalThis._forgeTestVKbd;
     let t = GLib.get_monotonic_time();
     const dt = 10000;
-    {all_lines}
+    ${all_lines}
     return 'ok';
-}})();"""
+})();""").substitute(all_lines=all_lines)
         self.eval(js)
 
     def simulate_mouse_move(self, x: int, y: int) -> None:
         """Move the virtual mouse pointer to absolute coordinates."""
         self._ensure_virtual_devices()
-        js = f"""(function() {{
+        js = Template("""(function() {
     const GLib = imports.gi.GLib;
-    globalThis._forgeTestVMouse.notify_absolute_motion(GLib.get_monotonic_time(), {x}, {y});
+    globalThis._forgeTestVMouse.notify_absolute_motion(GLib.get_monotonic_time(), ${x}, ${y});
     return 'ok';
-}})();"""
+})();""").substitute(x=x, y=y)
         self.eval(js)
 
     def simulate_mouse_button(self, button: int, pressed: bool) -> None:
@@ -1360,30 +1363,30 @@ class ShellProxy:
         # Map logical button numbers to evdev button codes
         btn_code = {1: 0x110, 2: 0x112, 3: 0x111}.get(button, 0x110)
         state = "PRESSED" if pressed else "RELEASED"
-        js = f"""(function() {{
+        js = Template("""(function() {
     const Clutter = imports.gi.Clutter;
     const GLib = imports.gi.GLib;
     globalThis._forgeTestVMouse.notify_button(
-        GLib.get_monotonic_time(), {btn_code}, Clutter.ButtonState.{state});
+        GLib.get_monotonic_time(), ${btn_code}, Clutter.ButtonState.${state});
     return 'ok';
-}})();"""
+})();""").substitute(btn_code=btn_code, state=state)
         self.eval(js)
 
     def simulate_click(self, x: int, y: int, button: int = 1) -> None:
         """Click at specific coordinates."""
         self._ensure_virtual_devices()
         btn_code = {1: 0x110, 2: 0x112, 3: 0x111}.get(button, 0x110)
-        js = f"""(function() {{
+        js = Template("""(function() {
     const Clutter = imports.gi.Clutter;
     const GLib = imports.gi.GLib;
     const vm = globalThis._forgeTestVMouse;
     let t = GLib.get_monotonic_time();
     const dt = 10000;
-    vm.notify_absolute_motion(t, {x}, {y}); t += dt;
-    vm.notify_button(t, {btn_code}, Clutter.ButtonState.PRESSED); t += dt;
-    vm.notify_button(t, {btn_code}, Clutter.ButtonState.RELEASED);
+    vm.notify_absolute_motion(t, ${x}, ${y}); t += dt;
+    vm.notify_button(t, ${btn_code}, Clutter.ButtonState.PRESSED); t += dt;
+    vm.notify_button(t, ${btn_code}, Clutter.ButtonState.RELEASED);
     return 'ok';
-}})();"""
+})();""").substitute(x=x, y=y, btn_code=btn_code)
         self.eval(js)
 
     # --- Screencast overlay (forge-eyu) -----------------------------------
