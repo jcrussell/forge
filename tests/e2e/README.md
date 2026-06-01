@@ -149,6 +149,17 @@ atomic-only, so the atomic lane must keep running by default.
 - **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
 - **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
 
-## Attribution
+## Known Issues / Deferred
+
+- **Keybinding-dispatch lane is not fully green (deferred — forge-er8).** Input is
+  dispatched two ways, selected by `--dispatch-mode`: `dbus` (default — actions invoked
+  directly via `org.gnome.Shell.Eval`, the trustworthy lane CI gates on) and `keybinding`
+  (synthetic super-modifier keypresses via Clutter's `VirtualInputDevice`). The keybinding
+  path is inherently contaminated in a shared session: Mutter tile-snaps the focused window
+  at keypress time and the latch crosses test boundaries (no GJS teardown can clear it). CI
+  therefore runs only a single gating keybinding test (`test_focus_left_right`); a full green
+  keybinding lane would require per-test container isolation (a CI/runner change with a large
+  wall-clock cost), which is deferred. Tests that strengthen focus/movement assertions keep a
+  weaker check under `keybinding` so the gate stays green (see `test_focus_navigation.py`).
 
 The containerized GNOME Shell testing approach, Dockerfile setup (Fedora base image, `gnomeshell` user, systemd configuration, `systemd-logind` override), and `set-env.sh` script are derived from [gnome-shell-pod](https://github.com/Schneegans/gnome-shell-pod) by Simon Schneegans, licensed under the MIT License.
