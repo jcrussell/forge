@@ -14,7 +14,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
-	e2e-test e2e-test-all e2e-test-multimonitor e2e-debug e2e-clean e2e-build e2e-versions \
+	e2e-test e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
 
 all: build install enable restart
@@ -261,9 +261,15 @@ E2E_DOCKER_OPTS = --privileged \
 	-e container=docker
 
 # Build E2E test container (builds extension first, then Docker image)
+# RECORD=1 opts into the screencast recording stack (forge-qgg): installs
+# pipewire/gstreamer in the image (build-arg gated, so RECORD-less builds are
+# byte-identical) and passes FORGE_E2E_RECORD=1 into BOTH docker exec calls below.
+RECORD_ENV = $(if $(RECORD),-e FORGE_E2E_RECORD=1,)
+
 e2e-build: build
 	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) \
 		--build-arg FEDORA_VERSION=$(FEDORA_VERSION) \
+		--build-arg ENABLE_RECORD=$(if $(RECORD),1,0) \
 		--build-arg GIT_SHA=$$(git rev-parse HEAD 2>/dev/null || echo unknown) .
 
 # Run E2E tests for a specific GNOME/Fedora version
@@ -284,16 +290,24 @@ e2e-test: e2e-build
 	echo "Waiting for container to initialize..." && \
 	sleep 3 && \
 	echo "Starting GNOME Shell session..." && \
-	docker exec $(if $(MULTIMONITOR),-e FORGE_E2E_VIRTUAL_MONITORS=2,) $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
+	docker exec $(if $(MULTIMONITOR),-e FORGE_E2E_VIRTUAL_MONITORS=2,) $(RECORD_ENV) $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
 	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "Running E2E tests..." && \
-	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $$POD set-env.sh /app/scripts/run-tests.sh
+	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $(RECORD_ENV) $$POD set-env.sh /app/scripts/run-tests.sh
 
 # Run E2E tests with two virtual monitors (forge-a34.1, headless Wayland only).
 # Boots the session with a second 1920x1080 output so test_multi_monitor runs;
 # every other test is unaffected by the extra monitor.
 e2e-test-multimonitor:
 	@$(MAKE) e2e-test MULTIMONITOR=1
+
+# Run E2E tests with screencast recording (forge-qgg). Wayland-only, so this
+# forces the latest GNOME lane (F44/GNOME50; the default F42 lane is X11).
+# Produces e2e-results/recording.webm. Recursive sub-make so GNOME_VERSION=50 ->
+# FEDORA_VERSION:=44 -> E2E_IMAGE all resolve, and RECORD=1 reaches e2e-build
+# (build-arg) plus both docker exec calls.
+e2e-test-record:
+	@$(MAKE) e2e-test GNOME_VERSION=50 RECORD=1
 
 # Run E2E tests for all supported versions
 e2e-test-all:

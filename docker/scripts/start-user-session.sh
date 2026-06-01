@@ -146,6 +146,34 @@ su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.wm.preferences num
 # org.gnome.Settings.desktop fails (IOErrorEnum: The connection is closed)
 su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.search-providers disable-external true" 2>/dev/null || true
 
+# Screencast recording opt-in (forge-qgg, Wayland-only). Bring PipeWire +
+# WirePlumber up BEFORE gnome-shell so Mutter's screencast backend has them
+# available, and so WirePlumber publishes the node that pipewiresrc consumes (a
+# missing node looks exactly like the forge-6y7 zero-frame failure). Launched as
+# transient systemd-run units (same pattern as the D-Bus/shell units above) —
+# `systemctl --user` is unavailable (user@1000.service is masked).
+if [ "${FORGE_E2E_RECORD:-0}" = "1" ] && [ "$SESSION_TYPE" = "wayland" ]; then
+    if ! systemctl is-active --quiet forge-pipewire; then
+        echo "Starting PipeWire (screencast recording enabled)..."
+        systemd-run --unit=forge-pipewire --uid=gnomeshell --gid=gnomeshell \
+            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+            pipewire 2>/dev/null || echo "WARNING: failed to launch pipewire"
+        systemd-run --unit=forge-wireplumber --uid=gnomeshell --gid=gnomeshell \
+            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET" \
+            wireplumber 2>/dev/null || echo "WARNING: failed to launch wireplumber"
+        echo "Waiting for PipeWire socket..."
+        for i in {1..30}; do
+            [ -S "$XDG_RUNTIME_DIR/pipewire-0" ] && break
+            sleep 0.5
+        done
+        [ -S "$XDG_RUNTIME_DIR/pipewire-0" ] \
+            && echo "PipeWire socket ready" \
+            || echo "WARNING: PipeWire socket not found at $XDG_RUNTIME_DIR/pipewire-0"
+    fi
+fi
+
 # Start GNOME Shell as a transient systemd service so it outlives this
 # bootstrap script (see dbus-daemon note above for the why).
 # Output is captured to /tmp/gnome-shell.log via the wrapping shell so existing
@@ -344,6 +372,21 @@ echo "Unsafe mode: $EXT_STATE"
 
 # List extensions
 su - gnomeshell -c "$DBUS_ENV gnome-extensions list --enabled" 2>&1 || true
+
+# Headless gnome-shell comes up in the Overview and nothing in the E2E flow
+# dismisses it (tests drive Forge via D-Bus and avoid the Super key on purpose).
+# Hide it on every Wayland session — NOT just recording — so the suite runs on
+# the real tiled desktop (the production state), giving parity between what the
+# tests exercise and what the screencast shows. Leaving the Overview up was
+# masking a real resize-persistence bug (resize "passed" only because real focus
+# was null while the Overview held it; see forge-2n0). Install a 'showing'
+# suppressor so it stays hidden. Only touches the focus-on-hover path (the
+# Main.overview.visible guards in window.js), which the action-driven tests
+# drive explicitly rather than via hover.
+if [ "$SESSION_TYPE" = "wayland" ]; then
+    echo "Hiding GNOME Overview (parity: tests + screencast run on the real desktop)..."
+    su - gnomeshell -c "$DBUS_ENV gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval '(function(){ if(!globalThis._forgeNoOverview){ globalThis._forgeNoOverview = Main.overview.connect(\"showing\", () => Main.overview.hide()); } Main.overview.hide(); return Main.overview.visible ? \"visible\" : \"hidden\"; })()'" 2>&1 || true
+fi
 
 echo "GNOME Shell session ready (${SESSION_TYPE} mode)"
 exit 0

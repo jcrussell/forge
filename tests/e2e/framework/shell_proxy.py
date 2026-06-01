@@ -768,7 +768,9 @@ class ShellProxy:
         result = self.eval(js)
         return result in ("already_focused", "activated")
 
-    def invoke_forge_action(self, action: dict, focus_window: str = None) -> str:
+    def invoke_forge_action(
+        self, action: dict, focus_window: str = None, also_activate: bool = False
+    ) -> str:
         """
         Invoke a Forge command via D-Bus.
 
@@ -781,12 +783,25 @@ class ShellProxy:
                 override is needed. Supports position-based selection:
                 "leftmost", "rightmost", "topmost", "bottommost".
                 When None, picks the first window from the workspace list.
+            also_activate: When True (and a hint is given), genuinely focus the
+                target window (metaWindow.focus) in addition to the temporary
+                get_focus_window override. The override only lasts for the
+                synchronous command() call, but actions whose effect is finalized
+                asynchronously (notably keyboard resize, which persists the tree
+                split-ratio from the window 'size-changed' signal) re-read
+                global.display.get_focus_window AFTER it is restored. Without a
+                real focus the async handler targets whatever window actually had
+                focus (e.g. the last-opened window, a node with no active grab) and
+                resets the layout — so the resize never sticks. This was masked
+                while the GNOME Overview was visible (real focus was null, so the
+                reset path early-returned). See forge-2n0.
 
         Returns:
             Result string from the evaluation.
         """
         action_json = json.dumps(action)
         focus_hint_js = json.dumps(focus_window) if focus_window else "null"
+        also_activate_js = "true" if also_activate else "false"
         js = f"""
         (function() {{
             try {{
@@ -822,6 +837,12 @@ class ShellProxy:
                     }}
                     global.display.get_focus_window = function() {{ return targetWin; }};
                     focusMethod = hint ? 'hint_override' : 'display_override';
+                    // Genuinely focus the target so async finalizers (resize tree
+                    // split-ratio update via 'size-changed') see it as the real
+                    // focus after the override is restored below (forge-2n0).
+                    if ({also_activate_js}) {{
+                        try {{ targetWin.focus(global.get_current_time()); }} catch(e) {{}}
+                    }}
                 }}
 
                 try {{
@@ -1363,6 +1384,52 @@ class ShellProxy:
     vm.notify_button(t, {btn_code}, Clutter.ButtonState.RELEASED);
     return 'ok';
 }})();"""
+        self.eval(js)
+
+    # --- Screencast overlay (forge-eyu) -----------------------------------
+    # A persistent on-stage St.Label burned into the recorded screencast so its
+    # frames are self-identifying for failure diagnostics. Cached on
+    # globalThis._forgeTestOverlay (same approach as the virtual input devices
+    # above) so it survives across evals. Parented to uiGroup — NOT addChrome,
+    # which would register struts/work-area regions and perturb tiling geometry.
+    # Only driven when FORGE_E2E_RECORD=1 (see conftest / input_simulator); a
+    # no-op on normal lanes.
+
+    _overlay_test_label = ""
+
+    def set_recording_overlay(self, test_name: str) -> None:
+        """Show the current test name in the screencast overlay."""
+        self._overlay_test_label = test_name
+        self._render_overlay(test_name)
+
+    def set_recording_action(self, action: str) -> None:
+        """Append the firing forge action beneath the current test name."""
+        label = self._overlay_test_label
+        text = f"{label}\n> {action}" if label else f"> {action}"
+        self._render_overlay(text)
+
+    def _render_overlay(self, text: str) -> None:
+        js_text = json.dumps(text)
+        js = (
+            "(function(){"
+            "const St=imports.gi.St;"
+            "let o=globalThis._forgeTestOverlay;"
+            "if(!o){"
+            "o=new St.Label({style_class:'forge-e2e-overlay',"
+            "style:'background-color:rgba(0,0,0,0.72);color:#ffffff;"
+            "font-size:20px;font-family:monospace;padding:8px 14px;"
+            "border-radius:8px;'});"
+            "o.clutter_text.set_line_wrap(false);"
+            "Main.layoutManager.uiGroup.add_child(o);"
+            "globalThis._forgeTestOverlay=o;"
+            "}"
+            f"o.text={js_text};"
+            "const pm=Main.layoutManager.primaryMonitor;"
+            "o.set_position(pm.x+20,pm.y+20);"
+            "Main.layoutManager.uiGroup.set_child_above_sibling(o,null);"
+            "o.show();"
+            "return 'ok';})();"
+        )
         self.eval(js)
 
     @staticmethod

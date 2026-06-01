@@ -51,6 +51,29 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     && dnf clean all \
     && rm -rf /var/cache/dnf
 
+# Screencast recording stack (forge-qgg). Build-arg-gated so it lands ONLY in the
+# recording lane's image (make e2e-test-record => F44/GNOME50 Wayland) — other
+# lanes stay byte-identical. pipewire+wireplumber: the session manager publishes
+# the node pipewiresrc consumes. gstreamer1 + plugins-base (videoconvert) +
+# plugins-good (vp8enc/webmmux): needed by both the shell-owned (route A) and the
+# pipewiresrc (route B) pipelines, and ships the Gst GI typelib route B imports.
+# pipewire-gstreamer provides the pipewiresrc element. We use VP8/WebM (always
+# available via gstreamer1-plugins-good) rather than H.264, which avoids relying
+# on the cisco-openh264 repo (disabled in some sandboxed builds).
+ARG ENABLE_RECORD=0
+RUN if [ "$ENABLE_RECORD" = "1" ]; then \
+        dnf install -y --setopt=install_weak_deps=False \
+            pipewire \
+            wireplumber \
+            gstreamer1 \
+            gstreamer1-plugins-base \
+            gstreamer1-plugins-good \
+            gstreamer1-plugins-base-tools \
+            pipewire-gstreamer \
+        && dnf clean all \
+        && rm -rf /var/cache/dnf ; \
+    fi
+
 # dbus-daemon (session, no user-systemd) would otherwise try to activate the
 # portal via `systemctl --user start xdg-desktop-portal.service` and block 120s
 # because there's no user systemd in the container. Strip the SystemdService=

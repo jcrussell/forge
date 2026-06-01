@@ -44,6 +44,14 @@ make e2e-test GNOME_VERSION=47
 # Run for all supported versions
 make e2e-test-all
 
+# Record a screencast of the run (Wayland-only; forces the latest lane,
+# F44/GNOME50). Writes e2e-results/recording.webm (VP8/WebM) with the current
+# test name + firing action burned into each frame. Opt-in: the recording stack
+# (pipewire/gstreamer) is build-arg gated, so other lanes' images are unchanged.
+# Set FORGE_E2E_RECORD_ROUTE=B to use the Mutter.ScreenCast + pipewiresrc
+# fallback instead of the default org.gnome.Shell.Screencast path.
+make e2e-test-record
+
 # Interactive debugging (drops into bash inside the container)
 make e2e-debug
 

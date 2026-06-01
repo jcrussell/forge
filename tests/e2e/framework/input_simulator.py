@@ -10,6 +10,7 @@ The Clutter backend is required for Wayland headless mode (GNOME 49+/Fedora 43+)
 because xdotool cannot trigger compositor-level keybindings through XWayland.
 """
 
+import os
 import subprocess
 import time
 from typing import TYPE_CHECKING, Optional
@@ -142,6 +143,9 @@ class InputSimulator:
                 f"Unknown dispatch_mode: {dispatch_mode!r} (expected 'dbus' or 'keybinding')"
             )
         self.dispatch_mode = dispatch_mode
+        # Screencast overlay (forge-eyu): when recording, label each fired action
+        # beneath the test name. Computed once so normal lanes do no extra work.
+        self._overlay_enabled = os.environ.get("FORGE_E2E_RECORD") == "1"
         if not shell_proxy:
             self._verify_xdotool()
 
@@ -165,6 +169,12 @@ class InputSimulator:
                 "keybinding" mode or as fallback.
             **action_kwargs: Additional parameters for invoke_forge_action.
         """
+        if self._overlay_enabled and action_name and self._idle_proxy is not None:
+            try:
+                self._idle_proxy.set_recording_action(action_name)
+            except Exception:
+                pass  # never fail a test over the diagnostic overlay
+
         if (
             self.dispatch_mode == "dbus"
             and action_name is not None

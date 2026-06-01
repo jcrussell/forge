@@ -14,13 +14,21 @@ from framework.wait import wait_for_stable
 
 
 def _invoke_resize(shell_proxy, action_name, count=5, amount=50, focus_window=None):
-    """Invoke a resize action multiple times via D-Bus."""
+    """Invoke a resize action multiple times via D-Bus.
+
+    also_activate=True: keyboard resize persists the tree split-ratio from the
+    async 'size-changed' signal, which re-reads the real focused window after the
+    get_focus_window override is restored. The target must therefore be genuinely
+    focused, not just hinted, or the async handler targets a node with no active
+    grab and resets the layout so the resize never sticks (forge-2n0).
+    """
     time.sleep(Timing.RESIZE_SETTLE)
     last_result = None
     for _ in range(count):
         last_result = shell_proxy.invoke_forge_action(
             {"name": action_name, "amount": amount},
             focus_window=focus_window,
+            also_activate=True,
         )
         time.sleep(Timing.RESIZE_SETTLE)
     return last_result

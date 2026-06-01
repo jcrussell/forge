@@ -72,6 +72,24 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def _recording_overlay(request, shell_proxy):
+    """Burn the current test name into the screencast overlay (forge-eyu).
+
+    Active only on the recording lane (FORGE_E2E_RECORD=1); a no-op otherwise so
+    normal lanes pay zero extra D-Bus eval cost. input_simulator appends the
+    firing forge action beneath this label as actions fire.
+    """
+    if os.environ.get("FORGE_E2E_RECORD") != "1":
+        yield
+        return
+    try:
+        shell_proxy.set_recording_overlay(request.node.name)
+    except Exception:
+        pass  # never fail a test over the diagnostic overlay
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _check_shell_alive(shell_proxy):
     """Abort test session immediately if gnome-shell has crashed.
 

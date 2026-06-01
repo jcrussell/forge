@@ -84,6 +84,25 @@ if ! wait_for_forge_extension 180; then
     exit 1
 fi
 
+# Optional screencast recording (forge-qgg, Wayland-only, opt-in via
+# FORGE_E2E_RECORD=1). Started here so it brackets the session fixtures' window
+# launches. Record to a gnomeshell-owned /tmp path, then copy into RESULTS_DIR on
+# stop (sidesteps host bind-mount UID ownership on ${RESULTS_DIR}).
+RECORDING=0
+record_stop_safe() {
+    [ "$RECORDING" = 1 ] && /app/scripts/record-session.sh stop "${RESULTS_DIR}/recording.webm" || true
+    RECORDING=0
+    :
+}
+if [ "${FORGE_E2E_RECORD:-0}" = "1" ] && [ "$(cat /tmp/forge-session-type 2>/dev/null)" = "wayland" ]; then
+    if /app/scripts/record-session.sh start "/tmp/forge-recording.webm"; then
+        RECORDING=1
+        # Backstop only: the explicit stop below handles the normal pass/fail
+        # path (`|| TEST_EXIT=$?` already suppresses set -e on test failure).
+        trap 'record_stop_safe' EXIT
+    fi
+fi
+
 # Run tests
 echo "=========================================="
 echo "Running E2E tests..."
@@ -94,6 +113,13 @@ export FORGE_E2E_RESULTS_DIR="${RESULTS_DIR}"
 python3 -m pytest tests/ ${PYTEST_ARGS} \
     --dispatch-mode "${DISPATCH_MODE}" \
     --junitxml="${RESULTS_DIR}/junit.xml" || TEST_EXIT=$?
+
+# Stop recording and finalize the WebM before post-processing.
+if [ "$RECORDING" = 1 ]; then
+    /app/scripts/record-session.sh stop "${RESULTS_DIR}/recording.webm" || true
+    RECORDING=0
+    trap - EXIT
+fi
 
 echo "=========================================="
 echo "Tests completed with exit code: ${TEST_EXIT:-0}"
