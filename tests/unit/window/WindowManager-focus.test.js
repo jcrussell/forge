@@ -227,10 +227,9 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(wm().canMovePointerInsideNodeWindow(nodeWindow2)).toBe(false);
     });
 
-    // SKIP: Module mock immutability issue - the imported Main module doesn't
-    // see changes to global.Main.overview.visible set during the test.
-    // The functionality works correctly in production. 36/37 tests passing.
-    it.skip("should return false when overview is visible", () => {
+    // forge-7u3: globalSetup now mutates the shared Main.overview in place, so
+    // toggling visibility here is observed by window.js's module-namespace read.
+    it("should return false when overview is visible", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
         windowOverrides: {

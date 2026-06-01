@@ -189,9 +189,17 @@ export function installGnomeGlobals(options = {}) {
 
   let overview = null;
   if (options.overview !== false) {
-    overview = createMockOverview(options.overview || {});
     if (!global.Main) global.Main = {};
-    global.Main.overview = overview;
+    const fresh = createMockOverview(options.overview || {});
+    if (global.Main.overview) {
+      // Reset the shared overview in place rather than replacing the reference,
+      // so module-namespace readers (window.js:28 `import * as Main`) observe
+      // per-test changes. See forge-7u3.
+      Object.assign(global.Main.overview, fresh);
+    } else {
+      global.Main.overview = fresh;
+    }
+    overview = global.Main.overview;
   }
 
   // Common global functions
@@ -209,7 +217,9 @@ export function installGnomeGlobals(options = {}) {
     delete global.get_current_time;
     delete global.get_pointer;
     delete global.get_window_actors;
-    if (global.Main) delete global.Main.overview;
+    // Reset visibility in place; do NOT delete — that would sever the shared
+    // reference module readers rely on (forge-7u3).
+    if (global.Main && global.Main.overview) global.Main.overview.visible = false;
   };
 
   return {
