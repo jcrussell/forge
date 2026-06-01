@@ -21,7 +21,9 @@ from framework.workflow import step
 class TestWorkflowFloatFocus:
     """One two-window set, sequenced through the float lifecycle + focus nav."""
 
-    def test_float_focus(self, shell_proxy, input_sim, window_helper, two_windows):
+    def test_float_focus(
+        self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows
+    ):
         workspace = window_helper.get_workspace_rect()
 
         with step(shell_proxy, "two windows tiled; focused window is not floating"):
@@ -67,9 +69,17 @@ class TestWorkflowFloatFocus:
                 f"right at {right['x']}"
             )
 
-        with step(shell_proxy, "navigate focus left/right across the re-tiled pair"):
+        with step(shell_proxy, "navigate focus across the re-tiled pair -> focus moves"):
+            # Seed to the left edge, then move right: an interior move that MUST
+            # land on a different window (forge-gwo — the old assert only checked
+            # wmClass truthiness, which get_focused_window auto-activation always
+            # satisfies). Edge behavior is stay-not-wrap, so seeding makes the move
+            # deterministic.
             input_sim.focus_left()
-            input_sim.focus_right()
-            assert shell_proxy.get_focused_window().get("wmClass"), (
-                "a window should remain focused after navigation"
-            )
+            if dispatch_mode == "dbus":
+                left_id = window_helper.get_focused_id()
+                input_sim.focus_right()
+                window_helper.assert_focus_moved(left_id)
+            else:
+                input_sim.focus_right()
+                assert isinstance(window_helper.get_focused_id(), int)

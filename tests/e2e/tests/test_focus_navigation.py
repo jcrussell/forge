@@ -12,21 +12,35 @@ from framework.constants import Timing
 class TestFocusNavigation:
     """Test focus navigation with keyboard shortcuts."""
 
-    def test_focus_left_right(self, shell_proxy, input_sim, two_windows):
-        """Super+h and Super+l should move focus left and right."""
-        window1, window2 = two_windows
+    def test_focus_left_right(
+        self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows
+    ):
+        """Super+h and Super+l should move focus between the two tiled windows.
 
-        # Navigate left
+        Seeds focus to the left edge first (Focus Left lands on the leftmost
+        window regardless of where focus started — Forge focus-nav stays at the
+        edge, it never wraps), so the subsequent interior moves MUST change the
+        focused window. forge-gwo: the old assert only checked wmClass truthiness,
+        which get_focused_window() satisfies unconditionally (it auto-activates
+        windows[0]) — it never proved focus actually moved.
+        """
         input_sim.focus_left()
 
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "A window should be focused after Super+h"
+        if dispatch_mode != "dbus":
+            # Synthetic super+h/l is unreliable under Mutter's VirtualInputDevice
+            # (tile-snap latch, forge-er8); the keybinding gate lane only verifies
+            # the keypress->Forge path survives, not focus correctness. Keep the
+            # weaker "a window is focused" check there.
+            assert isinstance(window_helper.get_focused_id(), int)
+            input_sim.focus_right()
+            assert isinstance(window_helper.get_focused_id(), int)
+            return
 
-        # Navigate right
-        input_sim.focus_right()
-
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "A window should be focused after Super+l"
+        left_id = window_helper.get_focused_id()
+        input_sim.focus_right()  # interior move from the left edge -> must change
+        right_id = window_helper.assert_focus_moved(left_id)
+        input_sim.focus_left()  # back toward the left edge -> must change
+        window_helper.assert_focus_moved(right_id)
 
     def test_focus_wraps_or_stays(self, shell_proxy, input_sim, test_window):
         """Focus navigation at edge should wrap or stay in place."""
@@ -47,21 +61,31 @@ class TestFocusNavigation:
             "Focus should stay on only window when navigating right"
         )
 
-    def test_focus_up_down_in_vsplit(self, shell_proxy, input_sim, two_windows):
-        """Super+j and Super+k should navigate in vertical split."""
-        # Toggle to vertical split
+    def test_focus_up_down_in_vsplit(
+        self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows
+    ):
+        """Super+j and Super+k should move focus between vertically-split windows.
+
+        Same seed-then-interior-move pattern as test_focus_left_right (forge-gwo):
+        Focus Up lands on the topmost window, so the following Down/Up moves must
+        change the focused window.
+        """
+        # Toggle to vertical split (top/bottom)
         input_sim.toggle_layout()
 
-        # Navigate up/down
-        input_sim.focus_down()
+        input_sim.focus_up()  # seed: land on the topmost window
 
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "A window should be focused after Super+j"
+        if dispatch_mode != "dbus":
+            assert isinstance(window_helper.get_focused_id(), int)
+            input_sim.focus_down()
+            assert isinstance(window_helper.get_focused_id(), int)
+            return
 
-        input_sim.focus_up()
-
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "A window should be focused after Super+k"
+        top_id = window_helper.get_focused_id()
+        input_sim.focus_down()  # interior move from the top edge -> must change
+        bottom_id = window_helper.assert_focus_moved(top_id)
+        input_sim.focus_up()  # back toward the top edge -> must change
+        window_helper.assert_focus_moved(bottom_id)
 
     def test_focus_cycles_through_windows(self, shell_proxy, input_sim, three_windows):
         """Focus should cycle through all windows."""

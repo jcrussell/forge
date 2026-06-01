@@ -39,7 +39,9 @@ def _enable_stacked_tabbed_modes(restore_settings):
 class TestWorkflowStacked:
     """One three-window set, sequenced through stacked/tabbed layouts + focus nav."""
 
-    def test_stacked_tabbed_focus(self, shell_proxy, input_sim, three_windows):
+    def test_stacked_tabbed_focus(
+        self, shell_proxy, input_sim, window_helper, three_windows
+    ):
         with step(shell_proxy, "three windows tiled"):
             wait_for_window_count(shell_proxy, 3)
 
@@ -48,25 +50,42 @@ class TestWorkflowStacked:
             wait_for_layout(shell_proxy, "STACKED")
             assert len(shell_proxy.get_windows()) == 3
 
-        with step(shell_proxy, "navigate focus down/up within the stack"):
+        with step(shell_proxy, "navigate the stacked container -> focus stays valid & contained"):
+            # Forge's stacked toggle on a flat monitor wraps ONLY the focused
+            # window in a new single-item STACKED container (command.js
+            # LayoutStackedToggle splits the window off when its parent is the
+            # monitor), so there is no sibling to move to. The honest, non-vacuous
+            # check (forge-gwo) is that focus_down/up keep focus on a real window
+            # still inside a STACKED container — navigation must not drop focus or
+            # collapse the layout. (The old assert only checked wmClass truthiness,
+            # which get_focused_window auto-activation satisfies unconditionally.)
             input_sim.focus_down()
-            assert shell_proxy.get_focused_window().get("wmClass")
+            assert isinstance(window_helper.get_focused_id(), int)
+            assert shell_proxy.get_container_layout() == "STACKED"
             input_sim.focus_up()
-            assert shell_proxy.get_focused_window().get("wmClass")
+            assert isinstance(window_helper.get_focused_id(), int)
+            assert shell_proxy.get_container_layout() == "STACKED"
 
         with step(shell_proxy, "toggle TABBED -> container reports TABBED, 3 windows"):
             input_sim.toggle_tabbed()  # self-settles
             wait_for_layout(shell_proxy, "TABBED")
             assert len(shell_proxy.get_windows()) == 3
 
-        with step(shell_proxy, "cycle focus across tabs -> stays on a real node"):
+        with step(shell_proxy, "cycle focus across tabs -> path resolves, container stays TABBED"):
+            # Same single-item-container reality as the stacked step above (the
+            # tabbed toggle wraps only the focused window), so focus_right has no
+            # tab to move to. The meaningful checks (forge-gwo): the focused node
+            # path still resolves and focus stays inside a TABBED container.
             for _ in range(3):
                 input_sim.focus_right()
-                assert shell_proxy.get_focused_window().get("wmClass"), (
-                    "a window should stay focused while cycling tabs"
+                # forge-gwo: assert a non-empty LIST — get_focused_node_path returns
+                # a truthy {error:...} dict on failure, so bare truthiness was
+                # vacuous (it passed even when the path did not resolve).
+                path = shell_proxy.get_focused_node_path()
+                assert isinstance(path, list) and len(path) > 0, (
+                    f"focused node path should resolve to a tab, got {path!r}"
                 )
-                # node path resolves a tab even though all tabs share one rect
-                assert shell_proxy.get_focused_node_path(), "focused node path should resolve"
+                assert shell_proxy.get_container_layout() == "TABBED"
 
         with step(shell_proxy, "close one in TABBED -> tree stays valid, 2 windows"):
             shell_proxy.close_one_window()

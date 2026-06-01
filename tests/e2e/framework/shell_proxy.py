@@ -294,6 +294,7 @@ class ShellProxy:
 
             const rect = focusWindow.get_frame_rect();
             return JSON.stringify({
+                id: focusWindow.get_id(),
                 title: focusWindow.get_title(),
                 wmClass: focusWindow.get_wm_class(),
                 rect: {

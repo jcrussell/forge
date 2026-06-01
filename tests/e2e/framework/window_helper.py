@@ -66,6 +66,43 @@ class WindowHelper:
             raise WindowAssertionError(window["error"])
         return window
 
+    def get_focused_id(self) -> int:
+        """Return the stable Meta.Window id of the focused window (forge-gwo).
+
+        The fixtures launch same-class windows, so wmClass/title cannot tell one
+        from another; get_id() can. Reuses get_focused_window(), which raises on
+        an {error:...} payload — so this never silently returns a sentinel.
+
+        Raises:
+            WindowAssertionError: If no window is focused, or the shell did not
+                report an id.
+        """
+        focused = self.get_focused_window()
+        window_id = focused.get("id")
+        if window_id is None:
+            raise WindowAssertionError(
+                f"focused window reported no id: {focused!r}"
+            )
+        return window_id
+
+    def assert_focus_moved(self, before_id: int) -> int:
+        """Assert focus landed on a DIFFERENT window than before_id (forge-gwo).
+
+        Use after a Focus navigation that must change the active window (>= 2
+        windows, not at an edge — Forge focus-nav STAYS at edges, it does not
+        wrap). For the edge case where focus should stay put, assert
+        get_focused_id() == before_id directly instead.
+
+        Returns:
+            The new focused window id (for chaining the next navigation).
+        """
+        after_id = self.get_focused_id()
+        if after_id == before_id:
+            raise WindowAssertionError(
+                f"focus did not move: still on window id {after_id}"
+            )
+        return after_id
+
     def get_workspace_rect(self) -> dict:
         """
         Get the current workspace's usable area.
