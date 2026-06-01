@@ -24,6 +24,14 @@ PYTEST_ARGS="${*:---verbose}"
 # keybinding mode contaminates across test boundaries (forge-ehq).
 DISPATCH_MODE="${DISPATCH_MODE:-dbus}"
 
+# Optional pytest marker expression (e.g. PYTEST_MARKER=workflow to run only the
+# multi-step workflow lane). Passed as `-e PYTEST_MARKER=...` on the `docker exec`
+# (mirrors DISPATCH_MODE); empty means run the full suite. See `make e2e-test-fast`.
+MARKER_ARGS=()
+if [ -n "${PYTEST_MARKER:-}" ]; then
+    MARKER_ARGS=(-m "${PYTEST_MARKER}")
+fi
+
 # Ensure environment is set for subprocess launching
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
@@ -88,6 +96,13 @@ fi
 # FORGE_E2E_RECORD=1). Started here so it brackets the session fixtures' window
 # launches. Record to a gnomeshell-owned /tmp path, then copy into RESULTS_DIR on
 # stop (sidesteps host bind-mount UID ownership on ${RESULTS_DIR}).
+#
+# Recording only works on GNOME 50: the default Route A (org.gnome.Shell.Screencast)
+# only finalizes a .webm there (which is why `make e2e-test-record` pins GNOME 50).
+# On GNOME 49 Route A aborts after the first test and writes nothing — set
+# FORGE_E2E_RECORD_ROUTE=B (Mutter.ScreenCast + pipewiresrc) to record on 49.
+# The "recording (route A) -> ...undefined" log line is cosmetic on 50 (the file
+# is still written); it is NOT the cause of a missing recording.
 RECORDING=0
 record_stop_safe() {
     [ "$RECORDING" = 1 ] && /app/scripts/record-session.sh stop "${RESULTS_DIR}/recording.webm" || true
@@ -110,7 +125,7 @@ echo "=========================================="
 
 cd "${TEST_DIR}"
 export FORGE_E2E_RESULTS_DIR="${RESULTS_DIR}"
-python3 -m pytest tests/ ${PYTEST_ARGS} \
+python3 -m pytest tests/ ${PYTEST_ARGS} "${MARKER_ARGS[@]}" \
     --dispatch-mode "${DISPATCH_MODE}" \
     --junitxml="${RESULTS_DIR}/junit.xml" || TEST_EXIT=$?
 

@@ -380,37 +380,35 @@ def test_window(shell_proxy, clean_workspace) -> Generator[dict, None, None]:
     yield window
 
 
+def _launch_windows(shell_proxy: ShellProxy, n: int) -> tuple:
+    """Launch n test windows up-front, settling each (forge-zsk).
+
+    Shared by the two/three/four_windows fixtures so the launch+settle loop lives
+    in one place; workflow tests that want N windows up-front reuse it too.
+    """
+    windows = []
+    for _ in range(n):
+        windows.append(_launch_window(DEFAULT_TEST_APP, shell_proxy))
+        time.sleep(Timing.WINDOW_SETTLE)
+    return tuple(windows)
+
+
 @pytest.fixture
 def two_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
     """Launch two test windows."""
-    window1 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    time.sleep(Timing.WINDOW_SETTLE)
-    window2 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    time.sleep(Timing.WINDOW_SETTLE)
-    yield (window1, window2)
+    yield _launch_windows(shell_proxy, 2)
 
 
 @pytest.fixture
 def three_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
     """Launch three test windows."""
-    window1 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    time.sleep(Timing.WINDOW_SETTLE)
-    window2 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    time.sleep(Timing.WINDOW_SETTLE)
-    window3 = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    time.sleep(Timing.WINDOW_SETTLE)
-    yield (window1, window2, window3)
+    yield _launch_windows(shell_proxy, 3)
 
 
 @pytest.fixture
 def four_windows(shell_proxy, clean_workspace) -> Generator[tuple, None, None]:
     """Launch four test windows."""
-    windows = []
-    for _ in range(4):
-        w = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-        time.sleep(Timing.WINDOW_SETTLE)
-        windows.append(w)
-    yield tuple(windows)
+    yield _launch_windows(shell_proxy, 4)
 
 
 @pytest.fixture
@@ -572,9 +570,21 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
 
 
 def pytest_collection_modifyitems(config, items):
-    """Add markers based on test names."""
+    """Add markers based on test names, then order the workflow lane first.
+
+    Workflow tests are tagged by file — matching the '/test_workflow_' path
+    segment in item.nodeid (which carries the path, unlike item.name) so only the
+    test_workflow_*.py files are swept in, not an atomic test that merely contains
+    the word elsewhere. The lane is then selectable with '-m workflow' / excluded
+    with '-m "not workflow"'. After marking, a stable sort hoists workflow-marked
+    items to the front so the cheap smoke lane runs before the slower atomic
+    launches; Timsort preserves intra-lane order, and session/autouse fixtures are
+    order-invariant.
+    """
     for item in items:
         name = item.name.lower()
+        if "/test_workflow_" in item.nodeid:
+            item.add_marker(pytest.mark.workflow)
         if "focus" in name:
             item.add_marker(pytest.mark.focus)
         if "layout" in name or "stacked" in name or "tabbed" in name:
@@ -595,3 +605,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.snap)
         if "rebalance" in name or "close" in name:
             item.add_marker(pytest.mark.rebalance)
+
+    # Run the workflow lane first as a cheap smoke pass (stable sort keeps the
+    # collected order within each lane).
+    items.sort(key=lambda i: 0 if i.get_closest_marker("workflow") else 1)

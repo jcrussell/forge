@@ -44,12 +44,21 @@ make e2e-test GNOME_VERSION=47
 # Run for all supported versions
 make e2e-test-all
 
+# Run only the fast multi-step "workflow" lane (see Test Lanes below)
+make e2e-test-fast
+
 # Record a screencast of the run (Wayland-only; forces the latest lane,
 # F44/GNOME50). Writes e2e-results/recording.webm (VP8/WebM) with the current
 # test name + firing action burned into each frame. Opt-in: the recording stack
 # (pipewire/gstreamer) is build-arg gated, so other lanes' images are unchanged.
 # Set FORGE_E2E_RECORD_ROUTE=B to use the Mutter.ScreenCast + pipewiresrc
 # fallback instead of the default org.gnome.Shell.Screencast path.
+#
+# NOTE: recording only works on GNOME 50. The default Route A
+# (org.gnome.Shell.Screencast) only finalizes a .webm on GNOME 50 — which is why
+# e2e-test-record pins that lane; don't switch it. On GNOME 49 Route A aborts
+# after the first test and writes no file, so there you must set
+# FORGE_E2E_RECORD_ROUTE=B (Mutter.ScreenCast + pipewiresrc) to get a recording.
 make e2e-test-record
 
 # Interactive debugging (drops into bash inside the container)
@@ -61,6 +70,51 @@ make e2e-clean
 # List supported versions
 make e2e-versions
 ```
+
+## Test Lanes: atomic vs workflow
+
+The suite has two coexisting lanes:
+
+- **Atomic tests** (`test_<feature>.py`) — one operation per test, fresh windows per
+  test. The pinpoint regression net; a failure names the exact behavior.
+- **Workflow tests** (`test_workflow_<area>.py`, marked `@pytest.mark.workflow`) — one
+  small window set driven through many sequenced operations (tile → relayout → resize →
+  close → reopen → …). They amortize the ~10.5s-per-window launch cost across many
+  assertions and exercise realistic state transitions the atomic tests never cover.
+
+Both lanes run on every `make e2e-test`, with **workflows ordered first** (a stable sort
+in `pytest_collection_modifyitems`) so an obviously-broken build fails on the cheap lane
+before paying for atomic launches. Select a lane explicitly:
+
+```bash
+make e2e-test-fast                 # only the workflow lane (fast inner loop)
+# inside the container / pytest:
+pytest -m workflow                 # workflow lane only
+pytest -m "not workflow"           # atomic lane only
+```
+
+Workflows are not a superset of the atomic tests — bug-specific regressions, dialogs,
+multi-monitor, config-reload, maximize-compat, drag-drop and settings edge cases stay
+atomic-only, so the atomic lane must keep running by default.
+
+### Authoring a workflow
+
+- Launch the window set once (reuse `two_windows`/`three_windows`/`launch_window`), then
+  sequence operations; wrap each in `with step(shell_proxy, "label"):` from
+  `framework/workflow.py`. `step()` labels the screencast (when recording) and annotates
+  any failure with the step name without disturbing pytest's assert introspection. Use it
+  for assertion-only / raw `invoke_forge_action` steps — bare `input_sim.*` calls already
+  self-label on the recording lane.
+- **End every state-changing step in a `wait_for_*`** on its own post-condition — there is
+  no flake-rerun plugin, so this polling is the only stability mechanism, and longer
+  sequences multiply the gates.
+- For focus-dependent steps use `invoke_forge_action(..., focus_window=...)` (and
+  `also_activate=True` for async-finalized actions like keyboard resize). Positional hints
+  cannot disambiguate STACKED/TABBED children (shared rect) — target those via focus
+  actions and assert on layout/path. With two same-class windows, read geometry via
+  position-sorted rects, not class-based `WindowHelper` asserts.
+- Keep each workflow self-contained (end in a clean tiled state); use `restore_settings`
+  for any GSetting change.
 
 ## Adding a New GNOME Version
 
@@ -93,6 +147,7 @@ make e2e-versions
 - **`framework/input_simulator.py`** — `InputSimulator` class wrapping `xdotool` for keyboard shortcuts, mouse clicks, and window focus simulation.
 - **`framework/window_helper.py`** — `WindowHelper` with higher-level operations: open windows, arrange layouts, verify tiling state.
 - **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
+- **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
 
 ## Attribution
 

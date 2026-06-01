@@ -14,7 +14,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
-	e2e-test e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
+	e2e-test e2e-test-fast e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
 
 all: build install enable restart
@@ -266,6 +266,13 @@ E2E_DOCKER_OPTS = --privileged \
 # byte-identical) and passes FORGE_E2E_RECORD=1 into BOTH docker exec calls below.
 RECORD_ENV = $(if $(RECORD),-e FORGE_E2E_RECORD=1,)
 
+# Optional pytest marker expression threaded into run-tests.sh (mirrors RECORD_ENV).
+# `make e2e-test PYTEST_MARKER=workflow` runs only the matching lane; empty = full suite.
+# Single-word markers only at this layer (it expands unquoted into the docker exec
+# line); for a multi-word expression like "not workflow" use pytest directly inside
+# the container (`pytest -m "not workflow"`), as documented in tests/e2e/README.md.
+MARKER_ENV = $(if $(PYTEST_MARKER),-e PYTEST_MARKER=$(PYTEST_MARKER),)
+
 e2e-build: build
 	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) \
 		--build-arg FEDORA_VERSION=$(FEDORA_VERSION) \
@@ -293,7 +300,13 @@ e2e-test: e2e-build
 	docker exec $(if $(MULTIMONITOR),-e FORGE_E2E_VIRTUAL_MONITORS=2,) $(RECORD_ENV) $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
 	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "Running E2E tests..." && \
-	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $(RECORD_ENV) $$POD set-env.sh /app/scripts/run-tests.sh
+	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $(RECORD_ENV) $(MARKER_ENV) $$POD set-env.sh /app/scripts/run-tests.sh
+
+# Run only the multi-step workflow lane (forge-911) — the fast inner-loop pass.
+# The full suite still runs both lanes (workflows ordered first); this is for local
+# iteration. GNOME_VERSION is forwardable, e.g. make e2e-test-fast GNOME_VERSION=48.
+e2e-test-fast:
+	@$(MAKE) e2e-test PYTEST_MARKER=workflow
 
 # Run E2E tests with two virtual monitors (forge-a34.1, headless Wayland only).
 # Boots the session with a second 1920x1080 output so test_multi_monitor runs;
