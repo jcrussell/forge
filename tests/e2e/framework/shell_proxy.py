@@ -55,8 +55,14 @@ class ShellProxy:
         self._proxy: Optional[Gio.DBusProxy] = None
         # Primary guard for the inject-once test bridge. The shell can't self-reinstall (the
         # source lives here, in the Python process), so this Python flag — not a JS-side check —
-        # is what prevents re-sending bridge.js on every query. Reset in disconnect().
+        # is what prevents re-sending bridge.js on every query. Reset in disconnect(). Since
+        # forge-9q3 this is the SINGLE install flag: the virtual-input devices and screencast
+        # overlay are bridge methods (ensureVirtualDevices/renderOverlay), so they ride this
+        # one inject-once mechanism instead of carrying their own (never-reset) flags.
         self._bridge_installed = False
+        # Current test name shown in the screencast overlay; the firing action is appended
+        # beneath it (set_recording_action). Instance state, not a stale-able install flag.
+        self._overlay_test_label = ""
 
     def connect(self) -> None:
         """Connect to GNOME Shell via D-Bus."""
@@ -87,16 +93,18 @@ class ShellProxy:
         """Disconnect from GNOME Shell."""
         self._proxy = None
         # gnome-shell's Eval global is cleared on a shell restart, so a fresh connection must
-        # re-inject. (The existing _virtual_devices_initialized is NOT reset on disconnect —
-        # a latent bug; don't copy it here.)
+        # re-inject. Resetting this one flag re-arms the WHOLE bridge — query methods, virtual
+        # devices, and overlay — fixing the old stale-device-on-reconnect bug (forge-9q3), where
+        # a separate never-reset flag left cached device refs pointing at a wiped globalThis.
         self._bridge_installed = False
 
     def _ensure_bridge(self) -> None:
         """Inject the test bridge (bridge.js) into the shell's Eval global, once per connection.
 
-        Mirrors the proven _ensure_virtual_devices inject-once pattern: a Python flag gates a
-        single eval that installs globalThis._forgeTestBridge; later query methods just call its
-        methods. The install eval returns the plain sentinel 'ok' so eval()'s JSON parser doesn't
+        A single Python flag gates a single eval that installs globalThis._forgeTestBridge;
+        later query/input/overlay methods just call its methods (forge-9q3 folded the virtual
+        devices and overlay in here too, so this is now the ONE inject-once mechanism). The
+        install eval returns the plain sentinel 'ok' so eval()'s JSON parser doesn't
         mis-read object text — assert on it so a syntax error in bridge.js fails loud here rather
         than surfacing later as every query returning its failure sentinel.
         """
@@ -695,27 +703,17 @@ class ShellProxy:
     # Virtual devices are created once and cached in globalThis._forgeTest*
     # to avoid resource exhaustion from creating devices per key press.
 
-    _virtual_devices_initialized = False
-
     def _ensure_virtual_devices(self) -> None:
-        """Create and cache virtual input devices in GNOME Shell's global scope."""
-        if self._virtual_devices_initialized:
-            return
-        js = """(function() {
-    const Clutter = imports.gi.Clutter;
-    const seat = Clutter.get_default_backend().get_default_seat();
-    if (!globalThis._forgeTestVKbd) {
-        globalThis._forgeTestVKbd = seat.create_virtual_device(
-            Clutter.InputDeviceType.KEYBOARD_DEVICE);
-    }
-    if (!globalThis._forgeTestVMouse) {
-        globalThis._forgeTestVMouse = seat.create_virtual_device(
-            Clutter.InputDeviceType.POINTER_DEVICE);
-    }
-    return 'ok';
-})();"""
-        self.eval(js)
-        self._virtual_devices_initialized = True
+        """Ensure the cached Clutter virtual devices exist (forge-9q3).
+
+        Device creation lives in the bridge (ensureVirtualDevices); this just guarantees the
+        bridge is installed, then calls it. The bridge method is idempotent (globalThis guard),
+        so there is no separate Python flag to go stale on reconnect — the single
+        _bridge_installed flag (reset in disconnect) is what re-arms devices after a shell
+        restart. The per-press notify_* sequences below still build their own JS.
+        """
+        self._ensure_bridge()
+        self.eval("globalThis._forgeTestBridge.ensureVirtualDevices()")
 
     def simulate_key_combo(self, key_spec: str) -> None:
         """
@@ -820,14 +818,12 @@ class ShellProxy:
 
     # --- Screencast overlay (forge-eyu) -----------------------------------
     # A persistent on-stage St.Label burned into the recorded screencast so its
-    # frames are self-identifying for failure diagnostics. Cached on
-    # globalThis._forgeTestOverlay (same approach as the virtual input devices
-    # above) so it survives across evals. Parented to uiGroup — NOT addChrome,
-    # which would register struts/work-area regions and perturb tiling geometry.
-    # Only driven when FORGE_E2E_RECORD=1 (see conftest / input_simulator); a
-    # no-op on normal lanes.
-
-    _overlay_test_label = ""
+    # frames are self-identifying for failure diagnostics. The St.Label creation +
+    # render lives in the bridge (renderOverlay, forge-9q3) — cached on
+    # globalThis._forgeTestOverlay so it survives across evals, parented to uiGroup
+    # (NOT addChrome, which would register struts and perturb tiling geometry).
+    # These Python methods own only the text composition. Only driven when
+    # FORGE_E2E_RECORD=1 (see conftest / input_simulator); a no-op on normal lanes.
 
     def set_recording_overlay(self, test_name: str) -> None:
         """Show the current test name in the screencast overlay."""
@@ -841,28 +837,8 @@ class ShellProxy:
         self._render_overlay(text)
 
     def _render_overlay(self, text: str) -> None:
-        js_text = json.dumps(text)
-        js = (
-            "(function(){"
-            "const St=imports.gi.St;"
-            "let o=globalThis._forgeTestOverlay;"
-            "if(!o){"
-            "o=new St.Label({style_class:'forge-e2e-overlay',"
-            "style:'background-color:rgba(0,0,0,0.72);color:#ffffff;"
-            "font-size:20px;font-family:monospace;padding:8px 14px;"
-            "border-radius:8px;'});"
-            "o.clutter_text.set_line_wrap(false);"
-            "Main.layoutManager.uiGroup.add_child(o);"
-            "globalThis._forgeTestOverlay=o;"
-            "}"
-            f"o.text={js_text};"
-            "const pm=Main.layoutManager.primaryMonitor;"
-            "o.set_position(pm.x+20,pm.y+20);"
-            "Main.layoutManager.uiGroup.set_child_above_sibling(o,null);"
-            "o.show();"
-            "return 'ok';})();"
-        )
-        self.eval(js)
+        self._ensure_bridge()
+        self.eval(f"globalThis._forgeTestBridge.renderOverlay({json.dumps(text)})")
 
     @staticmethod
     def _to_clutter_keyname(key_name: str) -> str:

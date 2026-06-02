@@ -29,8 +29,11 @@
   // Resolve GI namespaces ONCE at install time and capture them in the method closures.
   // imports.gi.* works in the Eval scope; capturing here avoids re-importing per call and
   // sidesteps any question of imports.* reachability from a later eval (Phase 0 only verified
-  // bare `Main`). Only count_maximized_windows needs Meta (MaximizeFlags fallback).
+  // bare `Main`). Meta: count_maximized_windows (MaximizeFlags fallback). Clutter/St:
+  // the virtual-input + overlay helpers folded in from shell_proxy.py (forge-9q3).
   const Meta = imports.gi.Meta;
+  const Clutter = imports.gi.Clutter;
+  const St = imports.gi.St;
 
   // --- Forge root resolution (absorbs _forge_root_js) -----------------------------------------
   // `class Tree extends Node` and its ctor calls super(NODE_TYPES.ROOT, ...) (lib/extension/
@@ -705,6 +708,60 @@
       } catch (e) {
         return "false";
       }
+    },
+
+    // --- Virtual input + overlay (folded in from shell_proxy.py, forge-9q3) --------------------
+    // These were three separate globalThis injections (devices, overlay) parallel to this
+    // bridge. They now ride the SAME inject-once bridge install. Both are LAZY and idempotent:
+    // creation happens on first use (NOT at install), so the universally-run install can't be
+    // broken by a not-yet-ready Clutter seat, and the dbus-only lanes never create them. The
+    // thin Python callers (simulate_*, _render_overlay) invoke these.
+
+    // Create + cache the Clutter virtual keyboard/pointer in globalThis (once). The per-press
+    // notify_* sequences are still built in Python (they vary per call); this only owns device
+    // creation. Wrapped so a seat that isn't ready returns a sentinel instead of throwing.
+    ensureVirtualDevices() {
+      try {
+        const seat = Clutter.get_default_backend().get_default_seat();
+        if (!globalThis._forgeTestVKbd) {
+          globalThis._forgeTestVKbd = seat.create_virtual_device(
+            Clutter.InputDeviceType.KEYBOARD_DEVICE
+          );
+        }
+        if (!globalThis._forgeTestVMouse) {
+          globalThis._forgeTestVMouse = seat.create_virtual_device(
+            Clutter.InputDeviceType.POINTER_DEVICE
+          );
+        }
+        return "ok";
+      } catch (e) {
+        return "ERROR: " + e;
+      }
+    },
+
+    // Render the screencast overlay label (forge-eyu): create-if-needed + set text + position +
+    // raise + show. Cached on globalThis._forgeTestOverlay so it survives across evals. Parented
+    // to uiGroup — NOT addChrome, which would register struts and perturb tiling geometry. Text
+    // composition (test name + firing action) stays in the Python caller.
+    renderOverlay(text) {
+      let o = globalThis._forgeTestOverlay;
+      if (!o) {
+        o = new St.Label({
+          style_class: "forge-e2e-overlay",
+          style:
+            "background-color:rgba(0,0,0,0.72);color:#ffffff;font-size:20px;" +
+            "font-family:monospace;padding:8px 14px;border-radius:8px;",
+        });
+        o.clutter_text.set_line_wrap(false);
+        Main.layoutManager.uiGroup.add_child(o);
+        globalThis._forgeTestOverlay = o;
+      }
+      o.text = text;
+      const pm = Main.layoutManager.primaryMonitor;
+      o.set_position(pm.x + 20, pm.y + 20);
+      Main.layoutManager.uiGroup.set_child_above_sibling(o, null);
+      o.show();
+      return "ok";
     },
   };
 
