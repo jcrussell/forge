@@ -341,6 +341,37 @@
       }
     },
 
+    // firstMatch for a >=2-child container of `layout`, then activate its LAST window child.
+    // WF4 (forge-fjs) asserts focus MOVES between genuine stacked/tabbed siblings, but which
+    // window Mutter leaves focused after launch_window() varies by GNOME version (the d801a7d
+    // family) — so the test must establish the precondition rather than assume it. Activating
+    // the last child (which always has a previous sibling) lets a subsequent focus toward the
+    // previous sibling (focus_up in STACKED, focus_left in TABBED) move deterministically on
+    // every version. activate() is a direct Mutter call, not synthetic input, so it is reliable
+    // where the keybinding path is not (forge-er8). Returns the activated window's id, else {error}.
+    activateLastSiblingOf(layout) {
+      try {
+        const r = root();
+        if (!r) return JSON.stringify({ error: "Tree not available" });
+        const container = firstMatch(
+          r,
+          (n) => n.layout === layout && (n.childNodes || []).length >= 2
+        );
+        if (!container) {
+          return JSON.stringify({ error: "No >=2-child " + layout + " container" });
+        }
+        const children = container.childNodes;
+        const metaWindow = children[children.length - 1].nodeValue;
+        if (!metaWindow || !metaWindow.activate) {
+          return JSON.stringify({ error: "Last child of " + layout + " is not a window" });
+        }
+        metaWindow.activate(global.get_current_time());
+        return JSON.stringify({ id: metaWindow.get_id() });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    },
+
     // firstMatch by class + sibling projection — was get_window_siblings (shell_proxy.py:1177)
     getWindowSiblings(wmClass) {
       try {

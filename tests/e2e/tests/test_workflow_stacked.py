@@ -167,7 +167,20 @@ class TestWorkflowStacked:
                 assert isinstance(window_helper.get_focused_id(), int)
                 assert shell_proxy.get_container_layout() == "STACKED"
             else:
+                # Pin focus to a known in-CON sibling first. Which window Mutter leaves
+                # focused after launch_window() varies by GNOME version (the d801a7d family,
+                # forge-fjs), so capturing `before` from launch order made the move assert
+                # fragile (it failed on GNOME 45-48). The last stacked child always has a
+                # previous sibling, so focus_up must move to it on every version.
+                pinned = shell_proxy.activate_last_sibling_of("STACKED")
+                assert "id" in pinned, (
+                    f"could not pin focus inside the STACKED container: {pinned!r}"
+                )
+                shell_proxy.wait_for_idle()
                 before = window_helper.get_focused_id()
+                assert before == pinned["id"], (
+                    f"pin did not take: focused {before}, expected {pinned['id']}"
+                )
                 input_sim.focus_up()
                 window_helper.assert_focus_moved(before)  # moved to the stacked sibling
                 assert shell_proxy.get_container_layout() == "STACKED"
@@ -183,7 +196,17 @@ class TestWorkflowStacked:
                 assert isinstance(window_helper.get_focused_id(), int)
                 assert shell_proxy.get_container_layout() == "TABBED"
             else:
+                # Same precondition as the STACKED branch: pin focus to the last tab (which
+                # has a previous tab) so focus_left moves deterministically across versions.
+                pinned = shell_proxy.activate_last_sibling_of("TABBED")
+                assert "id" in pinned, (
+                    f"could not pin focus inside the TABBED container: {pinned!r}"
+                )
+                shell_proxy.wait_for_idle()
                 before = window_helper.get_focused_id()
+                assert before == pinned["id"], (
+                    f"pin did not take: focused {before}, expected {pinned['id']}"
+                )
                 input_sim.focus_left()  # tabs are horizontal -> move to the adjacent tab
                 window_helper.assert_focus_moved(before)  # moved to the tabbed sibling
                 assert shell_proxy.get_container_layout() == "TABBED"

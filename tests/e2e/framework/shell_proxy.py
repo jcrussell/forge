@@ -670,6 +670,20 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.getFocusedNodePath()")
 
+    def activate_last_sibling_of(self, layout: str) -> dict:
+        """Activate the last window-child of the first >=2-child container with `layout`.
+
+        Pins focus onto a deterministic in-container sibling so a subsequent focus-nav
+        toward the previous sibling (focus_up in STACKED, focus_left in TABBED) is
+        guaranteed to move — independent of which window Mutter happened to focus after a
+        mid-test launch, which varies by GNOME version (forge-fjs).
+
+        Returns:
+            ``{"id": <int>}`` for the activated window, or ``{"error": <str>}``.
+        """
+        self._ensure_bridge()
+        return self.eval(f'globalThis._forgeTestBridge.activateLastSiblingOf("{layout}")')
+
     def get_window_siblings(self, wm_class: str) -> list:
         """
         Get information about all siblings in the same container as a window.
