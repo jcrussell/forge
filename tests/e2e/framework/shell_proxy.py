@@ -10,6 +10,7 @@ Requires gnome-shell to be running with --unsafe-mode flag.
 import json
 import subprocess
 import time
+from pathlib import Path
 from string import Template
 from typing import Any, Optional
 
@@ -23,57 +24,6 @@ class ShellProxyError(Exception):
     """Exception raised when Shell.Eval fails."""
 
     pass
-
-
-def _forge_root_js(fail_expr: str) -> str:
-    """JS prelude that resolves the Forge extension and binds the tree root.
-
-    `class Tree extends Node` and its constructor calls super(NODE_TYPES.ROOT, ...)
-    (lib/extension/tree.js), so the Tree instance IS the root node — there is no
-    `.root` property. Every tree walk roots at `ext.extWm.tree` itself, named here
-    in exactly ONE place so a bad root expression can't be copy-pasted across the
-    query helpers again (this was forge-g14: `ext.extWm.tree.root` was undefined at
-    13 sites).
-
-    `fail_expr` is the JS returned when Forge or its tree is unavailable; callers
-    use different sentinels ('0', '-1', 'ERROR', 'false', JSON error objects).
-    """
-    return (
-        "                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');\n"
-        f"                if (!forge || !forge.stateObj) return {fail_expr};\n"
-        "                const ext = forge.stateObj;\n"
-        f"                if (!ext.extWm || !ext.extWm.tree) return {fail_expr};\n"
-        "                const __root = ext.extWm.tree;\n"
-    )
-
-
-# The two genuinely-identical recursive finders, defined once and concatenated into
-# eval bodies that need them. `findNodeByClass` returns the matching WINDOW node;
-# only windows expose get_wm_class(), so non-window nodes (monitor/workspace/con)
-# never match. `findNodeByWindow` matches by Meta.Window identity. Both are
-# first-match in pre-order walk (callers needing every match — e.g.
-# count_tiled_windows_of_class — keep their own counting walk).
-_TREE_WALKERS_JS = """
-                function findNodeByClass(node, wmClass) {
-                    if (!node) return null;
-                    const v = node.nodeValue;
-                    if (v && v.get_wm_class && v.get_wm_class() === wmClass) return node;
-                    for (const child of (node.childNodes || [])) {
-                        const found = findNodeByClass(child, wmClass);
-                        if (found) return found;
-                    }
-                    return null;
-                }
-                function findNodeByWindow(node, metaWindow) {
-                    if (!node) return null;
-                    if (node.nodeValue === metaWindow) return node;
-                    for (const child of (node.childNodes || [])) {
-                        const found = findNodeByWindow(child, metaWindow);
-                        if (found) return found;
-                    }
-                    return null;
-                }
-"""
 
 
 class ShellProxy:
@@ -90,6 +40,10 @@ class ShellProxy:
 
     FORGE_UUID = "forge@jmmaranan.com"
 
+    # Injected test bridge (forge-1gu). The JS lives in bridge.js next to this file and is
+    # sent once per connection; see _ensure_bridge().
+    BRIDGE_JS_PATH = Path(__file__).parent / "bridge.js"
+
     def __init__(self, bus_address: Optional[str] = None):
         """
         Initialize the Shell proxy.
@@ -99,6 +53,10 @@ class ShellProxy:
         """
         self._bus_address = bus_address
         self._proxy: Optional[Gio.DBusProxy] = None
+        # Primary guard for the inject-once test bridge. The shell can't self-reinstall (the
+        # source lives here, in the Python process), so this Python flag — not a JS-side check —
+        # is what prevents re-sending bridge.js on every query. Reset in disconnect().
+        self._bridge_installed = False
 
     def connect(self) -> None:
         """Connect to GNOME Shell via D-Bus."""
@@ -128,6 +86,27 @@ class ShellProxy:
     def disconnect(self) -> None:
         """Disconnect from GNOME Shell."""
         self._proxy = None
+        # gnome-shell's Eval global is cleared on a shell restart, so a fresh connection must
+        # re-inject. (The existing _virtual_devices_initialized is NOT reset on disconnect —
+        # a latent bug; don't copy it here.)
+        self._bridge_installed = False
+
+    def _ensure_bridge(self) -> None:
+        """Inject the test bridge (bridge.js) into the shell's Eval global, once per connection.
+
+        Mirrors the proven _ensure_virtual_devices inject-once pattern: a Python flag gates a
+        single eval that installs globalThis._forgeTestBridge; later query methods just call its
+        methods. The install eval returns the plain sentinel 'ok' so eval()'s JSON parser doesn't
+        mis-read object text — assert on it so a syntax error in bridge.js fails loud here rather
+        than surfacing later as every query returning its failure sentinel.
+        """
+        if self._bridge_installed:
+            return
+        bridge_js = self.BRIDGE_JS_PATH.read_text()
+        result = self.eval(bridge_js)
+        if result != "ok":
+            raise ShellProxyError(f"Test bridge install did not return 'ok' (got {result!r})")
+        self._bridge_installed = True
 
     def eval(self, js_code: str) -> Any:
         """
@@ -239,35 +218,8 @@ class ShellProxy:
         Returns:
             Dictionary representation of the window tree.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + """
-                function serializeNode(node) {
-                    if (!node) return null;
-                    return {
-                        nodeType: node.nodeType,
-                        layout: node.layout,
-                        rect: node.rect ? {
-                            x: node.rect.x,
-                            y: node.rect.y,
-                            width: node.rect.width,
-                            height: node.rect.height
-                        } : null,
-                        children: node.childNodes ? node.childNodes.map(serializeNode) : [],
-                        windowTitle: node.nodeValue?.title || null,
-                        wmClass: node.nodeValue?.get_wm_class ? node.nodeValue.get_wm_class() : null
-                    };
-                }
-
-                return JSON.stringify(serializeNode(__root));
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
-        )
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getForgeTree()")
 
     def get_focused_window(self) -> dict:
         """
@@ -369,27 +321,10 @@ class ShellProxy:
         Returns:
             Dictionary with node info including layout type.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const node = findNodeByClass(__root, __wmClass);
-                if (!node) return JSON.stringify(null);
-                return JSON.stringify({
-                    nodeType: node.nodeType,
-                    layout: node.layout,
-                    parentLayout: node.parentNode?.layout,
-                    rect: node.rect
-                });
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.getForgeNodeForWindow(%s)" % json.dumps(wm_class)
         )
-        return self.eval(js)
 
     def get_container_layout(self) -> str:
         """
@@ -398,34 +333,8 @@ class ShellProxy:
         Returns:
             Layout type: 'HSPLIT', 'VSPLIT', 'STACKED', or 'TABBED'.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'ERROR'")
-            + _TREE_WALKERS_JS
-            + """
-                var focusWindow = global.display.get_focus_window();
-                if (!focusWindow) {
-                    var ws = global.workspace_manager.get_active_workspace();
-                    var wins = ws.list_windows();
-                    if (wins.length > 0) {
-                        wins[0].activate(global.get_current_time());
-                        focusWindow = wins[0];
-                    }
-                }
-                if (!focusWindow) return 'NO_FOCUS';
-
-                const windowNode = findNodeByWindow(__root, focusWindow);
-                if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
-
-                // Layout is a string enum value (HSPLIT, VSPLIT, STACKED, TABBED)
-                return windowNode.parentNode.layout || 'UNKNOWN';
-            } catch(e) {
-                return 'ERROR';
-            }
-        })();
-        """
-        )
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getContainerLayout()")
 
     def is_window_floating(self, wm_class: str) -> bool:
         """
@@ -446,22 +355,10 @@ class ShellProxy:
         Returns:
             True if floating, False if tiled (or no matching tree node).
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'false'")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const node = findNodeByClass(__root, __wmClass);
-                if (!node) return 'false';
-                return node.mode === 'FLOAT' ? 'true' : 'false';
-            } catch(e) {
-                return 'false';
-            }
-        })();
-        """
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.isWindowFloating(%s)" % json.dumps(wm_class)
         )
-        result = self.eval(js)
         return result == "true"
 
     def is_focused_window_floating(self) -> bool:
@@ -472,23 +369,8 @@ class ShellProxy:
         This resolves the focused Meta.Window's own tree node and reads its mode —
         the right check after floating "the focused window".
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'false'")
-            + _TREE_WALKERS_JS
-            + """
-                const fw = global.display.get_focus_window();
-                if (!fw) return 'false';
-                const node = findNodeByWindow(__root, fw);
-                if (!node) return 'false';
-                return node.mode === 'FLOAT' ? 'true' : 'false';
-            } catch(e) {
-                return 'false';
-            }
-        })();
-        """
-        )
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.isFocusedWindowFloating()")
         return result == "true"
 
     def count_windows_of_class(self, wm_class: str) -> int:
@@ -526,28 +408,10 @@ class ShellProxy:
         across every match rather than first-match. A class-wide FloatClassToggle
         drives this to 0 for the toggled class; toggling again restores the count.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'-1'")
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                let tiled = 0;
-                function walk(node) {
-                    if (!node) return;
-                    const v = node.nodeValue;
-                    if (node.nodeType === 'WINDOW' && v && v.get_wm_class &&
-                        v.get_wm_class() === __wmClass && node.mode !== 'FLOAT') {
-                        tiled++;
-                    }
-                    for (const c of (node.childNodes || [])) walk(c);
-                }
-                walk(__root);
-                return String(tiled);
-            } catch(e) { return '-1'; }
-        })();
-        """
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.countTiledWindowsOfClass(%s)" % json.dumps(wm_class)
         )
-        result = self.eval(js)
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -906,28 +770,8 @@ class ShellProxy:
         Returns:
             Number of tiled windows.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'0'")
-            + """
-                function countWindows(node) {
-                    if (!node) return 0;
-                    if (node.nodeType === 'WINDOW') return 1;
-                    let count = 0;
-                    for (const child of (node.childNodes || [])) {
-                        count += countWindows(child);
-                    }
-                    return count;
-                }
-
-                return String(countWindows(__root));
-            } catch(e) {
-                return '0';
-            }
-        })();
-        """
-        )
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getWindowCount()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -1015,36 +859,10 @@ class ShellProxy:
             Dictionary with node info including nodeType, layout, parentLayout,
             siblingCount, and rect.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const windowNode = findNodeByClass(__root, __wmClass);
-                if (!windowNode) return JSON.stringify({error: 'Window not found in tree'});
-
-                const parent = windowNode.parentNode;
-                return JSON.stringify({
-                    nodeType: windowNode.nodeType,
-                    layout: windowNode.layout,
-                    parentNodeType: parent?.nodeType || null,
-                    parentLayout: parent?.layout || null,
-                    siblingCount: parent ? parent.childNodes.length : 0,
-                    rect: windowNode.rect ? {
-                        x: windowNode.rect.x,
-                        y: windowNode.rect.y,
-                        width: windowNode.rect.width,
-                        height: windowNode.rect.height
-                    } : null
-                });
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.getNodeForWindow(%s)" % json.dumps(wm_class)
         )
-        return self.eval(js)
 
     def get_parent_layout(self, wm_class: str) -> str:
         """
@@ -1056,23 +874,10 @@ class ShellProxy:
         Returns:
             Layout type string: 'HSPLIT', 'VSPLIT', 'STACKED', 'TABBED', or 'ERROR'.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'ERROR'")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const windowNode = findNodeByClass(__root, __wmClass);
-                if (!windowNode || !windowNode.parentNode) return 'NO_NODE';
-
-                return windowNode.parentNode.layout || 'UNKNOWN';
-            } catch(e) {
-                return 'ERROR';
-            }
-        })();
-        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.getParentLayout(%s)" % json.dumps(wm_class)
         )
-        return self.eval(js)
 
     def get_sibling_count(self, wm_class: str) -> int:
         """
@@ -1084,23 +889,10 @@ class ShellProxy:
         Returns:
             Number of siblings in the same parent container.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("'0'")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const windowNode = findNodeByClass(__root, __wmClass);
-                if (!windowNode || !windowNode.parentNode) return '0';
-
-                return String(windowNode.parentNode.childNodes.length);
-            } catch(e) {
-                return '0';
-            }
-        })();
-        """
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.getSiblingCount(%s)" % json.dumps(wm_class)
         )
-        result = self.eval(js)
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -1114,30 +906,8 @@ class ShellProxy:
             Dictionary with nested structure showing nodeType, layout,
             and children for each node in the tree.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + """
-                function serializeNode(node, depth = 0) {
-                    if (!node || depth > 10) return null;
-                    return {
-                        nodeType: node.nodeType,
-                        layout: node.layout,
-                        childCount: node.childNodes ? node.childNodes.length : 0,
-                        wmClass: node.nodeValue?.get_wm_class?.() || null,
-                        title: node.nodeValue?.title || null,
-                        children: node.childNodes ? node.childNodes.map(c => serializeNode(c, depth + 1)) : []
-                    };
-                }
-
-                return JSON.stringify(serializeNode(__root));
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
-        )
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getTreeStructure()")
 
     def get_focused_node_path(self) -> list:
         """
@@ -1146,33 +916,8 @@ class ShellProxy:
         Returns:
             List of node types/layouts from root to focused window.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + """
-                const focusWindow = global.display.get_focus_window();
-                if (!focusWindow) return JSON.stringify({error: 'No focused window'});
-
-                function findNodePath(node, metaWindow, path = []) {
-                    if (!node) return null;
-                    const currentPath = [...path, {nodeType: node.nodeType, layout: node.layout}];
-                    if (node.nodeValue === metaWindow) return currentPath;
-                    for (const child of (node.childNodes || [])) {
-                        const found = findNodePath(child, metaWindow, currentPath);
-                        if (found) return found;
-                    }
-                    return null;
-                }
-
-                const nodePath = findNodePath(__root, focusWindow);
-                return JSON.stringify(nodePath || []);
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
-        )
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getFocusedNodePath()")
 
     def get_window_siblings(self, wm_class: str) -> list:
         """
@@ -1184,35 +929,10 @@ class ShellProxy:
         Returns:
             List of sibling info with nodeType, wmClass, and rect.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                const windowNode = findNodeByClass(__root, __wmClass);
-                if (!windowNode || !windowNode.parentNode) return JSON.stringify([]);
-
-                const siblings = windowNode.parentNode.childNodes.map(sibling => ({
-                    nodeType: sibling.nodeType,
-                    wmClass: sibling.nodeValue?.get_wm_class?.() || null,
-                    rect: sibling.rect ? {
-                        x: sibling.rect.x,
-                        y: sibling.rect.y,
-                        width: sibling.rect.width,
-                        height: sibling.rect.height
-                    } : null,
-                    childCount: sibling.childNodes ? sibling.childNodes.length : 0
-                }));
-
-                return JSON.stringify(siblings);
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.getWindowSiblings(%s)" % json.dumps(wm_class)
         )
-        return self.eval(js)
 
     def verify_tree_integrity(self) -> dict:
         """
@@ -1221,43 +941,8 @@ class ShellProxy:
         Returns:
             Dictionary with 'valid' bool and any 'errors' list.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({valid: false, errors: ['Tree not available']})")
-            + """
-                const errors = [];
-                // Root's _parent is null (tree.js Node ctor), and the walk seeds
-                // parent:null, so the root's parentNode check is null===null (no
-                // spurious depth-0 error).
-                const stack = [{node: __root, parent: null, depth: 0}];
-
-                while (stack.length > 0) {
-                    const item = stack.pop();
-                    if (!item.node) continue;
-                    if (item.depth > 20) {
-                        errors.push('Tree depth exceeds 20 - possible cycle');
-                        continue;
-                    }
-                    if (item.node.parentNode !== item.parent) {
-                        errors.push('Node has incorrect parent reference at depth ' + item.depth);
-                    }
-                    const children = item.node.childNodes || [];
-                    for (let i = 0; i < children.length; i++) {
-                        stack.push({node: children[i], parent: item.node, depth: item.depth + 1});
-                    }
-                }
-
-                return JSON.stringify({
-                    valid: errors.length === 0,
-                    errors: errors
-                });
-            } catch(e) {
-                return JSON.stringify({valid: false, errors: [String(e)]});
-            }
-        })();
-        """
-        )
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.verifyTreeIntegrity()")
 
     # === Virtual Input Methods (Clutter) ===
     # These use Clutter's VirtualInputDevice API via Shell.Eval to simulate
@@ -1460,35 +1145,7 @@ class ShellProxy:
         Returns:
             Dictionary with directChildren and totalDescendants counts.
         """
-        js = (
-            "        (function() {\n            try {\n"
-            + _forge_root_js("JSON.stringify({error: 'Tree not available'})")
-            + _TREE_WALKERS_JS
-            + f"                const __wmClass = {json.dumps(wm_class)};\n"
-            + """
-                function countDescendants(node) {
-                    if (!node) return 0;
-                    let count = 0;
-                    for (const child of (node.childNodes || [])) {
-                        count += 1 + countDescendants(child);
-                    }
-                    return count;
-                }
-
-                const windowNode = findNodeByClass(__root, __wmClass);
-                if (!windowNode || !windowNode.parentNode) return JSON.stringify({error: 'Window or parent not found'});
-
-                const parent = windowNode.parentNode;
-                return JSON.stringify({
-                    directChildren: parent.childNodes.length,
-                    totalDescendants: countDescendants(parent),
-                    parentLayout: parent.layout,
-                    parentNodeType: parent.nodeType
-                });
-            } catch(e) {
-                return JSON.stringify({error: e.message});
-            }
-        })();
-        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.getContainerChildrenCount(%s)" % json.dumps(wm_class)
         )
-        return self.eval(js)
