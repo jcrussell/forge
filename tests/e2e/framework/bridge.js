@@ -17,9 +17,11 @@
 // sites stay byte-identical: object methods `return JSON.stringify(...)`, others return a bare
 // string ('ERROR'/'-1'/'false'/'NO_NODE'/...) or String(n).
 //
-// eslint-env: this is GJS, not Node/browser. `Main`, `global`, `imports`, `globalThis` are
-// gnome-shell Eval globals. See forge-mpt for adding a real GJS eslint env.
-/* global Main, globalThis */
+// eslint-env: this is GJS, not Node/browser. `Main`, `global`, `imports` and the GI namespaces
+// are gnome-shell Eval globals declared in eslint.config.js (forge-mpt). `Main` stays in the
+// inline directive below because it is the one bare-name Eval global that isn't a GI namespace;
+// `globalThis` is a JS built-in (no directive needed).
+/* global Main */
 
 (function () {
   if (globalThis._forgeTestBridge) return "ok"; // idempotency belt-and-suspenders (Python flag is primary guard)
