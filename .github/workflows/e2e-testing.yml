@@ -38,7 +38,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Read versions config
         id: set-matrix
@@ -62,10 +62,10 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -115,7 +115,7 @@ jobs:
             set-env.sh /app/scripts/run-tests.sh
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: e2e-results-fedora${{ matrix.fedora_version }}
@@ -123,7 +123,7 @@ jobs:
           retention-days: 14
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: e2e-screenshots-fedora${{ matrix.fedora_version }}
@@ -149,10 +149,10 @@ jobs:
       KB_TEST: test_focus_left_right
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -191,7 +191,7 @@ jobs:
             set-env.sh /app/scripts/run-tests.sh -k ${KB_TEST}
 
       - name: Upload keybinding-gate results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: e2e-keybinding-gate-results
@@ -221,10 +221,10 @@ jobs:
       MM_TEST: test_window_retiles_across_monitors
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -295,7 +295,7 @@ jobs:
           EOF
 
       - name: Upload multimonitor-gate results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: e2e-multimonitor-gate-results

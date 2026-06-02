@@ -40,7 +40,7 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
@@ -50,7 +50,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends gettext make zip
 
       - name: Set up Node.js ${{ matrix.node_version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node_version }}
           cache: 'npm'
