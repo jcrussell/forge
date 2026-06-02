@@ -103,8 +103,12 @@ def _check_shell_alive(shell_proxy):
 
 
 def pytest_runtest_makereport(item, call):
-    """Capture screenshot on test failure."""
-    if call.when == "call" and call.excinfo is not None:
+    """Capture screenshot on test failure (but not on skips)."""
+    if (
+        call.when == "call"
+        and call.excinfo is not None
+        and not call.excinfo.errisinstance(pytest.skip.Exception)
+    ):
         try:
             screenshot = ScreenshotCapture(str(SCREENSHOT_DIR))
             screenshot.capture_on_failure(item.name, call.excinfo.value)
