@@ -195,18 +195,9 @@ class ShellProxy:
 
     def is_forge_enabled(self) -> bool:
         """Check if Forge extension is enabled."""
-        js = """
-        (function() {
-            try {
-                const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
-                return ext && ext.state === 1;
-            } catch(e) {
-                return false;
-            }
-        })();
-        """
         try:
-            result = self.eval(js)
+            self._ensure_bridge()
+            result = self.eval("globalThis._forgeTestBridge.isForgeEnabled()")
             return result == "true" or result is True
         except ShellProxyError:
             return False
@@ -231,34 +222,8 @@ class ShellProxy:
         Returns:
             Dictionary with window info: title, wm_class, rect, node_type.
         """
-        js = """
-        (function() {
-            var focusWindow = global.display.get_focus_window();
-            if (!focusWindow) {
-                var ws = global.workspace_manager.get_active_workspace();
-                var windows = ws.list_windows();
-                if (windows.length > 0) {
-                    windows[0].activate(global.get_current_time());
-                    focusWindow = windows[0];
-                }
-            }
-            if (!focusWindow) return JSON.stringify({error: 'No focused window'});
-
-            const rect = focusWindow.get_frame_rect();
-            return JSON.stringify({
-                id: focusWindow.get_id(),
-                title: focusWindow.get_title(),
-                wmClass: focusWindow.get_wm_class(),
-                rect: {
-                    x: rect.x,
-                    y: rect.y,
-                    width: rect.width,
-                    height: rect.height
-                }
-            });
-        })();
-        """
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getFocusedWindow()")
 
     def get_windows(self) -> list:
         """
@@ -267,27 +232,8 @@ class ShellProxy:
         Returns:
             List of window dictionaries with title, wm_class, rect.
         """
-        js = """
-        (function() {
-            const workspace = global.workspace_manager.get_active_workspace();
-            const windows = workspace.list_windows();
-            return JSON.stringify(windows.map(w => {
-                const rect = w.get_frame_rect();
-                return {
-                    title: w.get_title(),
-                    wmClass: w.get_wm_class(),
-                    rect: {
-                        x: rect.x,
-                        y: rect.y,
-                        width: rect.width,
-                        height: rect.height
-                    },
-                    isFocused: w.has_focus()
-                };
-            }));
-        })();
-        """
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getWindows()")
 
     def get_workspace_rect(self) -> dict:
         """
@@ -296,20 +242,8 @@ class ShellProxy:
         Returns:
             Dictionary with x, y, width, height.
         """
-        js = """
-        (function() {
-            const workspace = global.workspace_manager.get_active_workspace();
-            const monitor = global.display.get_primary_monitor();
-            const workArea = workspace.get_work_area_for_monitor(monitor);
-            return JSON.stringify({
-                x: workArea.x,
-                y: workArea.y,
-                width: workArea.width,
-                height: workArea.height
-            });
-        })();
-        """
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getWorkspaceRect()")
 
     def get_forge_node_for_window(self, wm_class: str) -> dict:
         """
@@ -380,20 +314,10 @@ class ShellProxy:
         this counts EVERY window of the class — needed to reason about multiple
         same-class windows (forge-a34.2).
         """
-        js = Template("""
-        (function() {
-            try {
-                const ws = global.workspace_manager.get_active_workspace();
-                const wins = ws.list_windows();
-                let n = 0;
-                for (const w of wins) {
-                    if (w.get_wm_class() === ${wm_class}) n++;
-                }
-                return String(n);
-            } catch(e) { return '-1'; }
-        })();
-        """).substitute(wm_class=json.dumps(wm_class))
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.countWindowsOfClass(%s)" % json.dumps(wm_class)
+        )
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -419,25 +343,18 @@ class ShellProxy:
 
     def get_monitor_count(self) -> int:
         """Return the number of monitors GNOME sees (global.display.get_n_monitors())."""
-        js = "(function(){ try { return String(global.display.get_n_monitors()); } catch(e){ return '-1'; } })();"
+        self._ensure_bridge()
         try:
-            return int(self.eval(js))
+            return int(self.eval("globalThis._forgeTestBridge.getMonitorCount()"))
         except (ValueError, TypeError):
             return -1
 
     def move_focused_window_to_monitor(self, monitor_index: int) -> str:
         """Move the focused window to another monitor via Mutter (move_to_monitor)."""
-        js = Template("""
-        (function() {
-            try {
-                const w = global.display.get_focus_window();
-                if (!w) return 'NO_FOCUS';
-                w.move_to_monitor(${monitor_index});
-                return 'ok';
-            } catch(e) { return 'ERR ' + e; }
-        })();
-        """).substitute(monitor_index=int(monitor_index))
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.moveFocusedWindowToMonitor(%d)" % int(monitor_index)
+        )
 
     def count_maximized_windows(self) -> int:
         """Count maximized windows on the active workspace, per Mutter's own state.
@@ -447,23 +364,8 @@ class ShellProxy:
         a version-number module. This is the independent ground truth that Forge's
         compat.js maximize/unmaximize shims are validated against (forge-bc1).
         """
-        js = """
-        (function() {
-            try {
-                const Meta = imports.gi.Meta;
-                const ws = global.workspace_manager.get_active_workspace();
-                let n = 0;
-                for (const w of ws.list_windows()) {
-                    const maxed = (typeof w.is_maximized === 'function')
-                        ? w.is_maximized()
-                        : (w.get_maximized() === Meta.MaximizeFlags.BOTH);
-                    if (maxed) n++;
-                }
-                return String(n);
-            } catch(e) { return '-1'; }
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.countMaximizedWindows()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -475,16 +377,8 @@ class ShellProxy:
         Read from the live extension so it matches whatever XDG_CONFIG_HOME the
         gnome-shell process uses, rather than guessing the path test-side.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '';
-                return forge.stateObj.configMgr.confDir;
-            } catch(e) { return ''; }
-        })();
-        """
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getConfigDir()")
 
     def get_wm_override_classes(self) -> list:
         """Return wmClass values from the WM's CACHED window overrides.
@@ -495,18 +389,8 @@ class ShellProxy:
         reads configMgr.windowProps and re-parses windows.json every access), so
         it's the right probe for "did config reload re-read the file?".
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj || !forge.stateObj.extWm) return '[]';
-                const wp = forge.stateObj.extWm.windowProps;
-                const ov = (wp && wp.overrides) ? wp.overrides : [];
-                return JSON.stringify(ov.map(o => o.wmClass));
-            } catch(e) { return '[]'; }
-        })();
-        """
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getWmOverrideClasses()")
 
     def get_float_overrides(self) -> list:
         """Return the live window-property overrides array from the extension.
@@ -518,18 +402,8 @@ class ShellProxy:
         windows.json ships ~40 default overrides, so callers MUST scope
         assertions to a specific wm_class, never to the total count.
         """
-        js = """
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '[]';
-                const props = forge.stateObj.configMgr.windowProps;
-                const overrides = (props && props.overrides) ? props.overrides : [];
-                return JSON.stringify(overrides);
-            } catch(e) { return '[]'; }
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getFloatOverrides()")
         return result if isinstance(result, list) else []
 
     def remove_class_float_override(self, wm_class: str) -> int:
@@ -542,24 +416,10 @@ class ShellProxy:
         fails mid-run would leak a persistent float into every later test.
         Returns the number of overrides removed.
         """
-        js = Template("""
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj || !forge.stateObj.configMgr) return '0';
-                const cfg = forge.stateObj.configMgr;
-                const props = cfg.windowProps;
-                const all = (props && props.overrides) ? props.overrides : [];
-                const before = all.length;
-                props.overrides = all.filter(o => !(
-                    o.wmClass === ${wm_class} && !o.wmId && !o.wmTitle && o.mode === 'float'
-                ));
-                cfg.windowProps = props;
-                return String(before - props.overrides.length);
-            } catch(e) { return '0'; }
-        })();
-        """).substitute(wm_class=json.dumps(wm_class))
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.removeClassFloatOverride(%s)" % json.dumps(wm_class)
+        )
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -572,18 +432,8 @@ class ShellProxy:
         Returns:
             Number of windows that were closed.
         """
-        js = """
-        (function() {
-            var ws = global.workspace_manager.get_active_workspace();
-            var windows = ws.list_windows();
-            var count = windows.length;
-            windows.forEach(function(w) {
-                w.delete(global.get_current_time());
-            });
-            return count;
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.closeAllWindows()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -596,16 +446,8 @@ class ShellProxy:
         Returns:
             Number of remaining windows after closing.
         """
-        js = """
-        (function() {
-            var ws = global.workspace_manager.get_active_workspace();
-            var windows = ws.list_windows();
-            if (windows.length === 0) return '0';
-            windows[0].delete(global.get_current_time());
-            return String(windows.length - 1);
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.closeOneWindow()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -621,17 +463,8 @@ class ShellProxy:
         Returns:
             True if a window is now focused, False if no windows available.
         """
-        js = """
-        (function() {
-            if (global.display.get_focus_window()) return 'already_focused';
-            var ws = global.workspace_manager.get_active_workspace();
-            var windows = ws.list_windows();
-            if (windows.length === 0) return 'no_windows';
-            windows[0].activate(global.get_current_time());
-            return 'activated';
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.ensureFocus()")
         return result in ("already_focused", "activated")
 
     def invoke_forge_action(
@@ -668,63 +501,11 @@ class ShellProxy:
         action_json = json.dumps(action)
         focus_hint_js = json.dumps(focus_window) if focus_window else "null"
         also_activate_js = "true" if also_activate else "false"
-        js = Template("""
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return 'Error: Forge not loaded';
-                const ext = forge.stateObj;
-                if (!ext.extWm) return 'Error: extWm not available';
-
-                const ws = global.workspace_manager.get_active_workspace();
-                const wins = ws.list_windows();
-                const origFn = global.display.get_focus_window;
-                let focusMethod = 'natural';
-                const hint = ${focus_hint};
-
-                // Override focus when an explicit hint is given (deterministic target
-                // regardless of X11/Wayland natural-focus differences), or when natural
-                // focus is null (Xvfb loses focus after synthetic input). Without a hint,
-                // the historical null-only behavior is preserved.
-                if ((hint || !origFn.call(global.display)) && wins.length > 0) {
-                    let targetWin = wins[0];
-                    if (hint === 'leftmost') {
-                        targetWin = wins.reduce((best, w) =>
-                            w.get_frame_rect().x < best.get_frame_rect().x ? w : best, wins[0]);
-                    } else if (hint === 'rightmost') {
-                        targetWin = wins.reduce((best, w) =>
-                            w.get_frame_rect().x > best.get_frame_rect().x ? w : best, wins[0]);
-                    } else if (hint === 'topmost') {
-                        targetWin = wins.reduce((best, w) =>
-                            w.get_frame_rect().y < best.get_frame_rect().y ? w : best, wins[0]);
-                    } else if (hint === 'bottommost') {
-                        targetWin = wins.reduce((best, w) =>
-                            w.get_frame_rect().y > best.get_frame_rect().y ? w : best, wins[0]);
-                    }
-                    global.display.get_focus_window = function() { return targetWin; };
-                    focusMethod = hint ? 'hint_override' : 'display_override';
-                    // Genuinely focus the target so async finalizers (resize tree
-                    // split-ratio update via 'size-changed') see it as the real
-                    // focus after the override is restored below (forge-2n0).
-                    if (${also_activate}) {
-                        try { targetWin.focus(global.get_current_time()); } catch(e) {}
-                    }
-                }
-
-                try {
-                    ext.extWm.command(${action});
-                    return 'OK_' + focusMethod;
-                } finally {
-                    global.display.get_focus_window = origFn;
-                }
-            } catch(e) {
-                return 'Error: ' + e.message;
-            }
-        })();
-        """).substitute(
-            focus_hint=focus_hint_js, also_activate=also_activate_js, action=action_json
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.invokeForgeAction(%s, %s, %s)"
+            % (action_json, focus_hint_js, also_activate_js)
         )
-        result = self.eval(js)
         if isinstance(result, str) and result.startswith("Error:"):
             raise ShellProxyError(
                 f"invoke_forge_action({action.get('name', action)}): {result}"
@@ -743,25 +524,10 @@ class ShellProxy:
         Returns:
             Result string.
         """
-        js = Template("""
-        (function() {
-            try {
-                const wsMgr = global.workspace_manager;
-                const ws = wsMgr.get_active_workspace();
-                const windows = ws.list_windows();
-                if (windows.length === 0) return 'No windows';
-                // Ensure target workspace exists
-                while (wsMgr.get_n_workspaces() <= ${ws_index}) {
-                    wsMgr.append_new_workspace(false, global.get_current_time());
-                }
-                windows[0].change_workspace_by_index(${ws_index}, false);
-                return 'OK';
-            } catch(e) {
-                return 'Error: ' + e.message;
-            }
-        })();
-        """).substitute(ws_index=int(ws_index))
-        return self.eval(js)
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.moveWindowToWorkspace(%d)" % int(ws_index)
+        )
 
     def get_window_count(self) -> int:
         """
@@ -786,12 +552,8 @@ class ShellProxy:
         Returns:
             Zero-based workspace index.
         """
-        js = """
-        (function() {
-            return String(global.workspace_manager.get_active_workspace_index());
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getActiveWorkspaceIndex()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -804,12 +566,8 @@ class ShellProxy:
         Returns:
             Number of workspaces.
         """
-        js = """
-        (function() {
-            return String(global.workspace_manager.get_n_workspaces());
-        })();
-        """
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getWorkspaceCount()")
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -825,25 +583,10 @@ class ShellProxy:
         Returns:
             True if tiling is skipped for this workspace.
         """
-        js = Template("""
-        (function() {
-            try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
-                if (!forge || !forge.stateObj) return 'false';
-                const ext = forge.stateObj;
-                const skipStr = ext.settings.get_string('workspace-skip-tile');
-                if (!skipStr) return 'false';
-                const indices = skipStr.split(',');
-                for (let i = 0; i < indices.length; i++) {
-                    if (indices[i].trim() === String(${ws_index})) return 'true';
-                }
-                return 'false';
-            } catch(e) {
-                return 'false';
-            }
-        })();
-        """).substitute(ws_index=int(ws_index))
-        result = self.eval(js)
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.isWorkspaceTilingSkipped(%d)" % int(ws_index)
+        )
         return result == "true" or result is True
 
     # === Tree Query Methods for Regression Test Validation ===

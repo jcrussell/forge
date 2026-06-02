@@ -26,6 +26,12 @@
 
   const FORGE_UUID = "forge@jmmaranan.com";
 
+  // Resolve GI namespaces ONCE at install time and capture them in the method closures.
+  // imports.gi.* works in the Eval scope; capturing here avoids re-importing per call and
+  // sidesteps any question of imports.* reachability from a later eval (Phase 0 only verified
+  // bare `Main`). Only count_maximized_windows needs Meta (MaximizeFlags fallback).
+  const Meta = imports.gi.Meta;
+
   // --- Forge root resolution (absorbs _forge_root_js) -----------------------------------------
   // `class Tree extends Node` and its ctor calls super(NODE_TYPES.ROOT, ...) (lib/extension/
   // tree.js), so the Tree instance IS the root node — there is no `.root` property (forge-g14).
@@ -38,6 +44,13 @@
     const ext = forge.stateObj;
     if (!ext.extWm || !ext.extWm.tree) return null;
     return ext.extWm.tree;
+  }
+
+  // Forge's stateObj (the extension's runtime state), or null if Forge isn't loaded. Used by
+  // the non-tree methods that read configMgr / settings / extWm.windowProps rather than the tree.
+  function forgeExt() {
+    const forge = Main.extensionManager.lookup(FORGE_UUID);
+    return forge && forge.stateObj ? forge.stateObj : null;
   }
 
   // --- Rect projection (absorbs the ~8 {x,y,width,height} copies) ------------------------------
@@ -392,6 +405,305 @@
         });
       } catch (e) {
         return JSON.stringify({ error: e.message });
+      }
+    },
+    // === Non-tree query + action methods (widen). Use global.*/forgeExt()/Meta, not the
+    // tree. Each byte-identical to its old inline body, including the absence of a try/catch
+    // where the original had none. ===
+
+    // was is_forge_enabled (returns the raw extension's state, not stateObj)
+    isForgeEnabled() {
+      try {
+        const ext = Main.extensionManager.lookup(FORGE_UUID);
+        return ext && ext.state === 1;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // was get_focused_window (auto-activates first window if none focused; no try/catch)
+    getFocusedWindow() {
+      let focusWindow = global.display.get_focus_window();
+      if (!focusWindow) {
+        const ws = global.workspace_manager.get_active_workspace();
+        const windows = ws.list_windows();
+        if (windows.length > 0) {
+          windows[0].activate(global.get_current_time());
+          focusWindow = windows[0];
+        }
+      }
+      if (!focusWindow) return JSON.stringify({ error: "No focused window" });
+      return JSON.stringify({
+        id: focusWindow.get_id(),
+        title: focusWindow.get_title(),
+        wmClass: focusWindow.get_wm_class(),
+        rect: rect(focusWindow.get_frame_rect()),
+      });
+    },
+
+    // was get_windows (no try/catch)
+    getWindows() {
+      const workspace = global.workspace_manager.get_active_workspace();
+      const windows = workspace.list_windows();
+      return JSON.stringify(
+        windows.map((w) => ({
+          title: w.get_title(),
+          wmClass: w.get_wm_class(),
+          rect: rect(w.get_frame_rect()),
+          isFocused: w.has_focus(),
+        }))
+      );
+    },
+
+    // was get_workspace_rect (no try/catch)
+    getWorkspaceRect() {
+      const workspace = global.workspace_manager.get_active_workspace();
+      const monitor = global.display.get_primary_monitor();
+      return JSON.stringify(rect(workspace.get_work_area_for_monitor(monitor)));
+    },
+
+    // was count_windows_of_class (workspace list_windows, NOT the tree)
+    countWindowsOfClass(wmClass) {
+      try {
+        const ws = global.workspace_manager.get_active_workspace();
+        const wins = ws.list_windows();
+        let n = 0;
+        for (const w of wins) {
+          if (w.get_wm_class() === wmClass) n++;
+        }
+        return String(n);
+      } catch (e) {
+        return "-1";
+      }
+    },
+
+    // was get_monitor_count
+    getMonitorCount() {
+      try {
+        return String(global.display.get_n_monitors());
+      } catch (e) {
+        return "-1";
+      }
+    },
+
+    // was move_focused_window_to_monitor
+    moveFocusedWindowToMonitor(monitorIndex) {
+      try {
+        const w = global.display.get_focus_window();
+        if (!w) return "NO_FOCUS";
+        w.move_to_monitor(monitorIndex);
+        return "ok";
+      } catch (e) {
+        return "ERR " + e;
+      }
+    },
+
+    // was count_maximized_windows (Mutter ground truth; is_maximized() on 49+, else
+    // get_maximized() === Meta.MaximizeFlags.BOTH)
+    countMaximizedWindows() {
+      try {
+        const ws = global.workspace_manager.get_active_workspace();
+        let n = 0;
+        for (const w of ws.list_windows()) {
+          const maxed =
+            typeof w.is_maximized === "function"
+              ? w.is_maximized()
+              : w.get_maximized() === Meta.MaximizeFlags.BOTH;
+          if (maxed) n++;
+        }
+        return String(n);
+      } catch (e) {
+        return "-1";
+      }
+    },
+
+    // was get_config_dir
+    getConfigDir() {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.configMgr) return "";
+        return ext.configMgr.confDir;
+      } catch (e) {
+        return "";
+      }
+    },
+
+    // was get_wm_override_classes (extWm.windowProps cached overrides)
+    getWmOverrideClasses() {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.extWm) return "[]";
+        const wp = ext.extWm.windowProps;
+        const ov = wp && wp.overrides ? wp.overrides : [];
+        return JSON.stringify(ov.map((o) => o.wmClass));
+      } catch (e) {
+        return "[]";
+      }
+    },
+
+    // was get_float_overrides (configMgr.windowProps, re-parsed each access)
+    getFloatOverrides() {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.configMgr) return "[]";
+        const props = ext.configMgr.windowProps;
+        const overrides = props && props.overrides ? props.overrides : [];
+        return JSON.stringify(overrides);
+      } catch (e) {
+        return "[]";
+      }
+    },
+
+    // was remove_class_float_override (returns count removed)
+    removeClassFloatOverride(wmClass) {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.configMgr) return "0";
+        const cfg = ext.configMgr;
+        const props = cfg.windowProps;
+        const all = props && props.overrides ? props.overrides : [];
+        const before = all.length;
+        props.overrides = all.filter(
+          (o) => !(o.wmClass === wmClass && !o.wmId && !o.wmTitle && o.mode === "float")
+        );
+        cfg.windowProps = props;
+        return String(before - props.overrides.length);
+      } catch (e) {
+        return "0";
+      }
+    },
+
+    // was close_all_windows (returns the count closed as a number; no try/catch)
+    closeAllWindows() {
+      const ws = global.workspace_manager.get_active_workspace();
+      const windows = ws.list_windows();
+      const count = windows.length;
+      windows.forEach((w) => {
+        w.delete(global.get_current_time());
+      });
+      return count;
+    },
+
+    // was close_one_window (returns remaining count; no try/catch)
+    closeOneWindow() {
+      const ws = global.workspace_manager.get_active_workspace();
+      const windows = ws.list_windows();
+      if (windows.length === 0) return "0";
+      windows[0].delete(global.get_current_time());
+      return String(windows.length - 1);
+    },
+
+    // was ensure_focus (no try/catch)
+    ensureFocus() {
+      if (global.display.get_focus_window()) return "already_focused";
+      const ws = global.workspace_manager.get_active_workspace();
+      const windows = ws.list_windows();
+      if (windows.length === 0) return "no_windows";
+      windows[0].activate(global.get_current_time());
+      return "activated";
+    },
+
+    // was invoke_forge_action — ext.extWm.command(action) with a temporary focus override
+    // (and optional genuine focus). action is a plain object; focusHint is a string or null;
+    // alsoActivate is a bool. See shell_proxy.invoke_forge_action for the forge-2n0 rationale.
+    invokeForgeAction(action, focusHint, alsoActivate) {
+      try {
+        const ext = forgeExt();
+        if (!ext) return "Error: Forge not loaded";
+        if (!ext.extWm) return "Error: extWm not available";
+
+        const ws = global.workspace_manager.get_active_workspace();
+        const wins = ws.list_windows();
+        const origFn = global.display.get_focus_window;
+        let focusMethod = "natural";
+        const hint = focusHint;
+
+        if ((hint || !origFn.call(global.display)) && wins.length > 0) {
+          let targetWin = wins[0];
+          if (hint === "leftmost") {
+            targetWin = wins.reduce(
+              (best, w) => (w.get_frame_rect().x < best.get_frame_rect().x ? w : best),
+              wins[0]
+            );
+          } else if (hint === "rightmost") {
+            targetWin = wins.reduce(
+              (best, w) => (w.get_frame_rect().x > best.get_frame_rect().x ? w : best),
+              wins[0]
+            );
+          } else if (hint === "topmost") {
+            targetWin = wins.reduce(
+              (best, w) => (w.get_frame_rect().y < best.get_frame_rect().y ? w : best),
+              wins[0]
+            );
+          } else if (hint === "bottommost") {
+            targetWin = wins.reduce(
+              (best, w) => (w.get_frame_rect().y > best.get_frame_rect().y ? w : best),
+              wins[0]
+            );
+          }
+          global.display.get_focus_window = function () {
+            return targetWin;
+          };
+          focusMethod = hint ? "hint_override" : "display_override";
+          if (alsoActivate) {
+            try {
+              targetWin.focus(global.get_current_time());
+            } catch (e) {}
+          }
+        }
+
+        try {
+          ext.extWm.command(action);
+          return "OK_" + focusMethod;
+        } finally {
+          global.display.get_focus_window = origFn;
+        }
+      } catch (e) {
+        return "Error: " + e.message;
+      }
+    },
+
+    // was move_window_to_workspace (creates the target workspace if needed)
+    moveWindowToWorkspace(wsIndex) {
+      try {
+        const wsMgr = global.workspace_manager;
+        const ws = wsMgr.get_active_workspace();
+        const windows = ws.list_windows();
+        if (windows.length === 0) return "No windows";
+        while (wsMgr.get_n_workspaces() <= wsIndex) {
+          wsMgr.append_new_workspace(false, global.get_current_time());
+        }
+        windows[0].change_workspace_by_index(wsIndex, false);
+        return "OK";
+      } catch (e) {
+        return "Error: " + e.message;
+      }
+    },
+
+    // was get_active_workspace_index (no try/catch)
+    getActiveWorkspaceIndex() {
+      return String(global.workspace_manager.get_active_workspace_index());
+    },
+
+    // was get_workspace_count (no try/catch)
+    getWorkspaceCount() {
+      return String(global.workspace_manager.get_n_workspaces());
+    },
+
+    // was is_workspace_tiling_skipped (reads the 'workspace-skip-tile' setting CSV)
+    isWorkspaceTilingSkipped(wsIndex) {
+      try {
+        const ext = forgeExt();
+        if (!ext) return "false";
+        const skipStr = ext.settings.get_string("workspace-skip-tile");
+        if (!skipStr) return "false";
+        const indices = skipStr.split(",");
+        for (let i = 0; i < indices.length; i++) {
+          if (indices[i].trim() === String(wsIndex)) return "true";
+        }
+        return "false";
+      } catch (e) {
+        return "false";
       }
     },
   };
