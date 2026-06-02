@@ -198,13 +198,121 @@ jobs:
           path: e2e-results/
           retention-days: 14
 
+  # Multi-monitor lane (forge-wrt). test_window_retiles_across_monitors self-skips
+  # unless global.display.get_n_monitors() >= 2, which needs a 2nd --virtual-monitor
+  # at session boot (FORGE_E2E_VIRTUAL_MONITORS=2, read in start-user-session.sh).
+  # The default matrix never sets it, so multi-monitor tiling had zero CI signal.
+  # Headless dual-monitor is Wayland-only (gnome-shell --headless --wayland accepts
+  # two --virtual-monitor flags); X11/Xvfb lanes (F<=42) cannot fake a 2nd output, so
+  # this lane is pinned to F43 (GNOME 49, stable headless Wayland). Modeled on
+  # e2e-keybinding-gate. Decision: a dedicated job (not a {monitors:[1,2]} matrix
+  # dimension) keeps the default 6-version lane fast and unchanged.
+  #
+  # NOTE: this is NOT yet wired into e2e-summary's blocking failure ladder — a
+  # skipped/failed run here surfaces as a red job but does not block merge until it
+  # proves reliable over several consecutive CI runs (mirrors the caution the
+  # keybinding gate took before it gated). Promote it in e2e-summary once green.
+  e2e-multimonitor-gate:
+    needs: setup
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      MM_FEDORA_VERSION: 43
+      MM_TEST: test_window_retiles_across_monitors
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies and build extension
+        run: |
+          npm ci
+          make build
+
+      - name: Build E2E container
+        run: |
+          docker build -f docker/Dockerfile.e2e \
+            -t forge-e2e-fedora${MM_FEDORA_VERSION} \
+            --build-arg FEDORA_VERSION=${MM_FEDORA_VERSION} \
+            --build-arg GIT_SHA=${{ github.sha }} \
+            .
+
+      - name: Run multi-monitor test (gating)
+        run: |
+          mkdir -p e2e-results
+          POD=$(docker run --rm -td \
+            --privileged \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -e container=docker \
+            -v $(pwd)/e2e-results:/app/e2e-results \
+            forge-e2e-fedora${MM_FEDORA_VERSION})
+          trap "docker stop $POD 2>/dev/null || true" EXIT
+          sleep 3
+          # FORGE_E2E_VIRTUAL_MONITORS=2 MUST go on the session-boot exec — it is read
+          # at boot in start-user-session.sh to add a 2nd --virtual-monitor. (Unlike
+          # DISPATCH_MODE in the keybinding lane, which goes on the run-tests exec.)
+          docker exec -e FORGE_E2E_VIRTUAL_MONITORS=2 $POD /usr/local/bin/start-user-session.sh 99
+          docker exec $POD chown -R gnomeshell:gnomeshell /app/e2e-results
+          # -k isolates the single multimonitor test; -rs reports skip reasons.
+          docker exec --user gnomeshell -e DISPLAY=:99 $POD \
+            set-env.sh /app/scripts/run-tests.sh -k ${MM_TEST} -rs
+
+      - name: Assert the multi-monitor test actually ran (not skipped)
+        run: |
+          # A skipped test exits 0, so the run step alone would pass GREEN while
+          # exercising nothing — e.g. if F43 came up X11 single-screen and the test
+          # self-skipped on get_monitor_count() < 2. Parse junit.xml and fail unless
+          # exactly one test passed with zero skips. This makes the gate non-vacuous.
+          python3 - "$PWD/e2e-results/junit.xml" <<'EOF'
+          import sys, xml.etree.ElementTree as ET
+          path = sys.argv[1]
+          try:
+              root = ET.parse(path).getroot()
+          except Exception as e:
+              sys.exit(f"::error::Could not read junit.xml ({e}); the test run produced no results.")
+          # junit.xml root is <testsuites> or <testsuite>; aggregate either way.
+          suites = root.findall("testsuite") or [root]
+          tests = sum(int(s.get("tests", 0)) for s in suites)
+          skipped = sum(int(s.get("skipped", 0)) for s in suites)
+          failures = sum(int(s.get("failures", 0)) for s in suites)
+          errors = sum(int(s.get("errors", 0)) for s in suites)
+          print(f"tests={tests} skipped={skipped} failures={failures} errors={errors}")
+          if tests == 0:
+              sys.exit("::error::Multi-monitor test was not collected — check the -k filter.")
+          if skipped:
+              sys.exit("::error::Multi-monitor test SKIPPED (needs 2 monitors). Did F43 boot "
+                       "Wayland-headless with FORGE_E2E_VIRTUAL_MONITORS=2? A skip here means the "
+                       "lane exercised nothing.")
+          if failures or errors:
+              sys.exit("::error::Multi-monitor test failed.")
+          print("Multi-monitor test ran and passed.")
+          EOF
+
+      - name: Upload multimonitor-gate results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-multimonitor-gate-results
+          path: e2e-results/
+          retention-days: 14
+
   e2e-summary:
-    needs: [setup, e2e-tests, e2e-keybinding-gate]
+    needs: [setup, e2e-tests, e2e-keybinding-gate, e2e-multimonitor-gate]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check E2E test results
         run: |
+          # NOTE: e2e-multimonitor-gate (forge-wrt) is intentionally NOT in the
+          # blocking branches below — while it stabilizes in CI a failure surfaces
+          # as a non-blocking warning here (and as a red job). Promote it to a
+          # blocking `elif ... == "failure"` -> exit 1 once it shows several green runs.
           if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
             echo "::error::Some E2E tests failed"
             exit 1
@@ -215,5 +323,8 @@ jobs:
             echo "::warning::E2E tests were cancelled"
             exit 0
           else
+            if [ "${{ needs.e2e-multimonitor-gate.result }}" == "failure" ]; then
+              echo "::warning::Multi-monitor gate failed (non-blocking while stabilizing)"
+            fi
             echo "All E2E tests passed!"
           fi
