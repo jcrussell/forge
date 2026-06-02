@@ -22,6 +22,28 @@ from framework.wait import wait_for_layout, wait_for_window_count
 from framework.workflow import step
 
 
+def _layout_node_child_count(shell_proxy, layout):
+    """Child count of the first container with the given layout (STACKED/TABBED), else -1.
+
+    Used to confirm a genuine MULTI-child stacked/tabbed container was built before asserting
+    cross-sibling focus nav — otherwise the test could silently regress to the single-item
+    container case (which has no sibling to move to) and pass vacuously.
+    """
+
+    def walk(node):
+        if not isinstance(node, dict):
+            return -1
+        if node.get("layout") == layout:
+            return len(node.get("children") or [])
+        for child in node.get("children") or []:
+            found = walk(child)
+            if found >= 0:
+                return found
+        return -1
+
+    return walk(shell_proxy.get_forge_tree())
+
+
 @pytest.fixture(autouse=True)
 def _enable_stacked_tabbed_modes(restore_settings):
     """Enable stacked + tabbed tiling for this module.
@@ -108,3 +130,60 @@ class TestWorkflowStacked:
         with step(shell_proxy, "toggle back to split -> count stable at 2"):
             input_sim.toggle_layout()
             assert len(shell_proxy.get_windows()) == 2
+
+    def test_multi_window_stack_focus_moves(
+        self, shell_proxy, input_sim, window_helper, dispatch_mode, launch_window, three_windows
+    ):
+        """Focus must move BETWEEN siblings in a genuine multi-window stacked/tabbed container.
+
+        The sibling test above exercises only the single-item container Forge builds when you
+        toggle stacked/tabbed on a flat monitor (it wraps just the focused window — by design).
+        This builds a real >=2-child stack to cover cross-sibling navigation: toggling stacked
+        points tree.attachNode at the new container (command.js LayoutStackedToggle), so a window
+        launched AFTER the toggle attaches INTO it, yielding multiple siblings (verified spike).
+
+        Determinism: stacked/tabbed siblings share one rect, so geometric focus is ambiguous.
+        STACKED is a vertical stack -> focus_up walks its child order (focus_down is a no-op);
+        TABBED lays tabs horizontally -> focus_left/right walk the tabs (focus_up/down are no-ops)
+        (both verified by spike). Each assert first confirms the multi-child container exists, so
+        a regression to single-item fails loudly instead of passing vacuously.
+        """
+        with step(shell_proxy, "build a 2-window STACKED container"):
+            wait_for_window_count(shell_proxy, 3)
+            input_sim.toggle_stacked()  # wraps focused window in a single-item STACKED CON
+            wait_for_layout(shell_proxy, "STACKED")
+            launch_window()  # attaches into that CON via tree.attachNode -> 2 siblings
+            wait_for_window_count(shell_proxy, 4)
+            shell_proxy.wait_for_idle()
+            assert _layout_node_child_count(shell_proxy, "STACKED") >= 2, (
+                "expected a multi-child STACKED container to drive sibling focus nav"
+            )
+
+        with step(shell_proxy, "focus moves between STACKED siblings, layout stays STACKED"):
+            if dispatch_mode != "dbus":
+                # Synthetic super-modifier nav is unreliable under Mutter's VirtualInputDevice
+                # (forge-er8); keep the weaker "still focused & contained" check there.
+                input_sim.focus_up()
+                assert isinstance(window_helper.get_focused_id(), int)
+                assert shell_proxy.get_container_layout() == "STACKED"
+            else:
+                before = window_helper.get_focused_id()
+                input_sim.focus_up()
+                window_helper.assert_focus_moved(before)  # moved to the stacked sibling
+                assert shell_proxy.get_container_layout() == "STACKED"
+
+        with step(shell_proxy, "same container -> TABBED, focus still moves between siblings"):
+            input_sim.toggle_tabbed()  # parent is the CON now (not the monitor) -> just relayouts
+            wait_for_layout(shell_proxy, "TABBED")
+            assert _layout_node_child_count(shell_proxy, "TABBED") >= 2, (
+                "expected the multi-child container to carry over into TABBED"
+            )
+            if dispatch_mode != "dbus":
+                input_sim.focus_left()
+                assert isinstance(window_helper.get_focused_id(), int)
+                assert shell_proxy.get_container_layout() == "TABBED"
+            else:
+                before = window_helper.get_focused_id()
+                input_sim.focus_left()  # tabs are horizontal -> move to the adjacent tab
+                window_helper.assert_focus_moved(before)  # moved to the tabbed sibling
+                assert shell_proxy.get_container_layout() == "TABBED"
