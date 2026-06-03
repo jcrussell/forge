@@ -7,6 +7,7 @@ Tests vim-style focus navigation with Super+h/j/k/l keys.
 import pytest
 
 from framework.constants import Timing
+from framework.wait import wait_for_layout
 
 
 class TestFocusNavigation:
@@ -66,26 +67,40 @@ class TestFocusNavigation:
     ):
         """Super+j and Super+k should move focus between vertically-split windows.
 
-        Same seed-then-interior-move pattern as test_focus_left_right (forge-gwo):
-        Focus Up lands on the topmost window, so the following Down/Up moves must
-        change the focused window.
+        Focus-nav is structural (tree.next matches the move direction against the
+        parent container's layout orientation), so the load-bearing precondition is
+        a DETERMINISTIC focus seed: which window Mutter leaves focused after the
+        toggle's renderTree varies by GNOME version (forge-fjs), and seeding via an
+        action (focus_up) inherited that nondeterminism — it failed on GNOME 46
+        because the seed didn't land on the top window, so the next move was an edge
+        no-op. Pin the last sibling instead; wait_for_layout is the settle.
         """
-        # Toggle to vertical split (top/bottom)
         input_sim.toggle_layout()
-
-        input_sim.focus_up()  # seed: land on the topmost window
+        wait_for_layout(shell_proxy, "VSPLIT")  # the HSPLIT->VSPLIT toggle settled
 
         if dispatch_mode != "dbus":
+            # Synthetic super+j/k is unreliable under Mutter's VirtualInputDevice
+            # (forge-er8); the keybinding gate lane only checks the keypress->Forge
+            # path survives, not focus correctness. Keep the weaker check there.
+            input_sim.focus_up()
             assert isinstance(window_helper.get_focused_id(), int)
             input_sim.focus_down()
             assert isinstance(window_helper.get_focused_id(), int)
             return
 
-        top_id = window_helper.get_focused_id()
-        input_sim.focus_down()  # interior move from the top edge -> must change
-        bottom_id = window_helper.assert_focus_moved(top_id)
-        input_sim.focus_up()  # back toward the top edge -> must change
-        window_helper.assert_focus_moved(bottom_id)
+        # Pin focus to the last sibling (bottom of the VSPLIT) so an interior move
+        # MUST change the focused window, independent of the post-toggle focus.
+        pinned = shell_proxy.activate_last_sibling_of("VSPLIT")
+        assert "id" in pinned, f"could not pin focus inside the VSPLIT container: {pinned!r}"
+        shell_proxy.wait_for_idle()
+        assert shell_proxy.get_container_layout() == "VSPLIT"
+        before = window_helper.get_focused_id()
+        assert before == pinned["id"], f"pin did not take: focused {before}, expected {pinned['id']}"
+
+        input_sim.focus_up()  # toward the previous sibling -> must move
+        top_id = window_helper.assert_focus_moved(before)
+        input_sim.focus_down()  # back toward the last sibling -> must move
+        window_helper.assert_focus_moved(top_id)
 
     def test_focus_cycles_through_windows(self, shell_proxy, input_sim, three_windows):
         """Focus should cycle through all windows."""
