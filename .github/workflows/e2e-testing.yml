@@ -209,10 +209,8 @@ jobs:
   # Decision: a dedicated job (not a {monitors:[1,2]} dimension on the default lane)
   # keeps the default 6-version lane fast and unchanged.
   #
-  # NOTE: this is NOT yet wired into e2e-summary's blocking failure ladder — a
-  # skipped/failed run here surfaces as a red job but does not block merge. Promote it
-  # in e2e-summary to a blocking failure only after several consecutive green runs on
-  # BOTH F43 and F44 (forge-1zn part 1; mirrors the caution the keybinding gate took).
+  # NOTE: this IS wired into e2e-summary's blocking failure ladder (forge-1zn part 1) —
+  # a failure on either the F43 or F44 leg blocks the merge, same as the keybinding gate.
   e2e-multimonitor-gate:
     needs: setup
     if: github.event.pull_request.draft == false
@@ -314,24 +312,22 @@ jobs:
     steps:
       - name: Check E2E test results
         run: |
-          # NOTE: e2e-multimonitor-gate (forge-wrt) is intentionally NOT in the
-          # blocking branches below — while it stabilizes in CI a failure surfaces
-          # as a non-blocking warning here (and as a red job). The matrix result is
-          # `failure` if EITHER the F43 or the (newer, unproven) F44 leg fails, so
-          # promote it to a blocking `elif ... == "failure"` -> exit 1 only after
-          # several consecutive green runs on BOTH F43 and F44 (forge-1zn part 1).
+          # e2e-multimonitor-gate (forge-wrt/forge-1zn) is now BLOCKING: a failure on
+          # either the F43 or F44 leg (the matrix result is `failure` if either fails)
+          # gates the merge, same as the keybinding gate. Promoted after it ran green
+          # on both legs (forge-1zn part 1).
           if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
             echo "::error::Some E2E tests failed"
             exit 1
           elif [ "${{ needs.e2e-keybinding-gate.result }}" == "failure" ]; then
             echo "::error::Keybinding-dispatch gate failed"
             exit 1
+          elif [ "${{ needs.e2e-multimonitor-gate.result }}" == "failure" ]; then
+            echo "::error::Multi-monitor gate failed"
+            exit 1
           elif [ "${{ needs.e2e-tests.result }}" == "cancelled" ]; then
             echo "::warning::E2E tests were cancelled"
             exit 0
           else
-            if [ "${{ needs.e2e-multimonitor-gate.result }}" == "failure" ]; then
-              echo "::warning::Multi-monitor gate failed (non-blocking while stabilizing)"
-            fi
             echo "All E2E tests passed!"
           fi
