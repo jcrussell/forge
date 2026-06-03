@@ -12,6 +12,27 @@ from framework.constants import Timing, Tolerance
 from framework.wait import wait_for_layout
 
 
+def _layout_node_child_count(shell_proxy, layout):
+    """Child count of the first container with the given layout (STACKED/TABBED), else -1.
+
+    Walks shell_proxy.get_forge_tree(). Used to confirm a flat-monitor toggle wraps ONLY
+    the focused window (single-child CON) rather than converting the whole monitor container.
+    """
+
+    def walk(node):
+        if not isinstance(node, dict):
+            return -1
+        if node.get("layout") == layout:
+            return len(node.get("children") or [])
+        for child in node.get("children") or []:
+            found = walk(child)
+            if found >= 0:
+                return found
+        return -1
+
+    return walk(shell_proxy.get_forge_tree())
+
+
 @pytest.fixture(autouse=True)
 def _enable_stacked_tabbed_modes(restore_settings):
     """Enable stacked + tabbed tiling for every test in this module.
@@ -51,17 +72,26 @@ class TestStackedLayout:
             assert rect.get("width", 0) > 0, "Window should have width"
             assert rect.get("height", 0) > 0, "Window should have height"
 
-    def test_stacked_focus_navigation(self, shell_proxy, input_sim, two_windows):
-        """Should be able to navigate focus in stacked mode."""
+    def test_stacked_toggle_wraps_focused_window_only(self, shell_proxy, input_sim, two_windows):
+        """Toggling stacked on a flat monitor wraps ONLY the focused window.
+
+        On a flat monitor (both windows direct HSPLIT children) StackedLayoutToggle
+        calls tree.split(focused, HORIZONTAL, forceSplit=True) (command.js), which pushes
+        just the focused window into a new single-child CON (tree.js); the sibling stays
+        under the monitor. The old test asserted only get_focused_window().wmClass
+        truthiness — vacuous, since get_focused_window() auto-activates a window (forge-6d1).
+        It also couldn't honestly test focus nav: a single-item CON has no in-stack sibling
+        to move to (that multi-child case is covered by
+        test_workflow_stacked.py::test_multi_window_stack_focus_moves).
+        """
         input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")
 
-        input_sim.focus_down()
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "Should have focused window after navigation"
-
-        input_sim.focus_up()
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass"), "Should have focused window after navigation"
+        assert shell_proxy.get_container_layout() == "STACKED"
+        assert _layout_node_child_count(shell_proxy, "STACKED") == 1, (
+            "toggle should wrap only the focused window in a single-child STACKED CON"
+        )
+        assert len(shell_proxy.get_windows()) >= 2, "the sibling window should still exist"
 
     def test_stacked_toggle_off(self, shell_proxy, input_sim, window_helper, two_windows):
         """Toggling stacked twice should restore normal layout."""
@@ -104,19 +134,25 @@ class TestTabbedLayout:
             assert rect.get("width", 0) > 0, "Window should have width"
             assert rect.get("height", 0) > 0, "Window should have height"
 
-    def test_tabbed_focus_cycles(self, shell_proxy, input_sim, three_windows):
-        """Focus should cycle through tabs in tabbed mode."""
+    def test_tabbed_toggle_wraps_focused_window_only(self, shell_proxy, input_sim, two_windows):
+        """Toggling tabbed on a flat monitor wraps ONLY the focused window.
+
+        Same flat-monitor forceSplit behavior as the stacked case: TabbedLayoutToggle
+        pushes just the focused window into a single-child TABBED CON, leaving the sibling
+        under the monitor. The old test cycled focus_right 5x and only asserted that
+        len(focused wmClasses) >= 1 — vacuous (focus_right in a single-item TABBED CON
+        legitimately escapes to a monitor sibling, and one focused class always exists,
+        forge-6d1). Cross-tab focus movement is covered by
+        test_workflow_stacked.py::test_multi_window_stack_focus_moves.
+        """
         input_sim.toggle_tabbed()
+        wait_for_layout(shell_proxy, "TABBED")
 
-        focused_classes = set()
-
-        for _ in range(5):
-            focused = shell_proxy.get_focused_window()
-            if focused.get("wmClass"):
-                focused_classes.add(focused.get("wmClass"))
-            input_sim.focus_right()
-
-        assert len(focused_classes) >= 1, "Should focus at least one window in tabs"
+        assert shell_proxy.get_container_layout() == "TABBED"
+        assert _layout_node_child_count(shell_proxy, "TABBED") == 1, (
+            "toggle should wrap only the focused window in a single-child TABBED CON"
+        )
+        assert len(shell_proxy.get_windows()) >= 2, "the sibling window should still exist"
 
 
 class TestLayoutTransitions:
