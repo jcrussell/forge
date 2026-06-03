@@ -204,20 +204,25 @@ jobs:
   # The default matrix never sets it, so multi-monitor tiling had zero CI signal.
   # Headless dual-monitor is Wayland-only (gnome-shell --headless --wayland accepts
   # two --virtual-monitor flags); X11/Xvfb lanes (F<=42) cannot fake a 2nd output, so
-  # this lane is pinned to F43 (GNOME 49, stable headless Wayland). Modeled on
-  # e2e-keybinding-gate. Decision: a dedicated job (not a {monitors:[1,2]} matrix
-  # dimension) keeps the default 6-version lane fast and unchanged.
+  # this lane runs only on the Wayland-headless versions: F43 (GNOME 49) and F44
+  # (GNOME 50), via a {fedora:[43,44]} matrix. Modeled on e2e-keybinding-gate.
+  # Decision: a dedicated job (not a {monitors:[1,2]} dimension on the default lane)
+  # keeps the default 6-version lane fast and unchanged.
   #
   # NOTE: this is NOT yet wired into e2e-summary's blocking failure ladder — a
-  # skipped/failed run here surfaces as a red job but does not block merge until it
-  # proves reliable over several consecutive CI runs (mirrors the caution the
-  # keybinding gate took before it gated). Promote it in e2e-summary once green.
+  # skipped/failed run here surfaces as a red job but does not block merge. Promote it
+  # in e2e-summary to a blocking failure only after several consecutive green runs on
+  # BOTH F43 and F44 (forge-1zn part 1; mirrors the caution the keybinding gate took).
   e2e-multimonitor-gate:
     needs: setup
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: [43, 44]
     env:
-      MM_FEDORA_VERSION: 43
+      MM_FEDORA_VERSION: ${{ matrix.fedora }}
       MM_TEST: test_window_retiles_across_monitors
     steps:
       - name: Checkout source code
@@ -266,7 +271,7 @@ jobs:
       - name: Assert the multi-monitor test actually ran (not skipped)
         run: |
           # A skipped test exits 0, so the run step alone would pass GREEN while
-          # exercising nothing — e.g. if F43 came up X11 single-screen and the test
+          # exercising nothing — e.g. if the session came up single-screen and the test
           # self-skipped on get_monitor_count() < 2. Parse junit.xml and fail unless
           # exactly one test passed with zero skips. This makes the gate non-vacuous.
           python3 - "$PWD/e2e-results/junit.xml" <<'EOF'
@@ -286,8 +291,8 @@ jobs:
           if tests == 0:
               sys.exit("::error::Multi-monitor test was not collected — check the -k filter.")
           if skipped:
-              sys.exit("::error::Multi-monitor test SKIPPED (needs 2 monitors). Did F43 boot "
-                       "Wayland-headless with FORGE_E2E_VIRTUAL_MONITORS=2? A skip here means the "
+              sys.exit("::error::Multi-monitor test SKIPPED (needs 2 monitors). Did the session "
+                       "boot Wayland-headless with FORGE_E2E_VIRTUAL_MONITORS=2? A skip here means the "
                        "lane exercised nothing.")
           if failures or errors:
               sys.exit("::error::Multi-monitor test failed.")
@@ -298,7 +303,7 @@ jobs:
         uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: e2e-multimonitor-gate-results
+          name: e2e-multimonitor-gate-results-fedora${{ matrix.fedora }}
           path: e2e-results/
           retention-days: 14
 
@@ -311,8 +316,10 @@ jobs:
         run: |
           # NOTE: e2e-multimonitor-gate (forge-wrt) is intentionally NOT in the
           # blocking branches below — while it stabilizes in CI a failure surfaces
-          # as a non-blocking warning here (and as a red job). Promote it to a
-          # blocking `elif ... == "failure"` -> exit 1 once it shows several green runs.
+          # as a non-blocking warning here (and as a red job). The matrix result is
+          # `failure` if EITHER the F43 or the (newer, unproven) F44 leg fails, so
+          # promote it to a blocking `elif ... == "failure"` -> exit 1 only after
+          # several consecutive green runs on BOTH F43 and F44 (forge-1zn part 1).
           if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
             echo "::error::Some E2E tests failed"
             exit 1
