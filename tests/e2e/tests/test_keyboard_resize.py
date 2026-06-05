@@ -8,7 +8,7 @@ Uses D-Bus action invocation to bypass unreliable xdotool focus in Xvfb.
 import pytest
 
 from framework.constants import Tolerance
-from framework.wait import wait_for_stable
+from framework.wait import wait_for_layout, wait_for_stable
 from framework.workflow import invoke_resize as _invoke_resize
 
 
@@ -65,9 +65,11 @@ class TestKeyboardResize:
     ):
         """Resizing vertically in VSPLIT should change heights."""
         input_sim.toggle_layout()  # Switch to VSPLIT
-        # Wait for the relayout to settle by polling window positions (windows
-        # restack vertically); this also covers geometry settling, not just the
-        # layout-attr flip.
+        # forge-2ij: wait_for_stable alone is just two equal polls — it can return
+        # before the container is actually VSPLIT (the resize target depends on the
+        # split orientation). Gate on the layout flip first, THEN let geometry
+        # settle, so the resize runs against a fully-settled vertical split.
+        wait_for_layout(shell_proxy, "VSPLIT")
         wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("y"))
 
         sorted_before = window_helper.get_windows_sorted_by_position("y")

@@ -250,11 +250,18 @@ class InputSimulator:
         time.sleep(Timing.KEY_AFTER_PRESS)
 
     def key_down(self, key: str) -> None:
-        """Press a key down without releasing."""
+        """Press a key down without releasing.
+
+        CAUTION: a key_down with no matching key_up leaves a held key/modifier
+        that contaminates every later test's input (the keyboard analogue of the
+        stranded-pointer bug, forge-4b6). Any caller MUST pair this with key_up in
+        a try/finally. Currently unused — prefer key()/simulate_key_combo, which
+        press-and-release atomically.
+        """
         self._run_xdotool("keydown", key)
 
     def key_up(self, key: str) -> None:
-        """Release a key."""
+        """Release a key. See key_down for the pairing requirement."""
         self._run_xdotool("keyup", key)
 
     def type_text(self, text: str, delay: int = 12) -> None:
@@ -478,20 +485,28 @@ class InputSimulator:
             end_x: Ending X coordinate.
             end_y: Ending Y coordinate.
         """
+        # Release in finally on the SAME channel that pressed: an error mid-drag
+        # must never leave button 1 held, which would leave a grab/stuck-button
+        # that contaminates later tests (forge-4b6, same class as the stranded
+        # pointer the clean_workspace teardown clears).
         if self._shell_proxy:
             self._shell_proxy.simulate_mouse_move(start_x, start_y)
             self._shell_proxy.simulate_mouse_button(1, True)
-            time.sleep(0.1)
-            self._shell_proxy.simulate_mouse_move(end_x, end_y)
-            time.sleep(0.1)
-            self._shell_proxy.simulate_mouse_button(1, False)
+            try:
+                time.sleep(0.1)
+                self._shell_proxy.simulate_mouse_move(end_x, end_y)
+                time.sleep(0.1)
+            finally:
+                self._shell_proxy.simulate_mouse_button(1, False)
         else:
             self._run_xdotool("mousemove", str(start_x), str(start_y))
             self._run_xdotool("mousedown", "1")
-            time.sleep(0.1)
-            self._run_xdotool("mousemove", str(end_x), str(end_y))
-            time.sleep(0.1)
-            self._run_xdotool("mouseup", "1")
+            try:
+                time.sleep(0.1)
+                self._run_xdotool("mousemove", str(end_x), str(end_y))
+                time.sleep(0.1)
+            finally:
+                self._run_xdotool("mouseup", "1")
 
     def drag_window(
         self,
@@ -517,32 +532,40 @@ class InputSimulator:
             steps: Number of intermediate steps.
             step_delay: Delay between steps in seconds.
         """
+        # Release in finally on the SAME channel that pressed: an error mid-drag
+        # must never leave button 1 held, which would leave a grab/stuck-button
+        # that contaminates later tests (forge-4b6, same class as the stranded
+        # pointer the clean_workspace teardown clears).
         if self._shell_proxy:
             self._shell_proxy.simulate_mouse_move(start_x, start_y)
             time.sleep(0.1)
             self._shell_proxy.simulate_mouse_button(1, True)
-            time.sleep(0.1)
-            for i in range(1, steps + 1):
-                interp = i / steps
-                cur_x = int(start_x + (end_x - start_x) * interp)
-                cur_y = int(start_y + (end_y - start_y) * interp)
-                self._shell_proxy.simulate_mouse_move(cur_x, cur_y)
-                time.sleep(step_delay)
-            time.sleep(0.1)
-            self._shell_proxy.simulate_mouse_button(1, False)
+            try:
+                time.sleep(0.1)
+                for i in range(1, steps + 1):
+                    interp = i / steps
+                    cur_x = int(start_x + (end_x - start_x) * interp)
+                    cur_y = int(start_y + (end_y - start_y) * interp)
+                    self._shell_proxy.simulate_mouse_move(cur_x, cur_y)
+                    time.sleep(step_delay)
+                time.sleep(0.1)
+            finally:
+                self._shell_proxy.simulate_mouse_button(1, False)
         else:
             self._run_xdotool("mousemove", str(start_x), str(start_y))
             time.sleep(0.1)
             self._run_xdotool("mousedown", "1")
-            time.sleep(0.1)
-            for i in range(1, steps + 1):
-                interp = i / steps
-                cur_x = int(start_x + (end_x - start_x) * interp)
-                cur_y = int(start_y + (end_y - start_y) * interp)
-                self._run_xdotool("mousemove", str(cur_x), str(cur_y))
-                time.sleep(step_delay)
-            time.sleep(0.1)
-            self._run_xdotool("mouseup", "1")
+            try:
+                time.sleep(0.1)
+                for i in range(1, steps + 1):
+                    interp = i / steps
+                    cur_x = int(start_x + (end_x - start_x) * interp)
+                    cur_y = int(start_y + (end_y - start_y) * interp)
+                    self._run_xdotool("mousemove", str(cur_x), str(cur_y))
+                    time.sleep(step_delay)
+                time.sleep(0.1)
+            finally:
+                self._run_xdotool("mouseup", "1")
 
     # Window operations
 

@@ -461,6 +461,17 @@ class ShellProxy:
         except (ValueError, TypeError):
             return 0
 
+    def close_focused_window(self) -> str:
+        """
+        Close the currently focused window via Mutter's delete() (reliable on all
+        supported versions, unlike a synthetic alt+F4).
+
+        Returns:
+            The closed window's id as a string, or "no_focus" if none was focused.
+        """
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.closeFocusedWindow()")
+
     def ensure_focus(self) -> bool:
         """
         Ensure a window has focus on the active workspace.

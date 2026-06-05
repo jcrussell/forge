@@ -12,6 +12,30 @@ from framework.constants import Timing, Tolerance
 from framework.wait import wait_for_layout
 
 
+def _assert_windows_within_workspace(shell_proxy):
+    """Every tiled window sits within the workspace bounds (real geometry, not just >0).
+
+    forge-izt: 'valid dimensions' must mean on-screen and inside the work area —
+    a regression that pushed a stacked/tabbed window off-screen or to a zero size
+    would slip past a bare width/height > 0 check. Same-class windows + id-less
+    get_windows() mean we iterate rects directly rather than look up by wmClass.
+    """
+    ws = shell_proxy.get_workspace_rect()
+    windows = shell_proxy.get_windows()
+    assert len(windows) >= 2, "both windows should survive the toggle"
+    for w in windows:
+        r = w.get("rect", {})
+        assert r.get("width", 0) > 0 and r.get("height", 0) > 0, f"window collapsed: {r}"
+        assert r["x"] >= ws["x"] - Tolerance.POSITION, f"window left of workspace: {r} vs {ws}"
+        assert r["y"] >= ws["y"] - Tolerance.POSITION, f"window above workspace: {r} vs {ws}"
+        assert r["x"] + r["width"] <= ws["x"] + ws["width"] + Tolerance.SIZE, (
+            f"window past workspace right edge: {r} vs {ws}"
+        )
+        assert r["y"] + r["height"] <= ws["y"] + ws["height"] + Tolerance.SIZE, (
+            f"window past workspace bottom edge: {r} vs {ws}"
+        )
+
+
 def _layout_node_child_count(shell_proxy, layout):
     """Child count of the first container with the given layout (STACKED/TABBED), else -1.
 
@@ -63,14 +87,19 @@ class TestStackedLayout:
         assert len(windows) >= 2, "Both windows should exist in stacked mode"
 
     def test_stacked_windows_valid(self, shell_proxy, input_sim, two_windows):
-        """In stacked mode, windows should have valid dimensions."""
-        input_sim.toggle_stacked()
+        """Toggling stacked must produce a STACKED container with on-screen windows.
 
-        windows = shell_proxy.get_windows()
-        for window in windows:
-            rect = window.get("rect", {})
-            assert rect.get("width", 0) > 0, "Window should have width"
-            assert rect.get("height", 0) > 0, "Window should have height"
+        forge-izt: the old assert (width/height > 0) passed even when the toggle
+        was a silent no-op. The toggle's effect is the layout type (on a flat
+        2-window monitor the focused window is wrapped into a single-child STACKED
+        CON, so its geometry is otherwise unchanged — see
+        test_stacked_toggle_wraps_focused_window_only), so wait_for_layout is the
+        real 'it changed' assertion; the geometry check guards that neither window
+        was lost or pushed off-screen.
+        """
+        input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")
+        _assert_windows_within_workspace(shell_proxy)
 
     def test_stacked_toggle_wraps_focused_window_only(self, shell_proxy, input_sim, two_windows):
         """Toggling stacked on a flat monitor wraps ONLY the focused window.
@@ -125,14 +154,16 @@ class TestTabbedLayout:
         assert len(windows) >= 2, "Both windows should exist in tabbed mode"
 
     def test_tabbed_windows_valid(self, shell_proxy, input_sim, two_windows):
-        """In tabbed mode, windows should have valid dimensions."""
-        input_sim.toggle_tabbed()
+        """Toggling tabbed must produce a TABBED container with on-screen windows.
 
-        windows = shell_proxy.get_windows()
-        for window in windows:
-            rect = window.get("rect", {})
-            assert rect.get("width", 0) > 0, "Window should have width"
-            assert rect.get("height", 0) > 0, "Window should have height"
+        forge-izt: same upgrade as test_stacked_windows_valid — wait_for_layout is
+        the real 'the toggle took effect' assertion (the focused window is wrapped
+        into a single-child TABBED CON on a flat monitor), and the geometry check
+        guards that neither window was lost or pushed off-screen.
+        """
+        input_sim.toggle_tabbed()
+        wait_for_layout(shell_proxy, "TABBED")
+        _assert_windows_within_workspace(shell_proxy)
 
     def test_tabbed_toggle_wraps_focused_window_only(self, shell_proxy, input_sim, two_windows):
         """Toggling tabbed on a flat monitor wraps ONLY the focused window.

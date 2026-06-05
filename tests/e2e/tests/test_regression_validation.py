@@ -14,7 +14,7 @@ This serves as a proof of concept for:
 import pytest
 
 from framework.constants import Tolerance
-from framework.wait import wait_for_window_count
+from framework.wait import wait_for_layout, wait_for_window_count
 
 
 class TestBug125VerticalStackedTiling:
@@ -157,21 +157,12 @@ class TestBug305Resize:
         """Verify windows together fill most of the workspace."""
         window1, window2, window3 = three_windows
 
-        windows = wait_for_window_count(shell_proxy, 3)
+        wait_for_window_count(shell_proxy, 3)
 
-        workspace = shell_proxy.get_workspace_rect()
-        workspace_area = workspace["width"] * workspace["height"]
-
-        total_window_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
-            for w in windows
-        )
-
-        # Windows should fill at least 80% of workspace
-        fill_ratio = total_window_area / workspace_area
-        assert fill_ratio > 0.80, (
-            f"Windows only fill {fill_ratio*100:.1f}% of workspace"
-        )
+        # forge-74p: an 80% threshold for a test literally named "fill" tolerated a
+        # fifth of the work area going uncovered. Reuse the shared helper (DRY) at
+        # its standard FILL_RATIO (0.85) — three gapped tiles cover well above that.
+        window_helper.assert_windows_fill_workspace()
 
 
 class TestBug057SplitConSiblings:
@@ -282,6 +273,8 @@ class TestLayoutModePreservation:
         window1, window2 = two_windows
 
         # Get initial window dimensions
+        shell_proxy.ensure_focus()
+        layout_before = shell_proxy.get_container_layout()
         windows_before = wait_for_window_count(shell_proxy, 2)
         dims_before = [
             (w.get("rect", {}).get("width", 0), w.get("rect", {}).get("height", 0))
@@ -291,8 +284,12 @@ class TestLayoutModePreservation:
         # Toggle layout (HSPLIT -> VSPLIT or vice versa)
         input_sim.toggle_layout()
 
-        # Get new window dimensions
-        windows_after = wait_for_window_count(shell_proxy, 2)
+        # forge-2ij: settle on the toggled layout before reading geometry —
+        # wait_for_window_count returns immediately (2 windows already exist) and
+        # would otherwise let dims_after be sampled mid-relayout under Xvfb.
+        expected = "VSPLIT" if layout_before == "HSPLIT" else "HSPLIT"
+        wait_for_layout(shell_proxy, expected)
+        windows_after = shell_proxy.get_windows()
         dims_after = [
             (w.get("rect", {}).get("width", 0), w.get("rect", {}).get("height", 0))
             for w in windows_after
@@ -303,20 +300,23 @@ class TestLayoutModePreservation:
         # - Windows should become shorter (height decreases)
         # Or the opposite if toggling the other way
 
-        if len(dims_before) >= 2 and len(dims_after) >= 2:
-            # Calculate average width/height ratios
-            ratio_before = sum(d[0] / max(d[1], 1) for d in dims_before) / len(dims_before)
-            ratio_after = sum(d[0] / max(d[1], 1) for d in dims_after) / len(dims_after)
+        assert len(dims_before) >= 2 and len(dims_after) >= 2, "expected two tiled windows"
 
-            # Ratio should change significantly when toggling between split modes
-            ratio_change = abs(ratio_before - ratio_after)
+        # Average width/height aspect ratio across the windows.
+        ratio_before = sum(d[0] / max(d[1], 1) for d in dims_before) / len(dims_before)
+        ratio_after = sum(d[0] / max(d[1], 1) for d in dims_after) / len(dims_after)
 
-            # Allow the test to pass if dimensions changed OR if windows are valid
-            # (the toggle might not change much if workspace is square)
-            all_valid = all(
-                d[0] > 0 and d[1] > 0 for d in dims_after
-            )
-            assert all_valid, "All windows should have valid dimensions after toggle"
+        # forge-izt: the old test computed ratio_change then never asserted it,
+        # falling back to a vacuous "all dimensions > 0". A real HSPLIT<->VSPLIT
+        # toggle inverts the aspect ratio (half-width/full-height becomes
+        # full-width/half-height), so the average ratio must shift substantially.
+        # On the landscape headless work area the change is ~2.7; require > 1.0 to
+        # stay clear of gap/decoration jitter while still failing a no-op toggle.
+        ratio_change = abs(ratio_before - ratio_after)
+        assert ratio_change > 1.0, (
+            f"toggle did not change window proportions: aspect ratio "
+            f"{ratio_before:.2f} -> {ratio_after:.2f} (change {ratio_change:.2f})"
+        )
 
 
 class TestWindowDimensions:

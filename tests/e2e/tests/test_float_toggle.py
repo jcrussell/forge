@@ -74,11 +74,24 @@ class TestFloatToggle:
         )
 
     def test_float_window_centered(self, shell_proxy, input_sim, window_helper, test_window):
-        """Floating window should be centered in workspace."""
+        """Floating window should be centered in workspace.
+
+        forge-74p: pass the explicit center+size layout (the same kwargs the
+        Shift+Super+c keybinding uses). A bare FloatToggle keeps the window's
+        current full-workspace rect, so its centre trivially equals the workspace
+        centre — the test couldn't fail. A 65%x75% centred float is smaller than the
+        work area, so centring is actually exercised and can be held to a tight bound.
+        """
         wm_class = test_window.get("wmClass")
 
         shell_proxy.ensure_focus()
-        shell_proxy.invoke_forge_action({"name": "FloatToggle"})
+        shell_proxy.invoke_forge_action({
+            "name": "FloatToggle",
+            "x": "center",
+            "y": "center",
+            "width": 0.65,
+            "height": 0.75,
+        })
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect = window_helper.get_window_rect(wm_class)
@@ -90,10 +103,15 @@ class TestFloatToggle:
         workspace_center_x = workspace["x"] + workspace["width"] // 2
         workspace_center_y = workspace["y"] + workspace["height"] // 2
 
-        assert abs(window_center_x - workspace_center_x) < Tolerance.CENTERING, (
+        # forge-74p: the shared Tolerance.CENTERING (100px) is half a window edge —
+        # a window snapped a third off-centre would still pass a "centered" test.
+        # A genuinely centred window lands within integer-rounding of the work-area
+        # centre, so hold it to a tight pixel bound here.
+        center_tol = 24
+        assert abs(window_center_x - workspace_center_x) < center_tol, (
             f"Window not centered horizontally: {window_center_x} vs {workspace_center_x}"
         )
-        assert abs(window_center_y - workspace_center_y) < Tolerance.CENTERING, (
+        assert abs(window_center_y - workspace_center_y) < center_tol, (
             f"Window not centered vertically: {window_center_y} vs {workspace_center_y}"
         )
 

@@ -16,11 +16,44 @@ The monocle keybinding is unbound by default, so dispatch is the forge action
 via the default dbus lane.
 """
 
+import signal
+
+import pytest
+
 from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_stable
 
 
 MONOCLE_ACTION = {"name": "WorkspaceMonocleToggle"}
+
+# Upper bound (seconds) for any single monocle test. Normal runs finish in a few
+# seconds; this only trips on a hang.
+_MONOCLE_TIMEOUT = 30
+
+
+@pytest.fixture(autouse=True)
+def _bound_monocle_runtime():
+    """Fail fast instead of hanging if the self-append recursion regresses (forge-0mf).
+
+    A regressed enter path recurses in renderTree; the synchronous D-Bus eval then
+    blocks (up to the proxy's ~25s default) and the shell may crash, only surfacing
+    on the NEXT test via _check_shell_alive. A SIGALRM keeps the bound low and the
+    failure legible — and needs no extra test dependency (stdlib only; pytest runs
+    tests in the main thread, so the alarm interrupts the blocking call here).
+    """
+
+    def _on_timeout(signum, frame):
+        raise TimeoutError(
+            "monocle test exceeded its time budget — possible self-append recursion hang"
+        )
+
+    previous = signal.signal(signal.SIGALRM, _on_timeout)
+    signal.alarm(_MONOCLE_TIMEOUT)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def _editor_rects(shell_proxy, wm_class):

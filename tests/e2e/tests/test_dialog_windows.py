@@ -7,11 +7,10 @@ disrupt the tiling layout of other windows.
 
 import subprocess
 import os
-import time
 
 import pytest
 
-from framework.constants import Timing, Tolerance
+from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_stable, wait_for_window_count
 
 
@@ -45,6 +44,21 @@ def _zenity_present(windows):
     """True when a zenity window is present (wmClass is case-insensitive)."""
     return isinstance(windows, list) and any(
         w.get("wmClass", "").lower() == "zenity" for w in windows
+    )
+
+
+def _wait_zenity_closed(shell_proxy):
+    """Block until no zenity window remains (forge-1wp).
+
+    Replaces a fixed post-terminate sleep: a slow-to-die dialog could otherwise
+    still be on-screen when the next test starts and perturb its tiling baseline.
+    Polling the real post-condition (the window is gone) is both faster on the
+    common path and correct on the slow one.
+    """
+    wait_for(
+        shell_proxy.get_windows,
+        predicate=lambda windows: not _zenity_present(windows),
+        message="zenity dialog did not close",
     )
 
 
@@ -91,8 +105,7 @@ class TestDialogWindows:
             )
         finally:
             _safe_terminate(proc)
-            # fixed: subprocess teardown settle, no observable post-condition.
-            time.sleep(Timing.WINDOW_CLOSE)
+            _wait_zenity_closed(shell_proxy)
 
     def test_dialog_preserves_tiling(
         self, shell_proxy, input_sim, window_helper, two_windows, zenity_available
@@ -121,8 +134,7 @@ class TestDialogWindows:
                 )
         finally:
             _safe_terminate(proc)
-            # fixed: subprocess teardown settle, no observable post-condition.
-            time.sleep(Timing.WINDOW_CLOSE)
+            _wait_zenity_closed(shell_proxy)
 
     def test_dialog_window_type_detected(
         self, shell_proxy, test_window, zenity_available
@@ -166,8 +178,7 @@ class TestDialogWindows:
             )
         finally:
             _safe_terminate(proc)
-            # fixed: subprocess teardown settle, no observable post-condition.
-            time.sleep(Timing.WINDOW_CLOSE)
+            _wait_zenity_closed(shell_proxy)
 
 
 class TestDialogCloseBehavior:
@@ -202,8 +213,7 @@ class TestDialogCloseBehavior:
             wait_for(shell_proxy.get_windows, predicate=_zenity_present,
                      message="zenity dialog did not appear")
             _safe_terminate(proc)
-            # fixed: subprocess teardown settle between iterations.
-            time.sleep(Timing.WINDOW_CLOSE)
+            _wait_zenity_closed(shell_proxy)
 
         # Single window should still fill workspace
         workspace = window_helper.get_workspace_rect()

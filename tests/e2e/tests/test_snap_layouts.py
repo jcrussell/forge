@@ -86,9 +86,14 @@ class TestSnapThirds:
         rect = window_helper.get_window_rect(wm_class)
         workspace = window_helper.get_workspace_rect()
 
-        # Check width ratio
+        # Check width ratio. forge-74p: the shared SNAP_RATIO (0.05) spans past the
+        # 1/3 target on either side (0.283-0.383 for a 0.333 snap), so a snap that
+        # overshoots by a sixth would still pass. The snap lands on a precise
+        # fraction of the work area (only sub-pixel gap rounding moves it), so hold
+        # it to a tighter band here.
+        snap_tol = 0.025
         actual_ratio = rect[2] / workspace["width"]
-        assert abs(actual_ratio - expected_ratio) < Tolerance.SNAP_RATIO, (
+        assert abs(actual_ratio - expected_ratio) < snap_tol, (
             f"Width ratio {actual_ratio:.3f} should be ~{expected_ratio:.3f}"
         )
 

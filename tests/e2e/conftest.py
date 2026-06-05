@@ -173,6 +173,50 @@ def check_forge_ready(shell_proxy):
 
 
 @pytest.fixture(scope="session", autouse=True)
+def _windows_json_safety_net(shell_proxy, check_forge_ready):
+    """Session backstop: restore windows.json to its session-start state on teardown.
+
+    Per-test cleanup (test_config_reload's finally; test_float_class_toggle's
+    _strip_editor_float) is skipped if a test errors before its teardown registers,
+    leaking a probe or class-wide-float override into ~/.config/forge for the rest
+    of the session — and, on a local run, permanently. Snapshot windows.json once
+    and restore it at session end so no test's override outlives the session,
+    regardless of per-test outcome (forge-1wp). This is a safety net, NOT a
+    substitute for per-test isolation. Best-effort: it never raises.
+    """
+    win_json = None
+    try:
+        config_dir = shell_proxy.get_config_dir()
+        if config_dir:
+            win_json = os.path.join(config_dir, "config", "windows.json")
+    except Exception as e:
+        warnings.warn(f"windows.json safety-net could not resolve config dir: {e}")
+
+    existed = bool(win_json and os.path.exists(win_json))
+    original = None
+    if existed:
+        try:
+            with open(win_json, encoding="utf-8") as f:
+                original = f.read()
+        except Exception as e:
+            warnings.warn(f"windows.json safety-net could not snapshot: {e}")
+
+    yield
+
+    if not win_json:
+        return
+    try:
+        if existed and original is not None:
+            with open(win_json, "w", encoding="utf-8") as f:
+                f.write(original)
+        elif not existed and os.path.exists(win_json):
+            os.remove(win_json)
+        shell_proxy.invoke_forge_action({"name": "ConfigReload"})
+    except Exception as e:
+        warnings.warn(f"windows.json safety-net restore failed: {e}")
+
+
+@pytest.fixture(scope="session", autouse=True)
 def enable_forge_debug_logging(shell_proxy, check_forge_ready):
     """Enable forge debug logging for the E2E session.
 
@@ -308,11 +352,45 @@ def forge_settings() -> Generator[ForgeSettings, None, None]:
 
 
 @pytest.fixture
-def clean_workspace(shell_proxy) -> Generator[None, None, None]:
+def clean_workspace(shell_proxy, input_sim) -> Generator[None, None, None]:
     """Ensure a clean workspace for testing."""
     _close_all_windows(shell_proxy)
     yield
     _close_all_windows(shell_proxy)
+    # Warp the pointer to a neutral spot between tests. An xdotool drag
+    # (test_drag_drop_tiling) leaves the pointer stranded at the drop location;
+    # the NEXT test's first focused-window op (swap/move/close-refocus) then
+    # intermittently lands focus on the wrong window or on none (forge-4b6: the
+    # op's geometry succeeds, only focus is wrong; a pointer MOVE clears it, a
+    # button release alone does not). Destination is VERSION-CONDITIONAL and
+    # EMPIRICAL — each lane's hazard sits at the other lane's safe spot. Both the
+    # destinations and the mechanism notes below come from the forge-4b6 sweep:
+    #   * X11 (F39-F42): park at the CORNER (40,40), NOT the interior. The flake
+    #     rate RISES the deeper the pointer sits in the tiled windows (F39
+    #     test_window_swap x8: corner 0/8, center/seam 960,540 ~4/8, mid-pane
+    #     700,350 8/8) — it is NOT a divider/seam effect (that theory was
+    #     falsified; the interior is the WORST case). The session is click-to-
+    #     focus, so this is not Mutter's focus_default_window path; the likely
+    #     mechanism is the X11 RevertTo=PointerRoot fallback when Forge's post-op
+    #     window.focus() races a still-moving window, making focus follow the
+    #     pointer — a corner lands that fallback on a stable window. (Using
+    #     get_current_time_roundtrip() on those focus() calls only halves the
+    #     flake; see the forge-4b6 follow-up + .scratch EXP-B patch.)
+    #   * Wayland (F43/F44, GNOME 49/50): park at CENTER, NOT a corner. A
+    #     corner-parked pointer destabilizes the headless session — gnome-shell
+    #     dies and goes D-Bus-unreachable ~3/4 of full-suite runs (suite truncates
+    #     ~54 tests in), while CENTER is stable (matrix 18/18). This is NOT the
+    #     activities hot-corner (disabled) and NOT an Xwayland broken pipe (no
+    #     Xwayland is involved) — the prior comment's mechanism was wrong; the
+    #     death is silent in gnome-shell.log (one repro logged a Wayland
+    #     "Connection reset by peer"). Exact cause unpinned — forge-4b6 follow-up.
+    # (Same is_wayland test the input_sim fixture uses.) Best-effort: never fail.
+    is_wayland = os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY")
+    target = (960, 540) if is_wayland else (40, 40)
+    try:
+        input_sim.move_mouse(*target)
+    except Exception as e:
+        warnings.warn(f"pointer reset in teardown failed: {e}")
 
 
 def _close_all_windows(shell_proxy: ShellProxy) -> None:

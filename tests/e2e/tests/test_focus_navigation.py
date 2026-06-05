@@ -7,7 +7,7 @@ Tests vim-style focus navigation with Super+h/j/k/l keys.
 import pytest
 
 from framework.constants import Timing
-from framework.wait import wait_for_layout
+from framework.wait import wait_for, wait_for_layout, wait_for_window_count
 
 
 class TestFocusNavigation:
@@ -170,17 +170,37 @@ class TestFocusNavigation:
 class TestFocusAfterClose:
     """Test focus behavior after closing windows."""
 
-    def test_focus_moves_after_close(self, shell_proxy, input_sim, two_windows):
-        """Focus should move to another window when focused window is closed."""
-        # Close the focused window
-        input_sim.close_active_window()
+    def test_focus_moves_after_close(self, shell_proxy, window_helper, two_windows):
+        """Closing the focused window must move focus onto the surviving window.
 
-        # Should have at least one window remaining
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 1, "Should have at least one window remaining"
+        forge-12t: the old assert only checked that the focused window had a
+        wmClass/title, which get_focused_window() satisfies unconditionally (it
+        auto-activates a window) — a regression that left focus on nothing, or
+        failed to refocus the survivor, would still pass. The two_windows fixture
+        launches same-class windows and get_windows() carries no id, so the honest
+        behavioral signal is: capture the to-be-closed window's id, close it, and
+        prove focus landed on a DIFFERENT real window — which, with exactly one
+        window left, is the survivor (forge-gwo id identity).
 
-        # Remaining window should have focus
-        focused = shell_proxy.get_focused_window()
-        assert focused.get("wmClass") or focused.get("title"), (
-            "Remaining window should receive focus"
+        Close via Mutter delete() (shell_proxy.close_focused_window), not a
+        synthetic alt+F4: Clutter VirtualInputDevice fails to deliver alt+F4 to the
+        window on older Mutter (GNOME 45-48), so the window never closed and the old
+        len>=1 assert passed vacuously with both windows still open.
+        """
+        shell_proxy.ensure_focus()
+        closed_id = window_helper.get_focused_id()
+
+        shell_proxy.close_focused_window()
+
+        survivors = wait_for_window_count(shell_proxy, 1)
+        assert len(survivors) == 1, "exactly one window should remain after the close"
+
+        # Focus must have moved off the closed window onto the survivor. wait_for
+        # tolerates the brief focus-settle after the close (get_focused_id raises
+        # while no window is focused; the poll retries).
+        survivor_id = wait_for(
+            window_helper.get_focused_id,
+            predicate=lambda fid: fid != closed_id,
+            message=f"focus did not move off the closed window (id {closed_id}) to the survivor",
         )
+        assert survivor_id != closed_id

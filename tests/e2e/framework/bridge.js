@@ -629,6 +629,17 @@
       return String(windows.length - 1);
     },
 
+    // Close the FOCUSED window via Mutter's delete() (reliable across versions,
+    // unlike a synthetic alt+F4 which Clutter VirtualInputDevice fails to deliver
+    // on older Mutter). Returns the closed window's id, or "no_focus".
+    closeFocusedWindow() {
+      const w = global.display.get_focus_window();
+      if (!w) return "no_focus";
+      const id = String(w.get_id());
+      w.delete(global.get_current_time());
+      return id;
+    },
+
     // was ensure_focus (no try/catch)
     ensureFocus() {
       if (global.display.get_focus_window()) return "already_focused";
