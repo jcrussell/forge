@@ -168,10 +168,12 @@ export class Window extends withSignals() {
 
   make_above() {
     this.above = true;
+    this.emit("notify::above");
   }
 
   unmake_above() {
     this.above = false;
+    this.emit("notify::above");
   }
 
   minimize() {
