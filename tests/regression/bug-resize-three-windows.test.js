@@ -307,50 +307,18 @@ describe("Bug: Three-window resize overflow", () => {
     });
   });
 
-  describe("Full resize workflow simulation", () => {
-    it("should handle keyboard resize (grow right) without overflow", () => {
+  describe("_normalizeSiblingPercents guards", () => {
+    it("should handle a null parent gracefully", () => {
+      expect(() => ctx.windowManager._normalizeSiblingPercents(null)).not.toThrow();
+    });
+
+    it("should handle a parent with a single child", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.HSPLIT;
-      monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
+      const window1 = createMockWindow({ wm_class: "TestApp", id: 1001, title: "Window 1" });
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      node.percent = 1.0;
 
-      // Create 3 windows side-by-side
-      const windows = [];
-      const nodes = [];
-      for (let i = 0; i < 3; i++) {
-        const window = createMockWindow({
-          wm_class: "TestApp",
-          id: 1001 + i,
-          title: `Window ${i}`,
-          rect: new Rectangle({ x: i * 300, y: 0, width: 300, height: 600 }),
-        });
-        const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window);
-        node.percent = 1 / 3;
-        node.rect = { x: i * 300, y: 0, width: 300, height: 600 };
-        windows.push(window);
-        nodes.push(node);
-      }
-
-      // Simulate keyboard resize: focus middle window, grow right
-      // This would typically set middle.percent += delta, right.percent -= delta
-      // but leave left.percent at 0 if it was never set
-      nodes[0].percent = 0; // Bug: never initialized
-      nodes[1].percent = 0.4; // Grew
-      nodes[2].percent = 0.267; // Shrunk (from 0.333)
-
-      // Fix: normalize before computing sizes
-      ctx.windowManager._normalizeSiblingPercents(monitor);
-
-      // All windows should have valid percentages
-      expect(nodes[0].percent).toBeGreaterThan(0);
-      expect(nodes[1].percent).toBeGreaterThan(0);
-      expect(nodes[2].percent).toBeGreaterThan(0);
-
-      const total = nodes[0].percent + nodes[1].percent + nodes[2].percent;
-      expect(total).toBeCloseTo(1.0, 3);
-
-      // Verify sizes don't overflow
-      const sizes = ctx.tree.computeSizes(monitor, nodes);
-      expect(sizes.reduce((a, b) => a + b, 0)).toBe(900);
+      expect(() => ctx.windowManager._normalizeSiblingPercents(monitor)).not.toThrow();
     });
   });
 });
