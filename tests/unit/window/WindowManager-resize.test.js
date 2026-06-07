@@ -275,7 +275,7 @@ describe("WindowManager - Resize Operations", () => {
       expect(beginSpy).toHaveBeenCalledWith(ctx.display, metaWindow, GrabOp.RESIZING_E);
     });
 
-    it("should queue event to call _handleGrabOpEnd", () => {
+    it("should schedule a debounced grab-end (forge-5v6/#532)", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 800, height: 600 }),
         workspace: ctx.workspaces[0],
@@ -283,17 +283,14 @@ describe("WindowManager - Resize Operations", () => {
 
       ctx.display.get_focus_window.mockReturnValue(metaWindow);
 
-      const queueSpy = vi.spyOn(wm(), "queueEvent");
-
       wm().resize(GrabOp.RESIZING_E, 50);
 
-      expect(queueSpy).toHaveBeenCalled();
-      const eventObj = queueSpy.mock.calls[0][0];
-      expect(eventObj.name).toBe("manual-resize");
-      expect(eventObj.callback).toBeInstanceOf(Function);
+      // A single debounced grab-end is pending; the shared event queue is unused.
+      expect(wm()._manualResizeEndId).toBeTruthy();
+      expect(wm().eventQueue.length).toBe(0);
     });
 
-    it("should use 50ms interval for resize event queue", () => {
+    it("should keep one pending grab-end across repeats (forge-5v6/#532)", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 800, height: 600 }),
         workspace: ctx.workspaces[0],
@@ -301,11 +298,14 @@ describe("WindowManager - Resize Operations", () => {
 
       ctx.display.get_focus_window.mockReturnValue(metaWindow);
 
-      const queueSpy = vi.spyOn(wm(), "queueEvent");
-
+      // Auto-repeat: holding the key fires resize() several times.
+      wm().resize(GrabOp.RESIZING_E, 50);
+      wm().resize(GrabOp.RESIZING_E, 50);
       wm().resize(GrabOp.RESIZING_E, 50);
 
-      expect(queueSpy).toHaveBeenCalledWith(expect.any(Object), 50);
+      // The grab stays open (one pending end), not one queued event per repeat.
+      expect(wm()._manualResizeEndId).toBeTruthy();
+      expect(wm().eventQueue.length).toBe(0);
     });
   });
 
