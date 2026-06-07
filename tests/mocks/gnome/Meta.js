@@ -63,6 +63,11 @@ export class Window extends withSignals() {
     this._allows_resize = "allows_resize" in params ? params.allows_resize : true;
     this._workspace = params.workspace ?? null;
     this._monitor = params.monitor ?? 0;
+    this._size_hints = params.size_hints ?? null;
+  }
+
+  get_size_hints() {
+    return this._size_hints;
   }
 
   get_frame_rect() {
