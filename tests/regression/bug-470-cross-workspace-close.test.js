@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
 import { Bin } from "../mocks/gnome/St.js";
+import { WindowType } from "../mocks/gnome/Meta.js";
 
 /**
  * Bug #470 (forge-6qr): closing a window disrupts tiling / focus across workspaces.
@@ -94,5 +95,23 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
 
     expect(activateU).toHaveBeenCalled();
     expect(activateX).not.toHaveBeenCalled();
+  });
+
+  it("does not hand focus to a transient dialog when no NORMAL window remains", () => {
+    // WS0: monitor -> [ con[W] , D(dialog) ]  — W has no sibling; only a dialog remains.
+    const { monitor } = getWorkspaceAndMonitor(ctx, 0);
+    const conW = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    const wWin = createMockWindow({ id: "W", title: "W" });
+    const nodeW = ctx.tree.createNode(conW.nodeValue, NODE_TYPES.WINDOW, wWin);
+    nodeW.mode = WINDOW_MODES.TILE;
+    const dWin = createMockWindow({ id: "D", title: "D", window_type: WindowType.MODAL_DIALOG });
+    const nodeD = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dWin);
+    nodeD.mode = WINDOW_MODES.TILE;
+
+    const activateD = vi.spyOn(dWin, "activate");
+
+    closeFocused(nodeW);
+
+    expect(activateD).not.toHaveBeenCalled();
   });
 });
