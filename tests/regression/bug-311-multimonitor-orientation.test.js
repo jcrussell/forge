@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { LAYOUT_TYPES } from "../../lib/extension/tree.js";
-import { createWindowManagerFixture } from "../mocks/helpers/index.js";
+import { describe, it, expect, afterEach } from "vitest";
+import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
+import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**
  * Bug #311 (forge-5ng): Tall monitor tiling — wrong default orientation per monitor.
@@ -64,5 +64,24 @@ describe("Bug #311: Per-monitor default split orientation (multi-monitor)", () =
 
     expect(ctx.tree.findNode("mo0ws1").layout).toBe(LAYOUT_TYPES.HSPLIT);
     expect(ctx.tree.findNode("mo1ws1").layout).toBe(LAYOUT_TYPES.VSPLIT);
+  });
+
+  it("resets an emptied portrait monitor to its own orientation, not the focused one", () => {
+    ctx = setup();
+    ctx.display.get_current_monitor.mockReturnValue(0); // landscape focused
+
+    const portrait = ctx.tree.findNode("mo1ws0");
+    portrait.rect = { x: 1920, y: 0, width: 1080, height: 1920 }; // set by render IRL
+    // User toggled the portrait monitor to a horizontal split...
+    portrait.layout = LAYOUT_TYPES.HSPLIT;
+
+    const win = createMockWindow({ wm_class: "TestApp", id: 7001, title: "W" });
+    const node = ctx.tree.createNode("mo1ws0", NODE_TYPES.WINDOW, win);
+
+    // ...then the last window leaves: layout resets to the monitor's own default.
+    ctx.tree.removeNode(node);
+
+    expect(portrait.childNodes.length).toBe(0);
+    expect(portrait.layout).toBe(LAYOUT_TYPES.VSPLIT);
   });
 });
