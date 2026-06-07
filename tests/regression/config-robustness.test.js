@@ -37,6 +37,9 @@ describe("Config robustness: corrupted windows.json", () => {
     configManager = new ConfigManager({ dir: createMockDir() });
   });
 
+  // forge-96e (#515): windowProps now always yields an overrides-safe shape so
+  // callers can deref `.overrides` without crashing. The raw null/{}/array
+  // results stay observable through _loadJsonConfig (see bug-415 tests).
   it("should handle truncated JSON gracefully", () => {
     const mockFile = createMockFile("/config/windows.json", {
       contents: '{ "overrides": [{ "wmClass": "firefox"',
@@ -47,7 +50,7 @@ describe("Config robustness: corrupted windows.json", () => {
     });
 
     const props = configManager.windowProps;
-    expect(props).toBeNull();
+    expect(props.overrides).toEqual([]);
   });
 
   it("should handle empty JSON object", () => {
@@ -60,7 +63,7 @@ describe("Config robustness: corrupted windows.json", () => {
     });
 
     const props = configManager.windowProps;
-    expect(props).toEqual({});
+    expect(props.overrides).toEqual([]);
   });
 
   it("should handle JSON with unexpected structure", () => {
@@ -74,7 +77,7 @@ describe("Config robustness: corrupted windows.json", () => {
 
     const props = configManager.windowProps;
     expect(props).toBeDefined();
-    expect(props.overrides).toBeUndefined();
+    expect(Array.isArray(props.overrides)).toBe(true);
   });
 
   it("should handle JSON array instead of object", () => {
@@ -87,7 +90,7 @@ describe("Config robustness: corrupted windows.json", () => {
     });
 
     const props = configManager.windowProps;
-    expect(Array.isArray(props)).toBe(true);
+    expect(Array.isArray(props.overrides)).toBe(true);
   });
 
   it("should handle whitespace-only file", () => {
@@ -100,7 +103,7 @@ describe("Config robustness: corrupted windows.json", () => {
     });
 
     const props = configManager.windowProps;
-    expect(props).toBeNull();
+    expect(props.overrides).toEqual([]);
   });
 
   it("should handle file with BOM character", () => {

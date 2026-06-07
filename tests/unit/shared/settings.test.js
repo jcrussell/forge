@@ -216,17 +216,19 @@ describe("ConfigManager", () => {
       expect(result).toEqual(sampleWindowConfig);
     });
 
-    it("should return null when no default config file", () => {
+    // forge-96e (#515): loadDefaultWindowConfigContents now always yields an
+    // overrides-safe shape (the prefs "Reset" button derefs .overrides).
+    it("returns an overrides-safe shape when no default config file", () => {
       Object.defineProperty(configManager, "defaultWindowConfigFile", {
         get: () => null,
         configurable: true,
       });
 
       const result = configManager.loadDefaultWindowConfigContents();
-      expect(result).toBeNull();
+      expect(result).toEqual({ overrides: [] });
     });
 
-    it("should return null when file contents cannot be loaded", () => {
+    it("returns an overrides-safe shape when file contents cannot be loaded", () => {
       const mockFile = createMockFile("/default/windows.json", {
         loadFails: true,
       });
@@ -237,14 +239,18 @@ describe("ConfigManager", () => {
       });
 
       const result = configManager.loadDefaultWindowConfigContents();
-      expect(result).toBeNull();
+      expect(result).toEqual({ overrides: [] });
     });
   });
 
   describe("windowProps getter", () => {
+    // forge-96e (#515): the getter guarantees an `overrides` array so callers
+    // never crash dereferencing it. A well-formed overrides config passes through.
+    const overridesConfig = { overrides: [{ wmClass: "Firefox", mode: "float" }] };
+
     it("should return parsed window config", () => {
       const mockFile = createMockFile("/config/windows.json", {
-        contents: JSON.stringify(sampleWindowConfig),
+        contents: JSON.stringify(overridesConfig),
       });
 
       Object.defineProperty(configManager, "windowConfigFile", {
@@ -253,12 +259,12 @@ describe("ConfigManager", () => {
       });
 
       const props = configManager.windowProps;
-      expect(props).toEqual(sampleWindowConfig);
+      expect(props).toEqual(overridesConfig);
     });
 
     it("should fall back to default when windowConfigFile is null", () => {
       const mockDefaultFile = createMockFile("/default/windows.json", {
-        contents: JSON.stringify(sampleWindowConfig),
+        contents: JSON.stringify(overridesConfig),
       });
 
       Object.defineProperty(configManager, "windowConfigFile", {
@@ -271,10 +277,10 @@ describe("ConfigManager", () => {
       });
 
       const props = configManager.windowProps;
-      expect(props).toEqual(sampleWindowConfig);
+      expect(props).toEqual(overridesConfig);
     });
 
-    it("should return null when load fails", () => {
+    it("returns an overrides-safe shape when load fails", () => {
       const mockFile = createMockFile("/config/windows.json", {
         loadFails: true,
       });
@@ -285,7 +291,7 @@ describe("ConfigManager", () => {
       });
 
       const props = configManager.windowProps;
-      expect(props).toBeNull();
+      expect(props).toEqual({ overrides: [] });
     });
   });
 
