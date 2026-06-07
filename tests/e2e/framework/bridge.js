@@ -564,6 +564,18 @@
       }
     },
 
+    // forge-9sd (Bug #312): drive the theme manager's persistence path so a test can
+    // verify a color change is written to the on-disk stylesheet even when it is read-only.
+    setThemeColor(selector, propertyName, value) {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.theme) return "no-theme";
+        return ext.theme.setCssProperty(selector, propertyName, value) ? "ok" : "noop";
+      } catch (e) {
+        return "error:" + e;
+      }
+    },
+
     // was get_wm_override_classes (extWm.windowProps cached overrides)
     getWmOverrideClasses() {
       try {

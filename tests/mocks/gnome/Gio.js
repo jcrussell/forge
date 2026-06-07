@@ -4,6 +4,9 @@ import { withSignals } from "../helpers/signalMixin.js";
 export class File {
   constructor(path) {
     this.path = path;
+    // Permission model so tests can exercise read-only stylesheet handling (Bug #312).
+    this._writable = true;
+    this._mode = 0o644;
   }
 
   static new_for_path(path) {
@@ -40,12 +43,30 @@ export class File {
   }
 
   replace_contents(contents, etag, make_backup, flags, cancellable) {
-    // Mock file writing
-    return [true, null];
+    // Mock file writing — fails on a read-only file, like the real Gio (Bug #312).
+    return this._writable ? [true, null] : [false, null];
   }
 
   copy(destination, flags, cancellable, progressCallback) {
-    // Mock file copy
+    // Model Gio's perm handling: by default a copy preserves the source's mode;
+    // TARGET_DEFAULT_PERMS makes the destination use the (writable) umask default.
+    if (destination && typeof destination === "object") {
+      if ((flags & FileCopyFlags.TARGET_DEFAULT_PERMS) !== 0) {
+        destination._writable = true;
+        destination._mode = 0o644;
+      } else {
+        destination._writable = this._writable;
+        destination._mode = this._mode;
+      }
+    }
+    return true;
+  }
+
+  set_attribute_uint32(attribute, value, flags, cancellable) {
+    if (attribute === "unix::mode") {
+      this._mode = value;
+      this._writable = (value & 0o200) !== 0; // owner-write bit
+    }
     return true;
   }
 
@@ -127,6 +148,11 @@ export const FileCreateFlags = {
   REPLACE_DESTINATION: 1 << 1,
 };
 
+export const FileQueryInfoFlags = {
+  NONE: 0,
+  NOFOLLOW_SYMLINKS: 1 << 0,
+};
+
 export const FileCopyFlags = {
   NONE: 0,
   OVERWRITE: 1 << 0,
@@ -142,4 +168,5 @@ export default {
   Settings,
   FileCreateFlags,
   FileCopyFlags,
+  FileQueryInfoFlags,
 };

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ThemeManagerBase, RGBAToHexA, hexAToRGBA } from "../../../lib/shared/theme.js";
+import { Logger } from "../../../lib/shared/logger.js";
 import { File, Settings } from "../../mocks/gnome/Gio.js";
 
 // Sample CSS for testing
@@ -405,6 +406,100 @@ describe("ThemeManagerBase", () => {
       themeManager._updateCss();
       expect(mockConfigMgr.stylesheetFile.replace_contents).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
+  // Builds a configMgr whose stylesheet file uses the perm-aware mock methods
+  // (replace_contents fails when read-only; set_attribute_uint32 flips writability),
+  // so we exercise the real read-only failure path instead of an always-success stub.
+  function createConfigMgr(cssContent = sampleCss, { writable = false } = {}) {
+    const file = new File("/mock/stylesheet.css");
+    file._writable = writable;
+    file.load_contents = vi.fn(() => [true, new TextEncoder().encode(cssContent), null]);
+    vi.spyOn(file, "replace_contents");
+    vi.spyOn(file, "set_attribute_uint32");
+    return {
+      file,
+      configMgr: {
+        stylesheetFile: file,
+        defaultStylesheetFile: file,
+        stylesheetFileName: "/mock/stylesheet.css",
+      },
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("mock models the bug: replace_contents fails silently on a read-only file", () => {
+    const { file } = createConfigMgr(sampleCss, { writable: false });
+    // Exactly what the user hit: a false return with no exception, so the old code's
+    // `if (success)` guard silently skipped the reload and the color was lost.
+    expect(file.replace_contents("x", null, false, 0, null)).toEqual([false, null]);
+  });
+
+  it("_updateCss makes a read-only stylesheet writable before writing, then reloads", () => {
+    const { file, configMgr } = createConfigMgr(sampleCss, { writable: false });
+    const tm = new ThemeManagerBase({ configMgr, settings: createMockSettings() });
+    tm.reloadStylesheet = vi.fn();
+
+    tm._updateCss();
+
+    // Regression guard: drop _ensureWritable and replace_contents returns [false],
+    // reloadStylesheet is never called, and this assertion fails.
+    expect(file.set_attribute_uint32).toHaveBeenCalledWith(
+      "unix::mode",
+      0o644,
+      expect.anything(),
+      null
+    );
+    expect(file._writable).toBe(true);
+    expect(tm.reloadStylesheet).toHaveBeenCalled();
+  });
+
+  it("_updateCss logs an error when the write still fails", () => {
+    const errorSpy = vi.spyOn(Logger, "error").mockImplementation(() => {});
+    const { file, configMgr } = createConfigMgr(sampleCss, { writable: false });
+    // Simulate a file that cannot be made writable (e.g. not owned by the user):
+    // set_attribute_uint32 is a no-op, so the file stays read-only and the write fails.
+    file.set_attribute_uint32 = vi.fn(() => true);
+    const tm = new ThemeManagerBase({ configMgr, settings: createMockSettings() });
+    tm.reloadStylesheet = vi.fn();
+
+    tm._updateCss();
+
+    expect(tm.reloadStylesheet).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("patchCss copies the read-only default with writable perms, so colors then persist", () => {
+    const source = new File("/install/stylesheet.css");
+    source._writable = false; // read-only install-dir file = the root cause
+    source.load_contents = vi.fn(() => [true, new TextEncoder().encode(sampleCss), null]);
+    const dest = new File("/mock/stylesheet.css");
+    dest._writable = false;
+    dest.load_contents = vi.fn(() => [true, new TextEncoder().encode(sampleCss), null]);
+    vi.spyOn(dest, "replace_contents");
+
+    const configMgr = {
+      stylesheetFile: dest,
+      defaultStylesheetFile: source,
+      stylesheetFileName: "/mock/stylesheet.css",
+    };
+    const settings = createMockSettings();
+    settings.set_uint("css-last-update", 0); // force _needUpdate()
+    const tm = new ThemeManagerBase({ configMgr, settings });
+    tm.reloadStylesheet = vi.fn();
+
+    expect(tm.patchCss()).toBe(true);
+    expect(dest._writable).toBe(true); // copy used TARGET_DEFAULT_PERMS
+
+    // A subsequent color change now persists instead of failing silently.
+    tm.setCssProperty(".tiled", "color", "blue");
+    expect(dest.replace_contents).toHaveBeenCalled();
+    expect(tm.reloadStylesheet).toHaveBeenCalled();
   });
 });
 
