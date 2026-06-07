@@ -42,6 +42,10 @@ describe("MonitorManager", () => {
     // Create mock WindowManager
     mockExtWm = {
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
+      // Mirrors the real helper: portrait (height > width) -> VSPLIT.
+      determineSplitLayoutForRect: vi.fn((rect) =>
+        rect && rect.width < rect.height ? LAYOUT_TYPES.VSPLIT : LAYOUT_TYPES.HSPLIT
+      ),
     };
 
     // Create MonitorManager instance
@@ -140,12 +144,15 @@ describe("MonitorManager", () => {
       expect(mockTree.createNode).toHaveBeenCalledWith("ws2", NODE_TYPES.MONITOR, "mo2ws2");
     });
 
-    it("should call determineSplitLayout for each monitor", () => {
+    it("should determine split layout per monitor using each monitor's geometry", () => {
       global.display.get_n_monitors.mockReturnValue(2);
 
       monitorManager.addMonitor(0);
 
-      expect(mockExtWm.determineSplitLayout).toHaveBeenCalledTimes(2);
+      // Bug #311: the per-monitor (rect-aware) helper is used, once per monitor.
+      expect(mockExtWm.determineSplitLayoutForRect).toHaveBeenCalledTimes(2);
+      expect(global.display.get_monitor_geometry).toHaveBeenCalledWith(0);
+      expect(global.display.get_monitor_geometry).toHaveBeenCalledWith(1);
     });
   });
 
