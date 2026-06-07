@@ -67,13 +67,11 @@
       "mode": "tile"
     },
     {
-      "wmClass": "steam",
-      "wmTitle": "Steam",
-      "mode": "tile"
+      "wmClass": "Steam,steam,steamwebhelper",
+      "mode": "float"
     },
     {
-      "wmClass": "steam",
-      "wmTitle": "!Steam",
+      "wmClass": "Blender,blender",
       "mode": "float"
     },
     {

@@ -368,11 +368,23 @@ describe("WindowManager - Floating Mode", () => {
     });
   });
 
-  describe("isFloatingExempt - Built-in Float Rules", () => {
-    describe("Firefox Picture-in-Picture (Bug #383)", () => {
+  describe("isFloatingExempt - App Float Rules (config/windows.json defaults)", () => {
+    // forge-khb: Steam/Blender/Firefox-PIP float via the canonical config mechanism
+    // (config/windows.json), not hardcoded branches. The fixture starts with no
+    // overrides, so mirror the relevant shipped default rules here.
+    beforeEach(() => {
+      configMgr().windowProps.overrides = [
+        { wmClass: "Steam,steam,steamwebhelper", mode: "float" },
+        { wmClass: "Blender,blender", mode: "float" },
+        // Firefox floats any non-main window (a PIP title never contains "Mozilla Firefox").
+        { wmClass: "firefox", wmTitle: "!Mozilla Firefox", mode: "float" },
+      ];
+    });
+
+    describe("Firefox Picture-in-Picture (Bug #383, via existing firefox float rule)", () => {
       it("should float Firefox PIP windows", () => {
         const window = createMockWindow({
-          wm_class: "Firefox",
+          wm_class: "firefox",
           title: "Picture-in-Picture",
           allows_resize: true,
         });
@@ -380,9 +392,9 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should float PIP windows case-insensitively", () => {
+      it("should float PIP windows regardless of title casing", () => {
         const window = createMockWindow({
-          wm_class: "Firefox",
+          wm_class: "firefox",
           title: "PICTURE-IN-PICTURE",
           allows_resize: true,
         });
@@ -392,7 +404,7 @@ describe("WindowManager - Floating Mode", () => {
 
       it("should float PIP windows with additional title text", () => {
         const window = createMockWindow({
-          wm_class: "Firefox",
+          wm_class: "firefox",
           title: "Video - Picture-in-Picture - YouTube",
           allows_resize: true,
         });
@@ -400,13 +412,23 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should allow TILE override to beat PIP float rule", () => {
+      it("should tile the main Firefox window (title contains 'Mozilla Firefox')", () => {
+        const window = createMockWindow({
+          wm_class: "firefox",
+          title: "GitHub — Mozilla Firefox",
+          allows_resize: true,
+        });
+
+        expect(wm().isFloatingExempt(window)).toBe(false);
+      });
+
+      it("should allow a TILE override to beat the PIP float rule", () => {
         configMgr().windowProps.overrides = [
-          { wmClass: "Firefox", wmTitle: "Picture-in-Picture", mode: "tile" },
+          { wmClass: "firefox", wmTitle: "Picture-in-Picture", mode: "tile" },
         ];
 
         const window = createMockWindow({
-          wm_class: "Firefox",
+          wm_class: "firefox",
           title: "Picture-in-Picture",
           allows_resize: true,
         });
@@ -416,7 +438,7 @@ describe("WindowManager - Floating Mode", () => {
     });
 
     describe("Blender (Bug #260)", () => {
-      it("should float Blender windows", () => {
+      it("should float the Blender window", () => {
         const window = createMockWindow({
           wm_class: "Blender",
           title: "Blender",
@@ -426,7 +448,7 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should float Blender windows case-insensitively", () => {
+      it("should float the lowercase blender class", () => {
         const window = createMockWindow({
           wm_class: "blender",
           title: "Project.blend",
@@ -436,18 +458,7 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should float Blender subwindows", () => {
-        const window = createMockWindow({
-          wm_class: "Blender-bin",
-          title: "Blender Preferences",
-          allows_resize: true,
-        });
-
-        // wmClass contains "blender"
-        expect(wm().isFloatingExempt(window)).toBe(true);
-      });
-
-      it("should allow TILE override to beat Blender float rule", () => {
+      it("should allow a TILE override to beat the Blender float rule", () => {
         configMgr().windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
 
         const window = createMockWindow({
@@ -461,7 +472,7 @@ describe("WindowManager - Floating Mode", () => {
     });
 
     describe("Steam (Bug #271)", () => {
-      it("should float Steam windows", () => {
+      it("should float the main Steam window", () => {
         const window = createMockWindow({
           wm_class: "Steam",
           title: "Steam",
@@ -471,7 +482,7 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should float Steam windows case-insensitively", () => {
+      it("should float the lowercase steam class", () => {
         const window = createMockWindow({
           wm_class: "steam",
           title: "Steam Library",
@@ -491,19 +502,11 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(true);
       });
 
-      it("should float Steam game overlay windows", () => {
-        const window = createMockWindow({
-          wm_class: "Steam-overlay",
-          title: "Steam Overlay",
-          allows_resize: true,
-        });
-
-        // wmClass contains "steam"
-        expect(wm().isFloatingExempt(window)).toBe(true);
-      });
-
-      it("should allow TILE override to beat Steam float rule", () => {
-        configMgr().windowProps.overrides = [{ wmClass: "Steam", mode: "tile" }];
+      it("should allow a TILE override to beat the Steam float rule", () => {
+        configMgr().windowProps.overrides = [
+          { wmClass: "Steam,steam,steamwebhelper", mode: "float" },
+          { wmClass: "Steam", mode: "tile" },
+        ];
 
         const window = createMockWindow({
           wm_class: "Steam",
@@ -514,11 +517,29 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().isFloatingExempt(window)).toBe(false);
       });
     });
+
+    describe("exact-match contract (forge-khb): unlisted subwindow classes are not auto-floated", () => {
+      // The removed hardcoded rules used case-insensitive includes(), so any class
+      // containing "steam"/"blender" floated. Config uses exact class matching
+      // (deliberate — see bug-472), so variant subwindow classes now need an explicit
+      // override. This documents the intentional narrowing.
+      it("does not auto-float an unlisted Steam-overlay class", () => {
+        const window = createMockWindow({
+          wm_class: "Steam-overlay",
+          title: "Steam Overlay",
+          allows_resize: true,
+        });
+
+        expect(wm().isFloatingExempt(window)).toBe(false);
+      });
+    });
   });
 
   describe("isFloatingExempt - User Can Override Auto-Float Apps", () => {
     it("should allow manual tiling of auto-float apps after user sets tile mode", () => {
-      // Start with window that auto-floats (Blender)
+      // Blender auto-floats via the shipped config rule.
+      configMgr().windowProps.overrides = [{ wmClass: "Blender,blender", mode: "float" }];
+
       const window = createMockWindow({
         wm_class: "Blender",
         title: "Blender",
@@ -528,15 +549,18 @@ describe("WindowManager - Floating Mode", () => {
       // Initially floats
       expect(wm().isFloatingExempt(window)).toBe(true);
 
-      // User adds tile override
-      configMgr().windowProps.overrides = [{ wmClass: "Blender", mode: "tile" }];
+      // User adds a tile override (checked before float rules)
+      configMgr().windowProps.overrides = [
+        { wmClass: "Blender,blender", mode: "float" },
+        { wmClass: "Blender", mode: "tile" },
+      ];
 
       // Now it tiles
       expect(wm().isFloatingExempt(window)).toBe(false);
     });
 
     it("should allow specific window instance override via wmId", () => {
-      // Two Blender windows, only one should be tiled
+      // Two Blender windows (auto-float via config), only one tiled by wmId override.
       const window1 = createMockWindow({
         id: 111,
         wm_class: "Blender",
@@ -551,11 +575,29 @@ describe("WindowManager - Floating Mode", () => {
         allows_resize: true,
       });
 
-      // Override only window1 to tile
-      configMgr().windowProps.overrides = [{ wmClass: "Blender", wmId: 111, mode: "tile" }];
+      // Override only window1 to tile, on top of the class-based float rule
+      configMgr().windowProps.overrides = [
+        { wmClass: "Blender,blender", mode: "float" },
+        { wmClass: "Blender", wmId: 111, mode: "tile" },
+      ];
 
       expect(wm().isFloatingExempt(window1)).toBe(false); // Tiled
       expect(wm().isFloatingExempt(window2)).toBe(true); // Still floats
+    });
+  });
+
+  describe("isFloatingExempt - title is not used to float (forge-5r4 / #404)", () => {
+    // gh-404 reported VS Code not tiling when its title starts with "+". There is no
+    // code path that floats a window based on a leading "+" (or any title) without a
+    // matching override, so this guards against a regression that would introduce one.
+    it("tiles a VS Code window whose title starts with '+'", () => {
+      const window = createMockWindow({
+        wm_class: "Code",
+        title: "+page.svelte — myproject",
+        allows_resize: true,
+      });
+
+      expect(wm().isFloatingExempt(window)).toBe(false);
     });
   });
 
