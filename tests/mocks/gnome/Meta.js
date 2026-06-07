@@ -100,6 +100,14 @@ export class Window extends withSignals() {
     return this.wm_class;
   }
 
+  // Test helper: emulate a late-arriving wm_class (Anki/Opera/Flatpaks report
+  // null at map time). Mirrors make_above() — sets the value and fires the
+  // notify::wm-class signal Forge listens for. forge-3qq (#482).
+  set_wm_class(value) {
+    this.wm_class = value;
+    this.emit("notify::wm-class");
+  }
+
   get_title() {
     return this.title;
   }
