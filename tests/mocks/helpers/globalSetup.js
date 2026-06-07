@@ -83,6 +83,7 @@ export function createMockWindowGroup() {
   const children = [];
   return {
     _children: children,
+    get_children: vi.fn(() => [...children]),
     contains: vi.fn((child) => children.includes(child)),
     add_child: vi.fn((child) => {
       if (!children.includes(child)) children.push(child);
