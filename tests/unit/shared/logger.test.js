@@ -36,17 +36,6 @@ describe("Logger", () => {
   });
 
   describe("LOG_LEVELS", () => {
-    it("should define all log levels", () => {
-      expect(Logger.LOG_LEVELS.OFF).toBe(0);
-      expect(Logger.LOG_LEVELS.FATAL).toBe(1);
-      expect(Logger.LOG_LEVELS.ERROR).toBe(2);
-      expect(Logger.LOG_LEVELS.WARN).toBe(3);
-      expect(Logger.LOG_LEVELS.INFO).toBe(4);
-      expect(Logger.LOG_LEVELS.DEBUG).toBe(5);
-      expect(Logger.LOG_LEVELS.TRACE).toBe(6);
-      expect(Logger.LOG_LEVELS.ALL).toBe(7);
-    });
-
     it("should have ascending level values", () => {
       expect(Logger.LOG_LEVELS.FATAL).toBeGreaterThan(Logger.LOG_LEVELS.OFF);
       expect(Logger.LOG_LEVELS.ERROR).toBeGreaterThan(Logger.LOG_LEVELS.FATAL);

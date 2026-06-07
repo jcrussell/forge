@@ -513,16 +513,16 @@ describe("WindowManager - Command System", () => {
       expect(ctx.settings.set_string).toHaveBeenCalledWith("workspace-skip-tile", "1,2,0");
     });
 
-    it("should attempt to remove workspace from skip list (may fail due to tree structure)", () => {
-      // The command tries to unfloat the workspace which requires tree access
-      // Testing the setup and that the command doesn't throw unexpectedly
+    it("should remove the active workspace from the middle of the skip list", () => {
       ctx.settings.get_string.mockReturnValue("0,1,2");
       global.workspace_manager.get_active_workspace_index.mockReturnValue(1);
       const action = { name: "WorkspaceActiveTileToggle" };
+      const unfloatSpy = vi.spyOn(wm(), "unfloatWorkspace").mockImplementation(() => {});
 
-      // The command will throw due to incomplete tree structure
-      // This is expected because unfloatWorkspace needs workspace nodes
-      expect(() => wm().command(action)).toThrow();
+      wm().command(action);
+
+      expect(ctx.settings.set_string).toHaveBeenCalledWith("workspace-skip-tile", "0,2");
+      expect(unfloatSpy).toHaveBeenCalledWith(1);
     });
   });
 });

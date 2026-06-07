@@ -132,12 +132,6 @@ describe("CommandHandler", () => {
     ctx.cleanup();
   });
 
-  describe("constructor", () => {
-    it("should store window manager reference", () => {
-      expect(commandHandler._extWm).toBe(mockWm);
-    });
-  });
-
   describe("WindowResetSizes command", () => {
     it("should reset sibling percentages for parent node", () => {
       commandHandler.execute({ name: "WindowResetSizes" });

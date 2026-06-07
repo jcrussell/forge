@@ -52,13 +52,6 @@ describe("MonitorManager", () => {
     ctx.cleanup();
   });
 
-  describe("constructor", () => {
-    it("should store tree and extWm references", () => {
-      expect(monitorManager._tree).toBe(mockTree);
-      expect(monitorManager._extWm).toBe(mockExtWm);
-    });
-  });
-
   describe("getMonitorCount()", () => {
     it("should return the number of monitors from display", () => {
       expect(monitorManager.getMonitorCount()).toBe(2);

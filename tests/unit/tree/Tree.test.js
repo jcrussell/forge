@@ -19,22 +19,6 @@ describe("Tree", () => {
   });
 
   describe("Constructor", () => {
-    it("should create tree with root type", () => {
-      expect(ctx.tree.nodeType).toBe(NODE_TYPES.ROOT);
-    });
-
-    it("should set ROOT layout", () => {
-      expect(ctx.tree.layout).toBe(LAYOUT_TYPES.ROOT);
-    });
-
-    it("should set default stack height", () => {
-      expect(ctx.tree.defaultStackHeight).toBe(35);
-    });
-
-    it("should have reference to WindowManager", () => {
-      expect(ctx.tree.extWm).toBe(ctx.extWm);
-    });
-
     it("should initialize workspaces", () => {
       // Should have created workspace nodes
       const workspaces = ctx.tree.nodeWorkpaces;

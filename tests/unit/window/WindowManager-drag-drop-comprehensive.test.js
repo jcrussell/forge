@@ -1619,16 +1619,13 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
   describe("Cleanup After Operations", () => {
     /**
-     * BUG DOCUMENTED: createCon flag is not reset on focusNodeWindow
+     * Regression guard for the createCon reset path.
      *
-     * Root cause: At line 2066, childNode = focusNodeWindow.
-     * At line 2154, childNode.createCon = true (sets it on focusNodeWindow).
-     * At lines 2279/2281, childNode is REASSIGNED to parentNodeTarget or new Node.
-     * At line 2324, childNode.createCon = false resets the WRONG node.
-     *
-     * The fix should reset focusNodeWindow.createCon, not childNode.createCon.
+     * The drop logic resets the createCon flag on focusNodeWindow (the dragged
+     * node) once the operation completes. A previous bug reset the flag on a
+     * reassigned childNode instead, leaving the dragged node's flag stale.
      */
-    it("BUG: createCon flag is NOT reset on focusNodeWindow after operation", () => {
+    it("should reset createCon flag on focusNodeWindow after operation", () => {
       const monitor = getMonitor();
       monitor.layout = LAYOUT_TYPES.VSPLIT;
 
@@ -1655,8 +1652,8 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      // BUG FIXED: The createCon flag is now properly reset on focusNodeWindow
-      // Previously it was being reset on childNode which could be a different node
+      // The createCon flag is reset on focusNodeWindow (the dragged node),
+      // not on a reassigned childNode.
       expect(dragged.createCon).toBe(false);
     });
 

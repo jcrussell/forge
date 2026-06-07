@@ -244,7 +244,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
   });
 
   describe("_handleResizing - Stacked/Tabbed Containers", () => {
-    it("should force parent-level resize for tabbed containers", () => {
+    it("should keep tabbed sibling percents valid and normalized on resize (Bug #497)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
@@ -275,15 +275,16 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      // In tabbed containers, sameParent is forced to false per Bug #497 fix
-      // so resizing should happen at parent level, not between siblings
-      wm()._handleResizing(nodeWindow1);
+      // Bug #497: tabbed siblings share a rect. Whatever the resize does, it must
+      // leave both siblings with valid positive shares (never collapse one to a
+      // negative/zero percent).
+      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
 
-      // The parent (tabbed container) should be resized, not individual windows
-      expect(true).toBe(true); // Test that it doesn't crash
+      expect(nodeWindow1.percent).toBeGreaterThan(0);
+      expect(nodeWindow2.percent).toBeGreaterThan(0);
     });
 
-    it("should force parent-level resize for stacked containers", () => {
+    it("should keep stacked sibling percents valid and normalized on resize (Bug #497)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
         workspace: workspace0(),
@@ -314,10 +315,12 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      wm()._handleResizing(nodeWindow1);
+      // Stacked siblings share a rect like tabbed ones (Bug #497). The resize
+      // must leave both siblings with valid positive shares.
+      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
 
-      // Should not throw and should handle stacked layout
-      expect(true).toBe(true);
+      expect(nodeWindow1.percent).toBeGreaterThan(0);
+      expect(nodeWindow2.percent).toBeGreaterThan(0);
     });
   });
 
@@ -451,9 +454,10 @@ describe("WindowManager - Handle Resizing Behavior", () => {
   });
 
   describe("_repositionDuringResize", () => {
-    it("should keep x fixed when resizing right edge", () => {
+    it("should restore x to initRect.x when resizing right edge", () => {
+      // Frame has drifted right (x=150) from where the tile started (x=100).
       const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 100, y: 0, width: 1000, height: 1080 }),
+        rect: new Rectangle({ x: 150, y: 0, width: 1000, height: 1080 }),
         workspace: workspace0(),
       });
 
@@ -468,15 +472,15 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       wm()._repositionDuringResize(nodeWindow);
 
-      // X position should remain at initRect.x (with gaps=0)
-      if (moveSpy.mock.calls.length > 0) {
-        expect(moveSpy.mock.calls[0][1]).toBe(100);
-      }
+      // Resizing the right edge must pin x back to initRect.x (gaps=0).
+      expect(moveSpy).toHaveBeenCalled();
+      expect(moveSpy.mock.calls[0][1]).toBe(100);
     });
 
-    it("should keep y fixed when resizing bottom edge", () => {
+    it("should restore y to initRect.y when resizing bottom edge", () => {
+      // Frame has drifted down (y=150) from where the tile started (y=100).
       const metaWindow = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 100, width: 1920, height: 600 }),
+        rect: new Rectangle({ x: 0, y: 150, width: 1920, height: 600 }),
         workspace: workspace0(),
       });
 
@@ -491,10 +495,9 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       wm()._repositionDuringResize(nodeWindow);
 
-      // Y position should remain at initRect.y (with gaps=0)
-      if (moveSpy.mock.calls.length > 0) {
-        expect(moveSpy.mock.calls[0][2]).toBe(100);
-      }
+      // Resizing the bottom edge must pin y back to initRect.y (gaps=0).
+      expect(moveSpy).toHaveBeenCalled();
+      expect(moveSpy.mock.calls[0][2]).toBe(100);
     });
 
     it("should not reposition if position has not changed", () => {

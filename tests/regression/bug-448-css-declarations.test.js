@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { parse } from "../../lib/css/index.js";
+import { ThemeManagerBase } from "../../lib/shared/theme.js";
+import { File, Settings } from "../mocks/gnome/Gio.js";
 
 /**
  * Bug #448: TypeError: cssRule.declarations is undefined
@@ -16,6 +18,36 @@ import { parse } from "../../lib/css/index.js";
  * Fix: Added defensive check `if (cssRule && cssRule.declarations)` in
  * getCssProperty() at lib/shared/theme.js:122
  */
+
+// Minimal palette the ThemeManagerBase constructor reads via getDefaultPalette().
+const PALETTE_CSS = `
+.tiled { color: #ffffff; border-width: 1px; opacity: 1; }
+.split { color: #ffffff; border-width: 1px; opacity: 1; }
+.floated { color: #ffffff; border-width: 1px; opacity: 1; }
+.stacked { color: #ffffff; border-width: 1px; opacity: 1; }
+.tabbed { color: #ffffff; border-width: 1px; opacity: 1; }
+`;
+
+/**
+ * Build a real ThemeManagerBase whose stylesheet contains the given CSS, so
+ * the genuine getCssRule()/getCssProperty() methods (with the #448 fix) can be
+ * exercised directly.
+ */
+function createThemeManager(css) {
+  const mockFile = new File("/mock/stylesheet.css");
+  mockFile.load_contents = vi.fn(() => [true, new TextEncoder().encode(PALETTE_CSS + css), null]);
+  mockFile.replace_contents = vi.fn(() => [true, null]);
+  mockFile.get_parent = vi.fn(() => ({ get_path: () => "/mock" }));
+
+  const configMgr = {
+    stylesheetFile: mockFile,
+    defaultStylesheetFile: mockFile,
+    stylesheetFileName: "/mock/stylesheet.css",
+  };
+
+  return new ThemeManagerBase({ configMgr, settings: new Settings() });
+}
+
 describe("Bug #448: CSS parsing with rules without declarations", () => {
   describe("CSS parser returns different rule types", () => {
     it("should parse regular CSS rules with declarations", () => {
@@ -86,91 +118,65 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
     });
   });
 
-  describe("Defensive handling of rule types", () => {
+  describe("Defensive handling of rule types (real getCssProperty/getCssRule)", () => {
     /**
-     * This tests the pattern used in the fix - checking for declarations
-     * before trying to filter them.
+     * These exercise the genuine ThemeManagerBase.getCssProperty()/getCssRule()
+     * which contain the #448 fix.
      */
-    it("should safely handle rules without declarations when filtering", () => {
+    it("getCssProperty resolves a real declaration without throwing on @-rules/comments", () => {
       const css = `
         /* A comment */
         @charset "UTF-8";
-        .tiled {
+        .custom-tile {
           color: #ff0000;
           border-width: 2px;
         }
-        .floated {
+        .custom-float {
           opacity: 0.5;
         }
       `;
 
-      const ast = parse(css);
-      const rules = ast.stylesheet.rules;
-
-      // Simulate the getCssProperty pattern with defensive check
-      const getCssPropertySafe = (selector, propertyName) => {
-        const matchRules = rules.filter(
-          (r) => r.selectors && r.selectors.filter((s) => s === selector).length > 0
-        );
-        const cssRule = matchRules.length > 0 ? matchRules[0] : {};
-
-        // Bug #448 fix: Check both cssRule and declarations exist
-        if (cssRule && cssRule.declarations) {
-          const matchDeclarations = cssRule.declarations.filter((d) => d.property === propertyName);
-          return matchDeclarations.length > 0 ? matchDeclarations[0] : {};
-        }
-        return {};
-      };
+      const theme = createThemeManager(css);
 
       // Should work for valid rules
-      const colorProp = getCssPropertySafe(".tiled", "color");
+      const colorProp = theme.getCssProperty(".custom-tile", "color");
       expect(colorProp.value).toBe("#ff0000");
 
-      // Should return empty object for non-existent selectors
-      const nonExistent = getCssPropertySafe(".nonexistent", "color");
-      expect(nonExistent).toEqual({});
-
-      // Should not throw when iterating over rules including comments
+      // Should return empty object for non-existent selectors (no throw)
+      let nonExistent;
       expect(() => {
-        rules.forEach((rule) => {
-          // This is what would cause the error without the fix
-          if (rule.declarations) {
-            rule.declarations.forEach((d) => d.property);
-          }
-        });
+        nonExistent = theme.getCssProperty(".nonexistent", "color");
       }).not.toThrow();
+      expect(nonExistent).toEqual({});
     });
 
-    it("should not throw when CSS rule has no selectors (comments, @-rules)", () => {
+    it("getCssRule does not throw when CSS has rules without selectors (comments, @-rules)", () => {
       const css = `
         /* Comment without selectors */
         @font-face {
           font-family: "MyFont";
           src: url("myfont.woff2");
         }
-        .tiled {
+        .custom-tile {
           color: blue;
         }
       `;
 
-      const ast = parse(css);
-      const rules = ast.stylesheet.rules;
+      const theme = createThemeManager(css);
 
-      // Simulate the getCssRule pattern
-      const getCssRuleSafe = (selector) => {
-        const matchRules = rules.filter(
-          (r) => r.selectors && r.selectors.filter((s) => s === selector).length > 0
-        );
-        return matchRules.length > 0 ? matchRules[0] : {};
-      };
-
-      // Rules without selectors (comments, @-rules) should not match
-      const result = getCssRuleSafe(".tiled");
+      // Real rule still matched and has declarations, despite sibling @-rules
+      let result;
+      expect(() => {
+        result = theme.getCssRule(".custom-tile");
+      }).not.toThrow();
       expect(result.declarations).toBeDefined();
 
       // Non-matching selector returns empty object
-      const noMatch = getCssRuleSafe(".nonexistent");
+      const noMatch = theme.getCssRule(".nonexistent");
       expect(noMatch).toEqual({});
+
+      // The property lookup over the same stylesheet must not throw either
+      expect(() => theme.getCssProperty(".custom-tile", "color")).not.toThrow();
     });
   });
 

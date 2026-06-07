@@ -127,6 +127,18 @@ class TestDialogWindows:
                 key=lambda w: w.get("rect", {}).get("x", 0),
             )
 
+            # The dialog must be excluded from the Forge tree (not a tiled node).
+            # Use its real wmClass (case varies, e.g. "Zenity"); the tree query is
+            # case-sensitive, so derive it from the live window rather than guessing.
+            zenity_class = next(
+                w.get("wmClass")
+                for w in all_windows
+                if w.get("wmClass", "").lower() == "zenity"
+            )
+            assert shell_proxy.count_tiled_windows_of_class(zenity_class) == 0, (
+                f"Dialog '{zenity_class}' should not be a tiled node in the Forge tree"
+            )
+
             for before_rect, tiled_win in zip(rects_before, tiled_windows):
                 after_rect = tiled_win.get("rect", {})
                 assert abs(before_rect.get("width", 0) - after_rect.get("width", 0)) < Tolerance.POSITION, (

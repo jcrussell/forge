@@ -154,11 +154,6 @@ describe("ThemeManagerBase", () => {
   });
 
   describe("constructor", () => {
-    it("should initialize with configMgr and settings", () => {
-      expect(themeManager.configMgr).toBe(mockConfigMgr);
-      expect(themeManager.settings).toBe(mockSettings);
-    });
-
     it("should import CSS on construction", () => {
       expect(themeManager.cssAst).toBeDefined();
       expect(themeManager.cssAst.stylesheet).toBeDefined();

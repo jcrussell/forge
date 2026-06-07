@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
   createMockWindow,
@@ -78,47 +77,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       const layout = wm().determineSplitLayout();
 
       expect([LAYOUT_TYPES.HSPLIT, LAYOUT_TYPES.VSPLIT]).toContain(layout);
-    });
-  });
-
-  describe("Window Mode Management", () => {
-    it("should create window in TILE mode by default", () => {
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
-        mode: "TILE",
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
-      });
-
-      expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
-    });
-
-    it("should allow setting window to FLOAT mode", () => {
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
-        mode: "FLOAT",
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
-      });
-
-      expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
-    });
-
-    it("should track GRAB_TILE mode during drag operations", () => {
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
-      });
-      nodeWindow.mode = WINDOW_MODES.GRAB_TILE;
-
-      expect(nodeWindow.mode).toBe(WINDOW_MODES.GRAB_TILE);
     });
   });
 

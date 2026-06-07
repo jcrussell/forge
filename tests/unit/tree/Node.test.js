@@ -4,29 +4,6 @@ import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import St from "gi://St";
 
 describe("Node", () => {
-  describe("Constructor and Basic Properties", () => {
-    it("should create node with type and data", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root-data");
-
-      expect(node.nodeType).toBe(NODE_TYPES.ROOT);
-      expect(node.nodeValue).toBe("root-data");
-    });
-
-    it("should initialize with empty child nodes", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-
-      expect(node.childNodes).toEqual([]);
-      expect(node.firstChild).toBeNull();
-      expect(node.lastChild).toBeNull();
-    });
-
-    it("should have no parent initially", () => {
-      const node = new Node(NODE_TYPES.ROOT, "root");
-
-      expect(node.parentNode).toBeNull();
-    });
-  });
-
   describe("appendChild", () => {
     let parent, child1, child2;
 

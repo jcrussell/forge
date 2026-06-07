@@ -74,34 +74,34 @@ class TestLayoutToggle:
     def test_split_vertical_explicit(self, shell_proxy, input_sim, two_windows):
         """Super+v should set vertical split mode."""
         input_sim.split_vertical()
+        wait_for_layout(shell_proxy, "VSPLIT")  # gate on the actual layout flip
 
         windows = shell_proxy.get_windows()
         sorted_by_y = sorted(windows, key=lambda w: w.get("rect", {}).get("y", 0))
 
-        if len(sorted_by_y) >= 2:
-            top = sorted_by_y[0].get("rect", {})
-            bottom = sorted_by_y[-1].get("rect", {})
+        top = sorted_by_y[0].get("rect", {})
+        bottom = sorted_by_y[-1].get("rect", {})
 
-            # In vertical layout, windows have similar width
-            width_diff = abs(top.get("width", 0) - bottom.get("width", 0))
-            assert width_diff < Tolerance.ALIGNMENT * 2, "Windows should have similar width in VSPLIT"
+        # In vertical layout, windows have similar width
+        width_diff = abs(top.get("width", 0) - bottom.get("width", 0))
+        assert width_diff < Tolerance.ALIGNMENT * 2, "Windows should have similar width in VSPLIT"
 
     def test_split_horizontal_explicit(self, shell_proxy, input_sim, two_windows):
         """Super+z should set horizontal split mode."""
         # First switch to vertical, then to horizontal
         input_sim.split_vertical()
         input_sim.split_horizontal()
+        wait_for_layout(shell_proxy, "HSPLIT")  # gate on the actual layout flip
 
         windows = shell_proxy.get_windows()
         sorted_by_x = sorted(windows, key=lambda w: w.get("rect", {}).get("x", 0))
 
-        if len(sorted_by_x) >= 2:
-            left = sorted_by_x[0].get("rect", {})
-            right = sorted_by_x[-1].get("rect", {})
+        left = sorted_by_x[0].get("rect", {})
+        right = sorted_by_x[-1].get("rect", {})
 
-            # In horizontal layout, windows have similar height
-            height_diff = abs(left.get("height", 0) - right.get("height", 0))
-            assert height_diff < Tolerance.ALIGNMENT * 2, "Windows should have similar height in HSPLIT"
+        # In horizontal layout, windows have similar height
+        height_diff = abs(left.get("height", 0) - right.get("height", 0))
+        assert height_diff < Tolerance.ALIGNMENT * 2, "Windows should have similar height in HSPLIT"
 
 
 class TestLayoutWithMultipleWindows:
@@ -109,7 +109,13 @@ class TestLayoutWithMultipleWindows:
 
     def test_layout_toggle_three_windows(self, shell_proxy, input_sim, three_windows):
         """Layout toggle should work with three windows."""
+        shell_proxy.ensure_focus()
+        layout_before = shell_proxy.get_container_layout()
+
         input_sim.toggle_layout()
+
+        expected = "VSPLIT" if layout_before == "HSPLIT" else "HSPLIT"
+        wait_for_layout(shell_proxy, expected)  # the toggle actually flipped the layout
 
         windows = shell_proxy.get_windows()
         assert len(windows) >= 3, f"Expected 3 windows, got {len(windows)}"

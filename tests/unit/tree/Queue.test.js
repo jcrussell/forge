@@ -8,12 +8,6 @@ describe("Queue", () => {
     queue = new Queue();
   });
 
-  describe("constructor", () => {
-    it("should create empty queue", () => {
-      expect(queue.length).toBe(0);
-    });
-  });
-
   describe("length", () => {
     it("should return correct length after enqueue", () => {
       queue.enqueue("item1");

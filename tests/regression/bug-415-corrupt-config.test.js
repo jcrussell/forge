@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { ConfigManager } from "../../lib/shared/settings.js";
+import { File } from "../mocks/gnome/Gio.js";
 
 /**
  * Bug #415: Extension fails to load with corrupt/empty windows.json
@@ -7,136 +9,87 @@ import { describe, it, expect } from "vitest";
  * the extension fails to load with a JSON.parse error:
  * "unexpected end of data at line 1 column 1"
  *
- * Root Cause: The settings/config parser does not handle empty or corrupt
- * JSON files gracefully. It throws an error instead of falling back to
- * default values.
+ * Fix: ConfigManager._loadJsonConfig() wraps parsing in try/catch and treats
+ * empty/whitespace content as missing, returning null instead of throwing.
  *
- * Fix: Add try-catch around JSON parsing and return default config on error.
+ * These tests exercise the real ConfigManager._loadJsonConfig()
+ * (lib/shared/settings.js).
  */
 describe("Bug #415: Graceful handling of corrupt/empty config files", () => {
-  /**
-   * Safely parse JSON config, returning default on error
-   */
-  function parseConfigSafe(jsonString) {
-    try {
-      if (!jsonString || jsonString.trim() === "") {
-        return { overrides: [] };
-      }
-      return JSON.parse(jsonString);
-    } catch (e) {
-      return { overrides: [] };
-    }
+  let configManager;
+
+  beforeEach(() => {
+    const mockDir = { get_path: () => "/test/extension/path" };
+    configManager = new ConfigManager({ dir: mockDir });
+  });
+
+  // Build a mock Gio.File whose load_contents() yields the given string.
+  function mockFileWithContents(contents) {
+    const file = new File("/config/windows.json");
+    const encoded = new TextEncoder().encode(contents);
+    file.load_contents = () => [true, encoded, null];
+    return file;
   }
 
-  describe("JSON parsing error handling", () => {
-    it("should handle empty string gracefully", () => {
-      const result = parseConfigSafe("");
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should handle whitespace-only string gracefully", () => {
-      const result = parseConfigSafe("   \n\t   ");
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should handle truncated JSON gracefully", () => {
-      const result = parseConfigSafe('{ "overrides": [');
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should handle invalid JSON characters gracefully", () => {
-      const result = parseConfigSafe('{ "key": \x00 }');
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should parse valid JSON correctly", () => {
-      const validJson = JSON.stringify({
-        overrides: [{ wmClass: "firefox", mode: "float" }],
-      });
-
-      const result = parseConfigSafe(validJson);
-
-      expect(result.overrides).toHaveLength(1);
-      expect(result.overrides[0].wmClass).toBe("firefox");
-    });
-
-    it("should handle undefined gracefully", () => {
-      const result = parseConfigSafe(undefined);
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should handle null gracefully", () => {
-      const result = parseConfigSafe(null);
-      expect(result).toEqual({ overrides: [] });
-    });
+  it("returns null for a null config file (no throw)", () => {
+    expect(() => configManager._loadJsonConfig(null, "windows.json")).not.toThrow();
+    expect(configManager._loadJsonConfig(null, "windows.json")).toBeNull();
   });
 
-  describe("Config file loading scenarios", () => {
-    it("should provide default window props when config load fails", () => {
-      const loadWindowProps = (readFileFn) => {
-        try {
-          const content = readFileFn();
-          if (!content || content.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(content);
-        } catch (e) {
-          // Log error in real implementation
-          return { overrides: [] };
-        }
-      };
-
-      // Simulate file read failure
-      const result = loadWindowProps(() => {
-        throw new Error("File not found");
-      });
-
-      expect(result).toEqual({ overrides: [] });
-    });
-
-    it("should handle file with BOM character", () => {
-      const parseConfigSafe = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          // Strip BOM if present
-          const cleanJson = jsonString.replace(/^\uFEFF/, "");
-          return JSON.parse(cleanJson);
-        } catch (e) {
-          return { overrides: [] };
-        }
-      };
-
-      // JSON with BOM character
-      const jsonWithBom = '\uFEFF{ "overrides": [] }';
-      const result = parseConfigSafe(jsonWithBom);
-
-      expect(result).toEqual({ overrides: [] });
-    });
+  it("returns null for an empty file", () => {
+    const file = mockFileWithContents("");
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toBeNull();
   });
 
-  describe("Error recovery and logging", () => {
-    it("should log error but not throw when config is invalid", () => {
-      const errors = [];
+  it("returns null for a whitespace-only file", () => {
+    const file = mockFileWithContents("   \n\t   ");
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toBeNull();
+  });
 
-      const parseConfigWithLogging = (jsonString) => {
-        try {
-          if (!jsonString || jsonString.trim() === "") {
-            return { overrides: [] };
-          }
-          return JSON.parse(jsonString);
-        } catch (e) {
-          errors.push(e.message);
-          return { overrides: [] };
-        }
-      };
+  it("returns null for truncated JSON", () => {
+    const file = mockFileWithContents('{ "overrides": [');
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toBeNull();
+  });
 
-      const result = parseConfigWithLogging("not valid json");
+  it("returns null for malformed JSON", () => {
+    const file = mockFileWithContents("not valid json");
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toBeNull();
+  });
 
-      expect(result).toEqual({ overrides: [] });
-      expect(errors.length).toBe(1);
-      expect(errors[0]).toMatch(/JSON|Unexpected|token/i);
-    });
+  it("returns null when load_contents reports failure", () => {
+    const file = new File("/config/windows.json");
+    file.load_contents = () => [false, null, null];
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toBeNull();
+  });
+
+  it("parses a valid JSON object", () => {
+    const config = { float: [{ wmClass: "firefox", title: "Picture-in-Picture" }], tile: [] };
+    const file = mockFileWithContents(JSON.stringify(config));
+
+    let result;
+    expect(() => {
+      result = configManager._loadJsonConfig(file, "windows.json");
+    }).not.toThrow();
+    expect(result).toEqual(config);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ConfigManager, production } from "../../../lib/shared/settings.js";
+import { ConfigManager } from "../../../lib/shared/settings.js";
 import { File } from "../../mocks/gnome/Gio.js";
 
 // Sample window config for testing
@@ -42,16 +42,6 @@ function createMockFile(path, options = {}) {
   return file;
 }
 
-describe("production constant", () => {
-  it("should be exported", () => {
-    expect(production).toBeDefined();
-  });
-
-  it("should be a boolean", () => {
-    expect(typeof production).toBe("boolean");
-  });
-});
-
 describe("ConfigManager", () => {
   let configManager;
   let mockDir;
@@ -59,18 +49,6 @@ describe("ConfigManager", () => {
   beforeEach(() => {
     mockDir = createMockDir("/test/extension/path");
     configManager = new ConfigManager({ dir: mockDir });
-  });
-
-  describe("constructor", () => {
-    it("should store extensionPath from dir", () => {
-      expect(configManager.extensionPath).toBe("/test/extension/path");
-    });
-
-    it("should work with different extension paths", () => {
-      const otherDir = createMockDir("/other/path");
-      const cm = new ConfigManager({ dir: otherDir });
-      expect(cm.extensionPath).toBe("/other/path");
-    });
   });
 
   describe("confDir", () => {

@@ -111,12 +111,19 @@ class TestTilingModeToggle:
         widths_before = [w.get("rect", {}).get("width", 0) for w in sorted_before]
 
         restore_settings.set_tiling_mode_enabled(False)
-        # fixed: disabling tiling has no positive post-condition to poll — existing
-        # windows stay where they are; we only assert they still exist.
-        time.sleep(Timing.SETTINGS_SETTLE)
+        # Gate on the GSetting actually flipping (its propagation is the real
+        # post-condition); existing windows stay put, so we also keep the
+        # existence check below.
+        wait_for(
+            lambda: restore_settings.get("tiling-mode-enabled"),
+            predicate=lambda enabled: not enabled,
+            message="tiling-mode-enabled did not flip to False",
+        )
+        assert not restore_settings.get("tiling-mode-enabled"), (
+            "tiling mode should be disabled"
+        )
 
         # Windows may remain where they are, but new behavior would be untiled.
-        # Verify the setting changed by checking it took effect.
         windows = shell_proxy.get_windows()
         assert len(windows) >= 2, "Windows should still exist after disabling tiling"
 

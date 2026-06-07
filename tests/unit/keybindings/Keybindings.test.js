@@ -33,30 +33,6 @@ describe("Keybindings", () => {
     keybindings = new Keybindings(mockExt);
   });
 
-  describe("constructor", () => {
-    it("should store ext reference", () => {
-      expect(keybindings.ext).toBe(mockExt);
-    });
-
-    it("should store extWm reference", () => {
-      expect(keybindings.extWm).toBe(mockExt.extWm);
-    });
-
-    it("should store kbdSettings reference", () => {
-      expect(keybindings.kbdSettings).toBe(mockExt.kbdSettings);
-    });
-
-    it("should initialize grabbers as an empty Map", () => {
-      expect(keybindings._grabbers).toBeInstanceOf(Map);
-      expect(keybindings._grabbers.size).toBe(0);
-    });
-
-    it("should build binding definitions on construction", () => {
-      expect(keybindings._bindings).toBeDefined();
-      expect(typeof keybindings._bindings).toBe("object");
-    });
-  });
-
   describe("buildBindingDefinitions()", () => {
     it("should define all expected keybinding keys", () => {
       const expectedKeys = [

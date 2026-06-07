@@ -1,132 +1,100 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Node, LAYOUT_TYPES, NODE_TYPES, ORIENTATION_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/index.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
+import { createTreeFixture } from "../mocks/helpers/index.js";
+import { Bin } from "../mocks/gnome/St.js";
 
 /**
  * Bug #330: Wrong height in 2x2 layout
  *
- * Problem: In a 2x2 layout where the top-left window is tabbed, the lower
- * two windows become twice as tall as expected. The layout calculation
- * for sibling percentage/height is incorrect in certain container configurations.
+ * Problem: In a 2x2 layout the lower windows became twice as tall as expected.
+ * The split-size calculation did not allocate child sizes so they summed back
+ * to the parent's size, leaving rounding/overflow that skewed heights.
  *
- * Root Cause: The splitPercent calculation doesn't properly account for
- * containers that use tabbed/stacked layouts when calculating child percentages.
+ * Fix: Tree.computeSizes() distributes each child's percent of the parent
+ * dimension and corrects any rounding remainder onto the last child so the
+ * allocated sizes always sum to the parent size (lib/extension/tree.js).
+ *
+ * These tests exercise the real Tree.computeSizes().
  */
 describe("Bug #330: Wrong height in 2x2 layout with tabbed container", () => {
-  describe("Layout percentage calculations", () => {
-    it("should maintain equal heights in 2x2 layout", () => {
-      // Create a 2x2 layout: top-left, top-right, bottom-left, bottom-right
-      // Structure: rootCon(HSPLIT) -> [leftCon(VSPLIT), rightCon(VSPLIT)]
+  let ctx;
 
-      // Left container (top-left, bottom-left) - vertical split
-      const leftContainer = new Node(NODE_TYPES.CON, null);
-      leftContainer.layout = LAYOUT_TYPES.VSPLIT;
-      leftContainer.percent = 0.5;
-      leftContainer._rect = { x: 0, y: 0, width: 960, height: 1080 };
-
-      // Right container (top-right, bottom-right) - vertical split
-      const rightContainer = new Node(NODE_TYPES.CON, null);
-      rightContainer.layout = LAYOUT_TYPES.VSPLIT;
-      rightContainer.percent = 0.5;
-      rightContainer._rect = { x: 960, y: 0, width: 960, height: 1080 };
-
-      // Add windows to left container
-      const topLeftWindow = new Node(NODE_TYPES.CON, null);
-      topLeftWindow.percent = 0.5;
-      leftContainer.appendChild(topLeftWindow);
-
-      const bottomLeftWindow = new Node(NODE_TYPES.CON, null);
-      bottomLeftWindow.percent = 0.5;
-      leftContainer.appendChild(bottomLeftWindow);
-
-      // Add windows to right container
-      const topRightWindow = new Node(NODE_TYPES.CON, null);
-      topRightWindow.percent = 0.5;
-      rightContainer.appendChild(topRightWindow);
-
-      const bottomRightWindow = new Node(NODE_TYPES.CON, null);
-      bottomRightWindow.percent = 0.5;
-      rightContainer.appendChild(bottomRightWindow);
-
-      // Verify 2x2 layout percentages
-      expect(leftContainer.childNodes.length).toBe(2);
-      expect(rightContainer.childNodes.length).toBe(2);
-
-      // Each side should have equal top/bottom percentages
-      expect(topLeftWindow.percent).toBe(0.5);
-      expect(bottomLeftWindow.percent).toBe(0.5);
-      expect(topRightWindow.percent).toBe(0.5);
-      expect(bottomRightWindow.percent).toBe(0.5);
-    });
-
-    it("should maintain height proportions when one container becomes tabbed", () => {
-      // Left side - will become tabbed
-      const leftContainer = new Node(NODE_TYPES.CON, null);
-      leftContainer.layout = LAYOUT_TYPES.TABBED;
-      leftContainer.percent = 0.5;
-      leftContainer._rect = { x: 0, y: 0, width: 960, height: 1080 };
-
-      // Right side - vertical split
-      const rightContainer = new Node(NODE_TYPES.CON, null);
-      rightContainer.layout = LAYOUT_TYPES.VSPLIT;
-      rightContainer.percent = 0.5;
-      rightContainer._rect = { x: 960, y: 0, width: 960, height: 1080 };
-
-      // Add tabbed windows to left (stacked on top of each other)
-      const tabbedWindow1 = new Node(NODE_TYPES.CON, null);
-      tabbedWindow1.percent = 1.0; // In tabbed layout, windows take full space
-      leftContainer.appendChild(tabbedWindow1);
-
-      const tabbedWindow2 = new Node(NODE_TYPES.CON, null);
-      tabbedWindow2.percent = 1.0;
-      leftContainer.appendChild(tabbedWindow2);
-
-      // Add windows to right container (vertical split)
-      const topRightWindow = new Node(NODE_TYPES.CON, null);
-      topRightWindow.percent = 0.5;
-      rightContainer.appendChild(topRightWindow);
-
-      const bottomRightWindow = new Node(NODE_TYPES.CON, null);
-      bottomRightWindow.percent = 0.5;
-      rightContainer.appendChild(bottomRightWindow);
-
-      // The bug: right side windows should still have 50/50 vertical split
-      // regardless of how the left container is laid out
-      expect(topRightWindow.percent).toBe(0.5);
-      expect(bottomRightWindow.percent).toBe(0.5);
-
-      // The horizontal split should be 50/50
-      expect(leftContainer.percent).toBe(0.5);
-      expect(rightContainer.percent).toBe(0.5);
-
-      // Tabbed windows don't affect sibling container heights
-      expect(rightContainer.layout).toBe(LAYOUT_TYPES.VSPLIT);
-    });
+  beforeEach(() => {
+    ctx = createTreeFixture();
   });
 
-  describe("resetSiblingPercent behavior", () => {
-    it("should properly reset percentages for container siblings", () => {
-      const container = new Node(NODE_TYPES.CON, null);
-      container.layout = LAYOUT_TYPES.VSPLIT;
+  afterEach(() => {
+    ctx.cleanup();
+  });
 
-      const child1 = new Node(NODE_TYPES.CON, null);
-      child1.percent = 0.7; // Unequal
-      container.appendChild(child1);
-
-      const child2 = new Node(NODE_TYPES.CON, null);
-      child2.percent = 0.3;
-      container.appendChild(child2);
-
-      // Reset to equal percentages manually (simulating resetSiblingPercent)
-      const numChildren = container.childNodes.length;
-      const equalPercent = 1.0 / numChildren;
-      for (const child of container.childNodes) {
-        child.percent = equalPercent;
-      }
-
-      // Should now be equal
-      expect(child1.percent).toBeCloseTo(0.5, 2);
-      expect(child2.percent).toBeCloseTo(0.5, 2);
+  // Build a VSPLIT container with `count` children at the given percents.
+  function buildVSplit(rect, percents) {
+    const con = new Node(NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.VSPLIT;
+    con.rect = rect;
+    const children = percents.map((p) => {
+      const child = new Node(NODE_TYPES.CON, new Bin());
+      child.percent = p;
+      con.appendChild(child);
+      return child;
     });
+    return { con, children };
+  }
+
+  it("computeSizes splits a vertical container into equal heights", () => {
+    const { con, children } = buildVSplit({ x: 0, y: 0, width: 960, height: 1080 }, [0.5, 0.5]);
+
+    const sizes = ctx.tree.computeSizes(con, children);
+
+    expect(sizes).toHaveLength(2);
+    // Each half of a 1080px column is 540px.
+    expect(sizes[0]).toBe(540);
+    expect(sizes[1]).toBe(540);
+    // Bug #330: allocated heights must sum exactly to the parent height.
+    expect(sizes[0] + sizes[1]).toBe(1080);
+  });
+
+  it("computeSizes corrects rounding so heights still sum to the parent (no doubled rows)", () => {
+    // 1081 is odd: naive Math.floor(0.5 * 1081) = 540 each, summing to 1080,
+    // leaving a 1px gap. The #330 fix pushes the remainder onto the last child.
+    const { con, children } = buildVSplit({ x: 0, y: 0, width: 960, height: 1081 }, [0.5, 0.5]);
+
+    const sizes = ctx.tree.computeSizes(con, children);
+
+    expect(sizes[0] + sizes[1]).toBe(1081);
+    // Neither child should be anywhere near double the other.
+    expect(Math.abs(sizes[0] - sizes[1])).toBeLessThanOrEqual(1);
+  });
+
+  it("computeSizes is unaffected by a sibling container's layout (2x2 stays 50/50)", () => {
+    // Right column of a 2x2: a plain VSPLIT with two equal rows. The left
+    // column being TABBED must not change these computed heights.
+    const { con, children } = buildVSplit({ x: 960, y: 0, width: 960, height: 1080 }, [0.5, 0.5]);
+
+    const sizes = ctx.tree.computeSizes(con, children);
+
+    expect(sizes[0]).toBe(540);
+    expect(sizes[1]).toBe(540);
+    expect(sizes[0] + sizes[1]).toBe(1080);
+  });
+
+  it("computeSizes honors unequal percents while still summing to the parent", () => {
+    const { con, children } = buildVSplit({ x: 0, y: 0, width: 960, height: 1000 }, [0.7, 0.3]);
+
+    const sizes = ctx.tree.computeSizes(con, children);
+
+    expect(sizes[0]).toBe(700);
+    expect(sizes[1]).toBe(300);
+    expect(sizes[0] + sizes[1]).toBe(1000);
+  });
+
+  it("computeSizes falls back to equal shares when percents are unset", () => {
+    const { con, children } = buildVSplit({ x: 0, y: 0, width: 960, height: 1200 }, [0, 0]);
+
+    const sizes = ctx.tree.computeSizes(con, children);
+
+    expect(sizes[0]).toBe(600);
+    expect(sizes[1]).toBe(600);
+    expect(sizes[0] + sizes[1]).toBe(1200);
   });
 });

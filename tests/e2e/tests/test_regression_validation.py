@@ -48,6 +48,7 @@ class TestBug125VerticalStackedTiling:
         # Toggle layout to stacked (Shift+Super+s is default keybinding).
         # toggle_stacked() self-settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
         input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")  # confirm the toggle took effect
 
         # Get window positions after stacking
         windows_after = shell_proxy.get_windows()
@@ -75,28 +76,28 @@ class TestBug125VerticalStackedTiling:
 
         # Toggle to stacked layout (self-settles).
         input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")  # confirm the toggle took effect
 
-        # Get windows after stacking
+        # Get windows after stacking (three_windows guarantees 3, so assert
+        # unconditionally rather than silently skipping on a failed toggle).
         windows_after = shell_proxy.get_windows()
-        if len(windows_after) >= 2:
-            rects = [w.get("rect", {}) for w in windows_after]
+        rects = [w.get("rect", {}) for w in windows_after]
 
-            # In stacked mode, all windows should have similar dimensions
-            widths = [r.get("width", 0) for r in rects if r]
-            heights = [r.get("height", 0) for r in rects if r]
+        # In stacked mode, all windows should have similar dimensions
+        widths = [r.get("width", 0) for r in rects if r]
+        heights = [r.get("height", 0) for r in rects if r]
 
-            if widths and heights:
-                # All widths should be similar (stacked windows share space)
-                width_variance = max(widths) - min(widths)
-                assert width_variance < 50, (
-                    f"Stacked windows should have similar width, variance: {width_variance}"
-                )
+        # All widths should be similar (stacked windows share space)
+        width_variance = max(widths) - min(widths)
+        assert width_variance < 50, (
+            f"Stacked windows should have similar width, variance: {width_variance}"
+        )
 
-                # All heights should be similar
-                height_variance = max(heights) - min(heights)
-                assert height_variance < 100, (
-                    f"Stacked windows should have similar height, variance: {height_variance}"
-                )
+        # All heights should be similar
+        height_variance = max(heights) - min(heights)
+        assert height_variance < 100, (
+            f"Stacked windows should have similar height, variance: {height_variance}"
+        )
 
 
 class TestBug305Resize:

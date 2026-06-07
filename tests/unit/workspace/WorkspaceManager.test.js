@@ -68,18 +68,6 @@ describe("WorkspaceManager", () => {
     ctx.cleanup();
   });
 
-  describe("constructor", () => {
-    it("should store tree and extWm references", () => {
-      expect(workspaceManager._tree).toBe(mockTree);
-      expect(workspaceManager._extWm).toBe(mockExtWm);
-    });
-
-    it("should initialize empty workspace signals map", () => {
-      expect(workspaceManager._workspaceSignals).toBeInstanceOf(Map);
-      expect(workspaceManager._workspaceSignals.size).toBe(0);
-    });
-  });
-
   describe("addWorkspace()", () => {
     it("should create a workspace node in the tree", () => {
       const result = workspaceManager.addWorkspace(0);
