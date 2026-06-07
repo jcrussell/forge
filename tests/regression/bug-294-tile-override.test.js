@@ -111,14 +111,12 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         allows_resize: true,
       });
 
-      // Without matching title, the TILE override shouldn't apply
-      // so it falls back to default behavior
+      // The title-specific TILE override doesn't match, so it doesn't apply.
+      // The window is otherwise a normal, resizable, titled, non-dialog window
+      // with no built-in float rule — so default behavior is to tile (not exempt).
       const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
 
-      // Since we only have a specific title override that doesn't match,
-      // and Neovide may have other properties that make it float,
-      // the result depends on default floating exemption rules
-      expect(isExempt).toBeDefined();
+      expect(isExempt).toBe(false);
     });
   });
 
