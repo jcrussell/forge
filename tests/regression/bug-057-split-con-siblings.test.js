@@ -1,204 +1,149 @@
-import { describe, it, expect } from "vitest";
-import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
-import { createMockWindow } from "../mocks/helpers/index.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
+import { WINDOW_MODES } from "../../lib/extension/window.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
+import { Bin } from "../mocks/gnome/St.js";
 
 /**
- * Bug #57: Do not stack nor put as tab windows with split con siblings
+ * Bug #57 (forge-37r): stack/tab windows with split-con siblings.
  *
- * Problem: When a window W has a split container [A B] as a sibling, toggling
- * stacked/tabbed layout on the parent container incorrectly combines W, A, and B
- * into the same stack/tab group, flattening the nested structure.
+ * Tree:  monitor -> parentCon [ W , nestedCon[ A , B ] ]
  *
- * Tree structure before: [ W* [ A B ] ]
- * Expected after toggle tabbed: [ W* [ A B ] ] but in tabbed container
- * Actual (bug): [ W* A B ] all in same tab group (loses nesting)
+ * When parentCon is toggled TABBED/STACKED, the nested split container must be
+ * preserved as a single i3-style header item rather than flattened. Previously
+ * only WINDOW nodes got a header tab (Node._createWindowTab early-returned for
+ * non-windows) and processTabbed's gate (`child.isWindow()`) skipped CON children
+ * — worse, naively relaxing that gate threw at `child.actor.border.get_theme_node()`
+ * because CON actors have no border.
  *
- * Root Cause: The layout toggle function doesn't preserve nested container
- * structure when changing parent layout to STACKED or TABBED.
- *
- * Fix: When toggling layout to stacked/tabbed, preserve child containers
- * as single items rather than flattening their children into the parent.
+ * The previous regression test here was vacuous: it built CON-only hand-rolled
+ * trees, set `node.layout` directly, and only asserted child counts — never
+ * exercising the command handlers, tab creation, or the renderer.
  */
-describe("Bug #57: Preserve nested containers when toggling stacked/tabbed", () => {
-  describe("Nested container structure preservation", () => {
-    it("should identify nested containers within parent", () => {
-      // Build structure: [ W [ A B ] ]
-      const parentCon = new Node(NODE_TYPES.CON, null);
-      parentCon.layout = LAYOUT_TYPES.HSPLIT;
-      parentCon.percent = 1.0;
+describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () => {
+  let ctx;
 
-      // Window W
-      const nodeW = new Node(NODE_TYPES.CON, null);
-      nodeW.percent = 0.5;
-      parentCon.appendChild(nodeW);
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: {
+        "tiling-mode-enabled": true,
+        "tabbed-tiling-mode-enabled": true,
+        "stacked-tiling-mode-enabled": true,
+        "showtab-decoration-enabled": true,
+        "auto-exit-tabbed": false,
+      },
+    });
+    ctx.display.sort_windows_by_stacking = vi.fn((w) => w);
+  });
 
-      // Nested container [ A B ]
-      const nestedCon = new Node(NODE_TYPES.CON, null);
-      nestedCon.layout = LAYOUT_TYPES.VSPLIT;
-      nestedCon.percent = 0.5;
-      parentCon.appendChild(nestedCon);
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
 
-      const nodeA = new Node(NODE_TYPES.CON, null);
-      nodeA.percent = 0.5;
-      nestedCon.appendChild(nodeA);
+  const wm = () => ctx.windowManager;
 
-      const nodeB = new Node(NODE_TYPES.CON, null);
-      nodeB.percent = 0.5;
-      nestedCon.appendChild(nodeB);
+  // Build monitor -> parentCon [ W, nestedCon[ A, B ] ] and return the nodes.
+  function buildNestedTree() {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const tree = ctx.tree;
 
-      // Verify structure
+    const parentCon = tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    parentCon.layout = LAYOUT_TYPES.HSPLIT;
+
+    const wWin = createMockWindow({ id: "W", title: "Window W" });
+    const nodeW = tree.createNode(parentCon.nodeValue, NODE_TYPES.WINDOW, wWin);
+    nodeW.mode = WINDOW_MODES.TILE;
+
+    const nestedCon = tree.createNode(parentCon.nodeValue, NODE_TYPES.CON, new Bin());
+    nestedCon.layout = LAYOUT_TYPES.VSPLIT;
+
+    const aWin = createMockWindow({ id: "A", title: "Window A" });
+    const nodeA = tree.createNode(nestedCon.nodeValue, NODE_TYPES.WINDOW, aWin);
+    nodeA.mode = WINDOW_MODES.TILE;
+    const bWin = createMockWindow({ id: "B", title: "Window B" });
+    const nodeB = tree.createNode(nestedCon.nodeValue, NODE_TYPES.WINDOW, bWin);
+    nodeB.mode = WINDOW_MODES.TILE;
+
+    return { monitor, parentCon, nodeW, nestedCon, nodeA, nodeB };
+  }
+
+  describe("structure preservation through the real command path", () => {
+    it("keeps the nested container intact when toggling parent to TABBED", () => {
+      const { parentCon, nodeW, nestedCon } = buildNestedTree();
+      ctx.display.get_focus_window.mockReturnValue(nodeW.nodeValue);
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+
+      wm().command({ name: "LayoutTabbedToggle" });
+
+      expect(parentCon.layout).toBe(LAYOUT_TYPES.TABBED);
+      // 2 direct children (W + nestedCon), NOT 3 flattened (W, A, B)
       expect(parentCon.childNodes.length).toBe(2);
-      expect(parentCon.childNodes[0].nodeType).toBe(NODE_TYPES.CON);
-      expect(parentCon.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
-
-      // Check nested container has its children
-      const nested = parentCon.childNodes[1];
-      expect(nested.childNodes.length).toBe(2);
+      expect(nestedCon.nodeType).toBe(NODE_TYPES.CON);
+      expect(nestedCon.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      expect(nestedCon.childNodes.length).toBe(2);
     });
 
-    it("should count direct children vs all descendants", () => {
-      // Build structure: [ W [ A B ] ]
-      const parentCon = new Node(NODE_TYPES.CON, null);
-      parentCon.layout = LAYOUT_TYPES.HSPLIT;
-      parentCon.percent = 1.0;
+    it("keeps the nested container intact when toggling parent to STACKED", () => {
+      const { parentCon, nodeW, nestedCon } = buildNestedTree();
+      ctx.display.get_focus_window.mockReturnValue(nodeW.nodeValue);
+      vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
-      const nodeW = new Node(NODE_TYPES.CON, null);
-      nodeW.percent = 0.5;
-      parentCon.appendChild(nodeW);
+      wm().command({ name: "LayoutStackedToggle" });
 
-      const nestedCon = new Node(NODE_TYPES.CON, null);
-      nestedCon.layout = LAYOUT_TYPES.VSPLIT;
-      nestedCon.percent = 0.5;
-      parentCon.appendChild(nestedCon);
-
-      const nodeA = new Node(NODE_TYPES.CON, null);
-      nodeA.percent = 0.5;
-      nestedCon.appendChild(nodeA);
-
-      const nodeB = new Node(NODE_TYPES.CON, null);
-      nodeB.percent = 0.5;
-      nestedCon.appendChild(nodeB);
-
-      // Direct children of parent: 2 (W and nested container)
+      expect(parentCon.layout).toBe(LAYOUT_TYPES.STACKED);
       expect(parentCon.childNodes.length).toBe(2);
-
-      // Total nodes in tree including parent: 5 (parent, W, nested, A, B)
-      const allNodes = [];
-      const countNodes = (node) => {
-        allNodes.push(node);
-        for (const child of node.childNodes) {
-          countNodes(child);
-        }
-      };
-      countNodes(parentCon);
-      expect(allNodes.length).toBe(5);
+      expect(nestedCon.childNodes.length).toBe(2);
     });
   });
 
-  describe("Layout toggle behavior", () => {
-    it("should preserve nested container when toggling parent to tabbed", () => {
-      // Build structure: [ W [ A B ] ]
-      const parentCon = new Node(NODE_TYPES.CON, null);
-      parentCon.layout = LAYOUT_TYPES.HSPLIT;
-      parentCon.percent = 1.0;
-
-      const nodeW = new Node(NODE_TYPES.CON, null);
-      nodeW.percent = 0.5;
-      parentCon.appendChild(nodeW);
-
-      const nestedCon = new Node(NODE_TYPES.CON, null);
-      nestedCon.layout = LAYOUT_TYPES.VSPLIT;
-      nestedCon.percent = 0.5;
-      parentCon.appendChild(nestedCon);
-
-      const nodeA = new Node(NODE_TYPES.CON, null);
-      nodeA.percent = 0.5;
-      nestedCon.appendChild(nodeA);
-
-      const nodeB = new Node(NODE_TYPES.CON, null);
-      nodeB.percent = 0.5;
-      nestedCon.appendChild(nodeB);
-
-      // Toggle parent to tabbed layout
-      parentCon.layout = LAYOUT_TYPES.TABBED;
-
-      // Should still have 2 direct children (W and nested container)
-      // NOT 3 (W, A, B flattened)
-      expect(parentCon.childNodes.length).toBe(2);
-
-      // Nested container should still exist
-      expect(parentCon.childNodes[1].nodeType).toBe(NODE_TYPES.CON);
-      expect(parentCon.childNodes[1].childNodes.length).toBe(2);
+  describe("CON header tab", () => {
+    it("_getTitle() borrows the representative window's title for a CON", () => {
+      const { nestedCon } = buildNestedTree();
+      expect(nestedCon._getTitle()).toBe("Window A");
     });
 
-    it("should preserve nested container when toggling parent to stacked", () => {
-      // Build structure: [ W [ A B ] ]
-      const parentCon = new Node(NODE_TYPES.CON, null);
-      parentCon.layout = LAYOUT_TYPES.HSPLIT;
-      parentCon.percent = 1.0;
+    it("_ensureConTab() builds a header tab for a CON with windows", () => {
+      const { nestedCon } = buildNestedTree();
+      expect(nestedCon.tab).toBeNull();
 
-      const nodeW = new Node(NODE_TYPES.CON, null);
-      nodeW.percent = 0.5;
-      parentCon.appendChild(nodeW);
+      nestedCon._ensureConTab();
 
-      const nestedCon = new Node(NODE_TYPES.CON, null);
-      nestedCon.layout = LAYOUT_TYPES.VSPLIT;
-      nestedCon.percent = 0.5;
-      parentCon.appendChild(nestedCon);
+      expect(nestedCon.tab).not.toBeNull();
+      // index 1 is the title button (matches the window-tab layout for Node.render())
+      expect(nestedCon.tab.get_child_at_index(1).label).toBe("Window A");
+    });
 
-      const nodeA = new Node(NODE_TYPES.CON, null);
-      nodeA.percent = 0.5;
-      nestedCon.appendChild(nodeA);
+    it("_ensureConTab() rebuilds when the representative window changes", () => {
+      const { nestedCon, nodeA } = buildNestedTree();
+      nestedCon._ensureConTab();
+      const firstTab = nestedCon.tab;
 
-      const nodeB = new Node(NODE_TYPES.CON, null);
-      nodeB.percent = 0.5;
-      nestedCon.appendChild(nodeB);
+      // Remove A so B becomes the representative window
+      ctx.tree.removeNode(nodeA);
+      nestedCon._ensureConTab();
 
-      // Toggle parent to stacked layout
-      parentCon.layout = LAYOUT_TYPES.STACKED;
-
-      // Should still have 2 direct children
-      expect(parentCon.childNodes.length).toBe(2);
-
-      // Nested container should still exist and maintain its structure
-      const nested = parentCon.childNodes[1];
-      expect(nested.nodeType).toBe(NODE_TYPES.CON);
-      expect(nested.layout).toBe(LAYOUT_TYPES.VSPLIT);
-      expect(nested.childNodes.length).toBe(2);
+      expect(nestedCon.tab).not.toBe(firstTab);
+      expect(nestedCon.tab.get_child_at_index(1).label).toBe("Window B");
     });
   });
 
-  describe("Tab display for nested containers", () => {
-    it("should show nested container as single tab item", () => {
-      // Build tabbed structure with nested container
-      const parentCon = new Node(NODE_TYPES.CON, null);
+  describe("renderer does not throw and attaches the CON tab (was the crash)", () => {
+    it("renders a TABBED parent containing a nested split CON", () => {
+      const { parentCon, nestedCon } = buildNestedTree();
       parentCon.layout = LAYOUT_TYPES.TABBED;
-      parentCon.percent = 1.0;
+      parentCon.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeW = new Node(NODE_TYPES.CON, null);
-      nodeW.percent = 1.0;
-      parentCon.appendChild(nodeW);
+      // Naive gate relaxation would throw here on the CON's missing actor.border.
+      expect(() => ctx.tree.processNode(parentCon)).not.toThrow();
 
-      const nestedCon = new Node(NODE_TYPES.CON, null);
-      nestedCon.layout = LAYOUT_TYPES.VSPLIT;
-      nestedCon.percent = 1.0;
-      parentCon.appendChild(nestedCon);
-
-      const nodeA = new Node(NODE_TYPES.CON, null);
-      nodeA.percent = 0.5;
-      nestedCon.appendChild(nodeA);
-
-      const nodeB = new Node(NODE_TYPES.CON, null);
-      nodeB.percent = 0.5;
-      nestedCon.appendChild(nodeB);
-
-      // Tab count should be 2 (W and nested container), not 3 (W, A, B)
-      const tabCount = parentCon.childNodes.length;
-      expect(tabCount).toBe(2);
-
-      // The second tab represents the entire nested container
-      const secondTab = parentCon.childNodes[1];
-      expect(secondTab.nodeType).toBe(NODE_TYPES.CON);
+      // The nested CON now has a header tab attached to the parent's decoration.
+      expect(nestedCon.tab).not.toBeNull();
+      expect(parentCon.decoration.contains(nestedCon.tab)).toBe(true);
     });
   });
 });
