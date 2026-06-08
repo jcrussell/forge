@@ -196,6 +196,10 @@ export class Window extends withSignals() {
     // Mock raise operation
   }
 
+  lower() {
+    // Mock lower operation
+  }
+
   focus(timestamp) {
     // Mock focus operation
   }

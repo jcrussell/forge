@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS = {
   "tiling-mode-enabled": true,
   "focus-on-hover-enabled": false,
   "auto-split-enabled": false,
+  "new-window-placement": "pointer",
 
   // Layouts
   "stacked-tiling-mode-enabled": true,

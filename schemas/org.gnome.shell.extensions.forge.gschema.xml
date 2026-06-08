@@ -184,6 +184,10 @@
             <default>false</default>
             <summary>Enable auto split or quarter-tiling based based on smaller side</summary>
         </key>
+        <key type="s" name="new-window-placement">
+            <default>'pointer'</default>
+            <summary>Initial monitor for a new window: 'pointer' (active/pointer monitor) or 'window-actual' (the window's own monitor)</summary>
+        </key>
         <key type="b" name="preview-hint-enabled">
             <default>false</default>
             <summary>Whether to show preview hint DND</summary>
