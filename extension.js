@@ -59,6 +59,16 @@ const SETTINGS_OVERRIDES = [
     type: "strv",
     newValue: [],
   },
+  // forge-m37 (#249): free GNOME's native Super+L lock so it doesn't collide with
+  // Forge's vim window-focus-right (<Super>l). Forge provides locking via
+  // prefs-lock-screen (<Super>q). Restored on disable() like the others; kept last
+  // so a missing media-keys schema can't abort the overrides above.
+  {
+    schemaId: "org.gnome.settings-daemon.plugins.media-keys",
+    key: "screensaver",
+    type: "strv",
+    newValue: [],
+  },
 ];
 
 export default class ForgeExtension extends Extension {
