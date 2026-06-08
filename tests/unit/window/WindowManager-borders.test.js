@@ -480,6 +480,47 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       // Should not set border class when tiling is disabled
       expect(mockBorder.set_style_class_name).not.toHaveBeenCalledWith("window-tiled-border");
     });
+
+    // gh-297 (forge-mmr): a FLOAT window must not show the floating focus hint
+    // when Forge tiling is toggled off. Previously window-floated-border was
+    // drawn for floats regardless of tiling-mode-enabled.
+    it("should not show floating border when tiling-mode-enabled is disabled (gh-297)", () => {
+      ctx.settings.get_boolean.mockImplementation((key) => {
+        if (key === "tiling-mode-enabled") return false;
+        if (key === "focus-border-toggle") return true;
+        return false;
+      });
+
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      const windowActor = metaWindow.get_compositor_private();
+      windowActor.border = mockBorder;
+
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.FLOAT;
+
+      wm().showWindowBorders();
+
+      // The floating focus hint must be suppressed while tiling is disabled.
+      expect(mockBorder.set_style_class_name).not.toHaveBeenCalledWith("window-floated-border");
+    });
   });
 
   describe("Multi-Monitor Border Behavior", () => {
