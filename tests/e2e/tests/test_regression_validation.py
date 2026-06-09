@@ -11,9 +11,11 @@ This serves as a proof of concept for:
 3. Catching regressions that might slip through mock-based tests
 """
 
+import time
+
 import pytest
 
-from framework.constants import Tolerance
+from framework.constants import Tolerance, Timing
 from framework.wait import wait_for_layout, wait_for_window_count
 
 
@@ -29,6 +31,18 @@ class TestBug125VerticalStackedTiling:
     - In stacked mode, windows occupy the same space (overlap)
     - Window dimensions change when entering stacked mode
     """
+
+    @pytest.fixture(autouse=True)
+    def _enable_stacked_tabbed_modes(self, restore_settings):
+        """Stacked/tabbed modes default OFF in the gschema, so StackedLayoutToggle
+        bails early (command.js) and toggle_stacked() is a silent no-op — which is
+        why the wait_for_layout("STACKED") gates below time out without this. Enable
+        the modes so the toggles actually exercise stacked layout; restore_settings
+        reverts after each test and the settle lets the GSetting reach Forge first.
+        """
+        restore_settings.set_stacked_tiling_mode_enabled(True)
+        restore_settings.set_tabbed_tiling_mode_enabled(True)
+        time.sleep(Timing.SETTINGS_SETTLE)
 
     def test_stacked_layout_changes_window_arrangement(
         self, shell_proxy, window_helper, input_sim, three_windows
