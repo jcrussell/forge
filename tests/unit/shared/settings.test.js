@@ -302,7 +302,7 @@ describe("ConfigManager", () => {
         get_path: () => "/config",
       }));
 
-      Object.defineProperty(configManager, "windowConfigFile", {
+      Object.defineProperty(configManager, "windowConfigPath", {
         get: () => mockFile,
         configurable: true,
       });
@@ -320,7 +320,7 @@ describe("ConfigManager", () => {
         get_path: () => "/config",
       }));
 
-      Object.defineProperty(configManager, "windowConfigFile", {
+      Object.defineProperty(configManager, "windowConfigPath", {
         get: () => mockFile,
         configurable: true,
       });
@@ -331,14 +331,21 @@ describe("ConfigManager", () => {
       expect(writtenContents).toContain("    "); // 4-space indent
     });
 
-    it("should fall back to default file when windowConfigFile is null", () => {
+    it("forge-3sv2: writes to the user config path, never the read-only default", () => {
+      // On a fresh install windowConfigFile is null (loadFile created the file but
+      // returned null). The setter must still write to the user config path, not
+      // fall back to the read-only bundled defaultWindowConfigFile.
+      const userFile = createMockFile("/config/windows.json");
+      userFile.get_parent = vi.fn(() => ({ get_path: () => "/config" }));
       const mockDefaultFile = createMockFile("/default/windows.json");
-      mockDefaultFile.get_parent = vi.fn(() => ({
-        get_path: () => "/default",
-      }));
+      mockDefaultFile.get_parent = vi.fn(() => ({ get_path: () => "/default" }));
 
       Object.defineProperty(configManager, "windowConfigFile", {
         get: () => null,
+        configurable: true,
+      });
+      Object.defineProperty(configManager, "windowConfigPath", {
+        get: () => userFile,
         configurable: true,
       });
       Object.defineProperty(configManager, "defaultWindowConfigFile", {
@@ -348,7 +355,8 @@ describe("ConfigManager", () => {
 
       configManager.windowProps = sampleWindowConfig;
 
-      expect(mockDefaultFile.replace_contents).toHaveBeenCalled();
+      expect(userFile.replace_contents).toHaveBeenCalled();
+      expect(mockDefaultFile.replace_contents).not.toHaveBeenCalled();
     });
   });
 
