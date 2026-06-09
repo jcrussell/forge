@@ -142,6 +142,120 @@ describe("forge-s6g: minimum-size-aware tiling via redistribution", () => {
     expect(sum(sizes)).toBe(1800);
   });
 
+  // forge-sbw3: a CON child must project its descendants' minimums up to the
+  // outer split, otherwise a min-constrained nested window is squeezed below
+  // its minimum (and overlaps) because the CON was treated as min 0.
+  it("honors a min-width window nested inside a CON at the outer split (forge-sbw3)", () => {
+    const con = new Node(NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    con.rect = { x: 0, y: 0, width: 1800, height: 1080 };
+
+    // Child 0: a nested VSPLIT container holding one window with min_width 900.
+    // Its tiny percent (0.25 -> 450px) would squeeze it below 900 without the fix.
+    const nested = new Node(NODE_TYPES.CON, new Bin());
+    nested.layout = LAYOUT_TYPES.VSPLIT;
+    nested.percent = 0.25;
+    con.appendChild(nested);
+    const nestedWin = new Node(
+      NODE_TYPES.WINDOW,
+      createMockWindow({
+        rect: new Rectangle({ width: 1800, height: 1080 }),
+        size_hints: { min_width: 900, min_height: 0 },
+      })
+    );
+    nestedWin.percent = 1;
+    nested.appendChild(nestedWin);
+
+    // Child 1: a plain unconstrained window.
+    const plain = new Node(
+      NODE_TYPES.WINDOW,
+      createMockWindow({ rect: new Rectangle({ width: 1800, height: 1080 }), size_hints: null })
+    );
+    plain.percent = 0.75;
+    con.appendChild(plain);
+
+    const sizes = ctx.tree.computeSizes(con, [nested, plain]);
+
+    expect(sizes[0]).toBeGreaterThanOrEqual(900);
+    expect(sizes[1]).toBeLessThanOrEqual(900);
+    expect(sum(sizes)).toBe(1800);
+  });
+
+  it("sums same-orientation nested CON minimums at the outer split (forge-sbw3)", () => {
+    const con = new Node(NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    con.rect = { x: 0, y: 0, width: 1800, height: 1080 };
+
+    // Child 0: a nested HSPLIT (same axis as parent) of two min-width windows;
+    // side-by-side along the parent axis -> the CON needs 400 + 300 = 700.
+    const nested = new Node(NODE_TYPES.CON, new Bin());
+    nested.layout = LAYOUT_TYPES.HSPLIT;
+    nested.percent = 0.1;
+    con.appendChild(nested);
+    [400, 300].forEach((min_width, i) => {
+      const w = new Node(
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: `n${i}`,
+          rect: new Rectangle({ width: 1800, height: 1080 }),
+          size_hints: { min_width, min_height: 0 },
+        })
+      );
+      w.percent = 0.5;
+      nested.appendChild(w);
+    });
+
+    const plain = new Node(
+      NODE_TYPES.WINDOW,
+      createMockWindow({ rect: new Rectangle({ width: 1800, height: 1080 }), size_hints: null })
+    );
+    plain.percent = 0.9;
+    con.appendChild(plain);
+
+    const sizes = ctx.tree.computeSizes(con, [nested, plain]);
+
+    expect(sizes[0]).toBeGreaterThanOrEqual(700);
+    expect(sum(sizes)).toBe(1800);
+  });
+
+  it("takes the max of cross-orientation nested CON minimums, not the sum (forge-sbw3)", () => {
+    const con = new Node(NODE_TYPES.CON, new Bin());
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    con.rect = { x: 0, y: 0, width: 1800, height: 1080 };
+
+    // Child 0: a nested VSPLIT (cross axis) of two windows min_width 500 & 300;
+    // they stack vertically, so the CON needs max(500, 300) = 500, NOT 800.
+    const nested = new Node(NODE_TYPES.CON, new Bin());
+    nested.layout = LAYOUT_TYPES.VSPLIT;
+    nested.percent = 0.1;
+    con.appendChild(nested);
+    [500, 300].forEach((min_width, i) => {
+      const w = new Node(
+        NODE_TYPES.WINDOW,
+        createMockWindow({
+          id: `v${i}`,
+          rect: new Rectangle({ width: 1800, height: 1080 }),
+          size_hints: { min_width, min_height: 0 },
+        })
+      );
+      w.percent = 0.5;
+      nested.appendChild(w);
+    });
+
+    const plain = new Node(
+      NODE_TYPES.WINDOW,
+      createMockWindow({ rect: new Rectangle({ width: 1800, height: 1080 }), size_hints: null })
+    );
+    plain.percent = 0.9;
+    con.appendChild(plain);
+
+    const sizes = ctx.tree.computeSizes(con, [nested, plain]);
+
+    expect(sizes[0]).toBeGreaterThanOrEqual(500);
+    expect(sizes[0]).toBeLessThan(700); // proves max(500,300), not sum(800)
+    expect(sum(sizes)).toBe(1800);
+  });
+
   it("is a no-op when every window already fits its tile", () => {
     const { con, children } = buildSplit(
       LAYOUT_TYPES.HSPLIT,

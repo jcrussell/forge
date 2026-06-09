@@ -140,6 +140,65 @@
       }
     },
 
+    // forge-kvao/forge-s6g: shadow get_size_hints on the LEFTMOST window of a
+    // class so the min-size redistribution can be exercised deterministically in
+    // e2e (no headless app reports a large min-width). The own-property override
+    // lives on the live Meta.Window and so survives the async render cycle. A
+    // re-render is triggered so computeSizes re-runs with the injected minimum.
+    setLeftmostWindowMinSize(wmClass, minWidth, minHeight) {
+      try {
+        const r = root();
+        if (!r) return JSON.stringify({ error: "Tree not available" });
+        const wins = reduceTree(
+          r,
+          (acc, n) => {
+            if (isWindowOfClass(n, wmClass)) acc.push(n);
+            return { acc };
+          },
+          []
+        );
+        if (wins.length === 0) return JSON.stringify({ error: "no windows of class" });
+        const target = wins.reduce((a, b) =>
+          b.nodeValue.get_frame_rect().x < a.nodeValue.get_frame_rect().x ? b : a
+        );
+        const win = target.nodeValue;
+        if (!win._origGetSizeHints) win._origGetSizeHints = win.get_size_hints;
+        win.get_size_hints = () => ({ min_width: minWidth, min_height: minHeight });
+        const ext = forgeExt();
+        if (ext && ext.extWm) ext.extWm.renderTree("e2e-minsize");
+        return JSON.stringify({ ok: true, id: win.get_id(), rect: rect(win.get_frame_rect()) });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    },
+
+    // forge-kvao: undo setLeftmostWindowMinSize for every shadowed window of the
+    // class and re-render, so the change does not leak into later tests.
+    resetWindowMinSize(wmClass) {
+      try {
+        const r = root();
+        if (!r) return JSON.stringify({ error: "Tree not available" });
+        const count = reduceTree(
+          r,
+          (acc, n) => {
+            const v = n.nodeValue;
+            if (isWindowOfClass(n, wmClass) && v._origGetSizeHints) {
+              v.get_size_hints = v._origGetSizeHints;
+              delete v._origGetSizeHints;
+              return { acc: acc + 1 };
+            }
+            return { acc };
+          },
+          0
+        );
+        const ext = forgeExt();
+        if (ext && ext.extWm) ext.extWm.renderTree("e2e-minsize-reset");
+        return JSON.stringify({ ok: true, reset: count });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    },
+
     // mapTree — was get_tree_structure (shell_proxy.py:1109), depth guard 10
     getTreeStructure() {
       try {
