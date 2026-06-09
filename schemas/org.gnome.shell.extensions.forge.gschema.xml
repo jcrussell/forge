@@ -185,6 +185,10 @@
             <summary>Enable auto split or quarter-tiling based based on smaller side</summary>
         </key>
         <key type="s" name="new-window-placement">
+            <choices>
+                <choice value="pointer"/>
+                <choice value="window-actual"/>
+            </choices>
             <default>'pointer'</default>
             <summary>Initial monitor for a new window: 'pointer' (active/pointer monitor) or 'window-actual' (the window's own monitor)</summary>
         </key>
