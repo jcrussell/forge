@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
@@ -6,7 +6,8 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
-import { Rectangle } from "../../mocks/gnome/Meta.js";
+import Meta, { Rectangle } from "../../mocks/gnome/Meta.js";
+import St from "../../mocks/gnome/St.js";
 
 /**
  * WindowManager border and focus indicator tests
@@ -565,6 +566,71 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       // Should show border with multiple monitors even for single window
       expect(mockBorder.set_style_class_name).toHaveBeenCalledWith("window-tiled-border");
+    });
+  });
+
+  // Bug #164 (forge-uqx): on Wayland HiDPI, move() aligns the window to buffer
+  // scale via _alignToBufferScale, but showWindowBorders() sized the border from
+  // the raw frame rect — so the border ended up offset/smaller than the window.
+  describe("Bug #164: HiDPI buffer-scale border alignment", () => {
+    beforeEach(() => {
+      Meta.__setWayland(true);
+      St.__setScaleFactor(2);
+    });
+
+    afterEach(() => {
+      Meta.__setWayland(false);
+      St.__resetScaleFactor();
+    });
+
+    it("aligns the tiled border rect to buffer scale, matching move()", () => {
+      // A frame rect that is NOT already buffer-scale aligned (odd coords/sizes).
+      const rawRect = new Rectangle({ x: 101, y: 101, width: 961, height: 541 });
+      const metaWindow = createMockWindow({
+        rect: rawRect,
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      metaWindow.get_compositor_private().border = mockBorder;
+
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+
+      // Second tiled sibling so the single-window border-skip path doesn't apply.
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 1062, y: 101, width: 961, height: 541 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      nodeWindow2.mode = WINDOW_MODES.TILE;
+
+      wm().showWindowBorders();
+
+      const inset = 3;
+      const align = (v) => wm()._alignToBufferScale(v, 2);
+      const ax = align(rawRect.x);
+      const ay = align(rawRect.y);
+      const aw = align(rawRect.width);
+      const ah = align(rawRect.height);
+
+      // Border must be sized/positioned from the ALIGNED rect, not the raw one.
+      expect(mockBorder.set_size).toHaveBeenCalledWith(aw + inset * 2, ah + inset * 2);
+      expect(mockBorder.set_position).toHaveBeenCalledWith(ax - inset, ay - inset);
     });
   });
 });

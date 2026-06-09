@@ -142,6 +142,16 @@ export class Button extends Widget {
   }
 }
 
+// Module-level scale factor so tests can simulate HiDPI. get_for_stage returns a
+// fresh instance per call, so the getter must read this shared var (not a field).
+let _scaleFactor = 1;
+export function __setScaleFactor(value) {
+  _scaleFactor = value;
+}
+export function __resetScaleFactor() {
+  _scaleFactor = 1;
+}
+
 export class ThemeContext {
   static get_for_stage(stage) {
     return new ThemeContext();
@@ -155,7 +165,7 @@ export class ThemeContext {
   }
 
   get scale_factor() {
-    return 1;
+    return _scaleFactor;
   }
 }
 
@@ -176,4 +186,6 @@ export default {
   Button,
   ThemeContext,
   Icon,
+  __setScaleFactor,
+  __resetScaleFactor,
 };

@@ -423,6 +423,16 @@ export function external_binding_name_for_action(action) {
   return `binding-${action}`;
 }
 
+// Module-level Wayland flag (default false) so tests can exercise the Wayland
+// buffer-scale paths that production guards behind is_wayland_compositor().
+let _wayland = false;
+export function is_wayland_compositor() {
+  return _wayland;
+}
+export function __setWayland(value) {
+  _wayland = value;
+}
+
 export default {
   Rectangle,
   Window,
@@ -438,4 +448,6 @@ export default {
   KeyBindingFlags,
   KeyBindingAction,
   external_binding_name_for_action,
+  is_wayland_compositor,
+  __setWayland,
 };
