@@ -131,18 +131,71 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     expect(monitor.childNodes[0].isWindow()).toBe(true);
   });
 
-  it("skips a nested-CON group (deferred) instead of flattening it silently", () => {
+  // forge-4y80: a STACKED/TABBED group containing a nested sub-split CON (the
+  // Bug #57 shape) must survive the reload with its nesting intact, not flatten.
+  it("restores a nested-CON group (TABBED over an inner HSPLIT) after a flat rebuild", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
+    // outer TABBED -> [ inner HSPLIT -> [w0, w1], w2 ]
     const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
     outer.layout = LAYOUT_TYPES.TABBED;
-    // A child that is itself a CON (not a window) makes this a nested group.
     const innerCon = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
     innerCon.layout = LAYOUT_TYPES.HSPLIT;
-    ctx.tree.createNode(innerCon.nodeValue, NODE_TYPES.WINDOW, makeWindow(0));
-    ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, makeWindow(1));
+    const w0 = makeWindow(0);
+    const w1 = makeWindow(1);
+    const w2 = makeWindow(2);
+    ctx.tree.createNode(innerCon.nodeValue, NODE_TYPES.WINDOW, w0);
+    ctx.tree.createNode(innerCon.nodeValue, NODE_TYPES.WINDOW, w1);
+    ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, w2);
 
     const snapshot = ctx.tree.snapshotLayoutGroups();
-    expect(snapshot).toHaveLength(0);
+    expect(snapshot).toHaveLength(1);
+
+    // The reload re-adds ALL nested leaf windows flat under the monitor.
+    flattenUnderMonitor(monitor, [w0, w1, w2]);
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)).toHaveLength(0);
+
+    ctx.tree.restoreLayoutGroups(snapshot);
+
+    // Outer TABBED rebuilt directly under the monitor.
+    const tabbed = ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED);
+    expect(tabbed).toHaveLength(1);
+    const outerRebuilt = tabbed[0];
+    expect(outerRebuilt.parentNode).toBe(monitor);
+    expect(outerRebuilt.childNodes).toHaveLength(2);
+
+    // First child is the inner HSPLIT CON wrapping w0, w1; second is w2.
+    const [firstChild, secondChild] = outerRebuilt.childNodes;
+    expect(firstChild.isCon()).toBe(true);
+    expect(firstChild.layout).toBe(LAYOUT_TYPES.HSPLIT);
+    expect(firstChild.childNodes.map((n) => n.nodeValue)).toEqual([w0, w1]);
+    expect(secondChild.isWindow()).toBe(true);
+    expect(secondChild.nodeValue).toBe(w2);
+  });
+
+  it("collapses a nested CON to its single survivor (no degenerate container)", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    // outer STACKED -> [ inner HSPLIT -> [w0, w1], w2 ]; only w0 + w2 survive.
+    const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    outer.layout = LAYOUT_TYPES.STACKED;
+    const innerCon = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
+    innerCon.layout = LAYOUT_TYPES.HSPLIT;
+    const w0 = makeWindow(0);
+    const w1 = makeWindow(1);
+    const w2 = makeWindow(2);
+    ctx.tree.createNode(innerCon.nodeValue, NODE_TYPES.WINDOW, w0);
+    ctx.tree.createNode(innerCon.nodeValue, NODE_TYPES.WINDOW, w1);
+    ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, w2);
+
+    const snapshot = ctx.tree.snapshotLayoutGroups();
+    flattenUnderMonitor(monitor, [w0, w2]); // w1 closed during suspend
+    ctx.tree.restoreLayoutGroups(snapshot);
+
+    // Inner HSPLIT had a single survivor (w0) -> collapsed; outer STACKED wraps
+    // w0 and w2 directly as windows, with no empty/degenerate inner container.
+    const stacked = ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED);
+    expect(stacked).toHaveLength(1);
+    expect(stacked[0].childNodes.every((n) => n.isWindow())).toBe(true);
+    expect(stacked[0].childNodes.map((n) => n.nodeValue)).toEqual([w0, w2]);
   });
 
   it("leaves a plain HSPLIT split untouched (nothing to snapshot)", () => {
