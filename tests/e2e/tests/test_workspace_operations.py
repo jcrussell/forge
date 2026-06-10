@@ -16,6 +16,23 @@ from framework.wait import (
 )
 
 
+def _pull_window_back(shell_proxy, ws_index):
+    """Move the first window on workspace ws_index+1 back to ws_index (no-op if none)."""
+    shell_proxy.eval(f"""
+    (function() {{
+        var wsMgr = global.workspace_manager;
+        var targetWs = wsMgr.get_workspace_by_index({ws_index + 1});
+        if (targetWs) {{
+            var wins = targetWs.list_windows();
+            if (wins.length > 0) {{
+                wins[0].change_workspace_by_index({ws_index}, false);
+            }}
+        }}
+        return 'OK';
+    }})();
+    """)
+
+
 class TestWorkspaceNavigation:
     """Test workspace switching preserves layout."""
 
@@ -118,35 +135,26 @@ class TestMoveWindowBetweenWorkspaces:
 
         # Move window via D-Bus (bypasses unreliable xdotool keybinding)
         shell_proxy.move_window_to_workspace(ws_index + 1)
-        windows = wait_for_window_count(shell_proxy, count_before - 1)
-        count_after = len(windows)
+        # forge-t3bb: the pull-back must survive a failing assert — a stranded
+        # window on ws+1 outlives the test (clean_workspace sweeps only the
+        # CURRENT workspace) and contaminates every later test.
+        try:
+            windows = wait_for_window_count(shell_proxy, count_before - 1)
+            count_after = len(windows)
 
-        assert count_after == count_before - 1, (
-            f"Window count should decrease by 1: {count_before} -> {count_after}"
-        )
+            assert count_after == count_before - 1, (
+                f"Window count should decrease by 1: {count_before} -> {count_after}"
+            )
 
-        # Remaining window should fill workspace. Count hit 1, but the window may
-        # still be re-tiling — wait for the fill before asserting.
-        if count_after == 1:
-            workspace = window_helper.get_workspace_rect()
-            filled = wait_for_window_fill(shell_proxy, workspace)
-            rect = filled.get("rect", {})
-            assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE
-
-        # Clean up: switch to target workspace and move window back
-        shell_proxy.eval(f"""
-        (function() {{
-            var wsMgr = global.workspace_manager;
-            var targetWs = wsMgr.get_workspace_by_index({ws_index + 1});
-            if (targetWs) {{
-                var wins = targetWs.list_windows();
-                if (wins.length > 0) {{
-                    wins[0].change_workspace_by_index({ws_index}, false);
-                }}
-            }}
-            return 'OK';
-        }})();
-        """)
+            # Remaining window should fill workspace. Count hit 1, but the window
+            # may still be re-tiling — wait for the fill before asserting.
+            if count_after == 1:
+                workspace = window_helper.get_workspace_rect()
+                filled = wait_for_window_fill(shell_proxy, workspace)
+                rect = filled.get("rect", {})
+                assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE
+        finally:
+            _pull_window_back(shell_proxy, ws_index)
         wait_for_window_count(shell_proxy, count_before)
 
     def test_move_and_return(self, shell_proxy, two_windows):
@@ -157,22 +165,12 @@ class TestMoveWindowBetweenWorkspaces:
 
         # Move window to next workspace via D-Bus
         shell_proxy.move_window_to_workspace(ws_index + 1)
-        wait_for_window_count(shell_proxy, count_original - 1)
-
-        # Move it back
-        shell_proxy.eval(f"""
-        (function() {{
-            var wsMgr = global.workspace_manager;
-            var targetWs = wsMgr.get_workspace_by_index({ws_index + 1});
-            if (targetWs) {{
-                var wins = targetWs.list_windows();
-                if (wins.length > 0) {{
-                    wins[0].change_workspace_by_index({ws_index}, false);
-                }}
-            }}
-            return 'OK';
-        }})();
-        """)
+        try:
+            wait_for_window_count(shell_proxy, count_original - 1)
+        finally:
+            # Move it back (forge-t3bb: also the strand-proof cleanup — if the
+            # wait above times out, the window must still come home).
+            _pull_window_back(shell_proxy, ws_index)
         wait_for_window_count(shell_proxy, count_original)
 
         count_final = len(shell_proxy.get_windows())

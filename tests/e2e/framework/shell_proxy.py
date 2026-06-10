@@ -560,7 +560,10 @@ class ShellProxy:
         try:
             return int(result)
         except (ValueError, TypeError):
-            return 0
+            # forge-t3bb: a non-numeric result is the bridge's error sentinel
+            # (ERR_NO_ROOT = extension dead/disabled). Coercing it to 0 made
+            # "extension dead" indistinguishable from "0 windows".
+            raise RuntimeError(f"getWindowCount failed (extension dead?): {result!r}")
 
     # === Workspace Query Methods ===
 
@@ -658,7 +661,8 @@ class ShellProxy:
         try:
             return int(result)
         except (ValueError, TypeError):
-            return 0
+            # forge-t3bb: ERR_NO_ROOT (extension dead) must not read as 0 siblings.
+            raise RuntimeError(f"getSiblingCount failed (extension dead?): {result!r}")
 
     def get_tree_structure(self) -> dict:
         """

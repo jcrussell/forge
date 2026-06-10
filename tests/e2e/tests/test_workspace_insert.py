@@ -41,6 +41,48 @@ INSERT_WORKSPACE_JS = """
 """
 
 
+# forge-t3bb: INSERT_WORKSPACE_JS permanently grows the workspace count and
+# shifts the active index — the session pins dynamic-workspaces=false (see
+# start-user-session.sh), so GNOME never removes the extra workspace, and
+# clean_workspace only sweeps the CURRENT workspace. Bring every window back to
+# the original workspace, drop the appended workspaces, and restore the active
+# index, so later tests (and clean_workspace's teardown sweep) see the same
+# session they would without this module.
+RESTORE_WORKSPACES_JS = """
+(function() {
+    var wsm = global.workspace_manager;
+    var keep = %d;
+    var active = %d;
+    global.get_window_actors().map(function(a){ return a.meta_window; }).forEach(function(w){
+        if (w.get_transient_for() != null) return;
+        if (w.is_override_redirect && w.is_override_redirect()) return;
+        if (w.on_all_workspaces) return;
+        var ws = w.get_workspace();
+        if (ws && ws.index() !== active) w.change_workspace_by_index(active, false);
+    });
+    for (var i = wsm.get_n_workspaces() - 1; i >= keep; i--) {
+        var ws = wsm.get_workspace_by_index(i);
+        if (ws) wsm.remove_workspace(ws, global.get_current_time());
+    }
+    var dest = wsm.get_workspace_by_index(active);
+    if (dest) dest.activate(global.get_current_time());
+    return 'OK';
+})();
+"""
+
+
+@pytest.fixture(autouse=True)
+def _restore_workspaces(shell_proxy):
+    initial_count = int(shell_proxy.eval("global.workspace_manager.get_n_workspaces()"))
+    initial_index = shell_proxy.get_active_workspace_index()
+    yield
+    shell_proxy.eval(RESTORE_WORKSPACES_JS % (initial_count, initial_index))
+    wait_for(
+        shell_proxy.get_active_workspace_index,
+        predicate=lambda i: i == initial_index,
+    )
+
+
 def _max_subsplit_con_children(tree):
     """Largest child count among non-monitor CON containers holding >= 2 windows.
 

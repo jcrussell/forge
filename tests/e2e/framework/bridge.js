@@ -316,7 +316,9 @@
     getWindowCount() {
       try {
         const r = root();
-        if (!r) return "0";
+        // forge-t3bb: an unresolvable Forge root means the extension is dead or
+        // disabled — that must not look identical to "0 windows".
+        if (!r) return "ERR_NO_ROOT";
         const count = reduceTree(
           r,
           (acc, n) => (n.nodeType === "WINDOW" ? { acc: acc + 1, descend: false } : { acc }),
@@ -324,7 +326,7 @@
         );
         return String(count);
       } catch (e) {
-        return "0";
+        return "ERR_" + e;
       }
     },
 
@@ -366,7 +368,7 @@
     getSiblingCount(wmClass) {
       try {
         const r = root();
-        if (!r) return "0";
+        if (!r) return "ERR_NO_ROOT";
         const windowNode = firstMatch(r, (n) => isWindowOfClass(n, wmClass));
         if (!windowNode || !windowNode.parentNode) return "0";
         return String(windowNode.parentNode.childNodes.length);
