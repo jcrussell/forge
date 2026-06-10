@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import Meta from "gi://Meta";
+import Shell from "gi://Shell";
 import { Keybindings } from "../../lib/extension/keybindings.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 
@@ -118,6 +120,64 @@ describe("Bug #354: session-mode idempotence", () => {
       // The extension delegates idempotence to Keybindings.enable(); the
       // handler itself may call it repeatedly.
       expect(ext.keybindings.enable).toHaveBeenCalled();
+    });
+  });
+
+  // forge-fu2 (gh-466): "keyboard locked at password entry after lock/suspend".
+  // Forge keeps running on the lock screen (session-modes includes
+  // unlock-dialog) to preserve the tree, so the ONLY thing standing between
+  // its 40+ bindings and the password prompt is (a) the unlock-dialog branch
+  // removing every binding and (b) registering with ActionMode.NORMAL, never
+  // ALL/UNLOCK_SCREEN. Pin both through the real handler + real Keybindings.
+  describe("forge-fu2 (gh-466): lock screen leaves no keybinding behind", () => {
+    let ext;
+    let keybindings;
+
+    beforeEach(() => {
+      const mockExt = {
+        extWm: { command: vi.fn(), getPointer: vi.fn(() => [0, 0, 0]) },
+        kbdSettings: { get_string: vi.fn(() => "Super"), get_strv: vi.fn(() => []) },
+        settings: {
+          get_uint: vi.fn(() => 10),
+          get_string: vi.fn(() => ""),
+          get_boolean: vi.fn(() => false),
+        },
+      };
+      keybindings = new Keybindings(mockExt);
+      ext = new ForgeExtension();
+      ext.keybindings = keybindings;
+    });
+
+    it("an unlock-dialog session update removes every registered binding", () => {
+      const addKeybinding = vi.fn();
+      const removeKeybinding = vi.fn();
+      Main.wm.addKeybinding = addKeybinding;
+      Main.wm.removeKeybinding = removeKeybinding;
+
+      ext._onSessionModeChanged({ currentMode: "user" });
+      const registered = addKeybinding.mock.calls.map((c) => c[0]);
+      expect(registered.length).toBeGreaterThan(0);
+
+      ext._onSessionModeChanged({ currentMode: "unlock-dialog" });
+
+      const removed = removeKeybinding.mock.calls.map((c) => c[0]);
+      expect(removed.sort()).toEqual(registered.slice().sort());
+    });
+
+    it("every binding registers as ActionMode.NORMAL + KeyBindingFlags.NONE", () => {
+      const addKeybinding = vi.fn();
+      Main.wm.addKeybinding = addKeybinding;
+
+      ext._onSessionModeChanged({ currentMode: "user" });
+
+      expect(addKeybinding.mock.calls.length).toBeGreaterThan(0);
+      for (const [, , flags, actionMode] of addKeybinding.mock.calls) {
+        expect(flags).toBe(Meta.KeyBindingFlags.NONE);
+        expect(actionMode).toBe(Shell.ActionMode.NORMAL);
+        // Never active on the lock/unlock screen.
+        expect(actionMode & Shell.ActionMode.UNLOCK_SCREEN).toBe(0);
+        expect(actionMode & Shell.ActionMode.LOCK_SCREEN).toBe(0);
+      }
     });
   });
 });
