@@ -72,7 +72,6 @@ describe("CommandHandler", () => {
       unfloatAllWindows: vi.fn(),
       floatWorkspace: vi.fn(),
       unfloatWorkspace: vi.fn(),
-      cancelGrab: false,
       prefsTitle: "Forge Preferences",
       reloadWindowOverrides: vi.fn(),
       toggleWorkspaceMonocle: vi.fn(),
@@ -279,24 +278,6 @@ describe("CommandHandler", () => {
       commandHandler.execute({ name: "LayoutTabbedToggle" });
 
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
-    });
-  });
-
-  describe("CancelOperation command", () => {
-    it("should set cancelGrab flag when in grab tile mode", () => {
-      mockNodeWindow.mode = WINDOW_MODES.GRAB_TILE;
-
-      commandHandler.execute({ name: "CancelOperation" });
-
-      expect(mockWm.cancelGrab).toBe(true);
-    });
-
-    it("should not set cancelGrab if not in grab mode", () => {
-      mockNodeWindow.mode = WINDOW_MODES.TILE;
-
-      commandHandler.execute({ name: "CancelOperation" });
-
-      expect(mockWm.cancelGrab).toBe(false);
     });
   });
 

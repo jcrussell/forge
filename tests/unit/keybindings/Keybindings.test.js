@@ -374,47 +374,6 @@ describe("Keybindings", () => {
     });
   });
 
-  describe("listenFor()", () => {
-    let savedDisplay;
-
-    beforeEach(() => {
-      savedDisplay = global.display;
-      global.display = {
-        grab_accelerator: vi.fn(() => 42),
-      };
-    });
-
-    afterEach(() => {
-      global.display = savedDisplay;
-    });
-
-    it("should store grabber in _grabbers map on success", () => {
-      keybindings.listenFor("<Super>h", vi.fn());
-      expect(keybindings._grabbers.size).toBe(1);
-    });
-
-    it("should store callback in grabber", () => {
-      const callback = vi.fn();
-      keybindings.listenFor("<Super>h", callback);
-
-      const grabber = keybindings._grabbers.values().next().value;
-      expect(grabber.callback).toBe(callback);
-    });
-
-    it("should store accelerator string in grabber", () => {
-      keybindings.listenFor("<Super>h", vi.fn());
-
-      const grabber = keybindings._grabbers.values().next().value;
-      expect(grabber.accelerator).toBe("<Super>h");
-    });
-
-    it("should not store grabber when grab returns NONE action", () => {
-      global.display.grab_accelerator.mockReturnValue(0); // Meta.KeyBindingAction.NONE
-      keybindings.listenFor("<Super>h", vi.fn());
-      expect(keybindings._grabbers.size).toBe(0);
-    });
-  });
-
   describe("_directionalBindings()", () => {
     it("should generate 4 bindings for each direction", () => {
       const bindings = keybindings._directionalBindings("Focus", "window-focus");

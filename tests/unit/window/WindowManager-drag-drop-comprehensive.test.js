@@ -18,7 +18,6 @@ import { Rectangle } from "../../mocks/gnome/Meta.js";
  * - Tabbed container edge drops
  * - Monitor as stacked/tabbed parent
  * - Window ordering for LEFT/TOP drops
- * - cancelGrab early exit
  * - createCon logic variations
  * - detachWindow + split() path
  * - Multiple windows in various layouts
@@ -67,34 +66,6 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
   // ============================================================================
 
   describe("Early Exit Conditions", () => {
-    it("should do nothing when cancelGrab is true", () => {
-      const monitor = getMonitor();
-
-      const { nodeWindow: target } = createWindowWithRect(monitor, {
-        x: 0,
-        y: 0,
-        width: 1920,
-        height: 1080,
-      });
-      const { nodeWindow: dragged } = createWindowWithRect(
-        monitor,
-        { x: 0, y: 0, width: 1920, height: 1080 },
-        WINDOW_MODES.GRAB_TILE
-      );
-
-      setPointer(100, 540);
-      wm().nodeWinAtPointer = target;
-      wm().cancelGrab = true;
-
-      const initialParent = dragged.parentNode;
-      const initialChildCount = initialParent.childNodes.length;
-
-      wm().moveWindowToPointer(dragged, false);
-
-      expect(dragged.parentNode).toBe(initialParent);
-      expect(initialParent.childNodes.length).toBe(initialChildCount);
-    });
-
     it("should do nothing when focusNodeWindow is null", () => {
       const monitor = getMonitor();
       const { nodeWindow: target } = createWindowWithRect(monitor, {
