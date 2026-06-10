@@ -90,6 +90,11 @@ export function createMockWindowGroup() {
     add_child: vi.fn((child) => {
       if (!children.includes(child)) children.push(child);
     }),
+    insert_child_below: vi.fn((child, sibling) => {
+      if (children.includes(child)) return;
+      const index = children.indexOf(sibling);
+      children.splice(index === -1 ? children.length : index, 0, child);
+    }),
     remove_child: vi.fn((child) => {
       const index = children.indexOf(child);
       if (index !== -1) children.splice(index, 1);

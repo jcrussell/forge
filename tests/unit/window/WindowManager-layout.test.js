@@ -69,19 +69,15 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       expect(monitor.layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
-    it("should have determineSplitLayout method", () => {
-      expect(typeof wm().determineSplitLayout).toBe("function");
-    });
-
-    it("should return a valid layout from determineSplitLayout", () => {
+    it("should pick HSPLIT from determineSplitLayout on a landscape monitor", () => {
       const layout = wm().determineSplitLayout();
 
-      expect([LAYOUT_TYPES.HSPLIT, LAYOUT_TYPES.VSPLIT]).toContain(layout);
+      expect(layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
   });
 
   describe("Focus After Window Destruction", () => {
-    it("should track lastFocusedWindow", () => {
+    it("should track lastFocusedWindow through movePointerWith (the focus path)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
         windowOverrides: {
@@ -90,12 +86,13 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
         },
       });
 
-      wm().lastFocusedWindow = nodeWindow;
+      expect(wm().lastFocusedWindow).toBeNull();
+      wm().movePointerWith(nodeWindow);
 
       expect(wm().lastFocusedWindow).toBe(nodeWindow);
     });
 
-    it("should clear lastFocusedWindow when window is removed", () => {
+    it("should remove the closed window's node from the tree", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
         windowOverrides: {
@@ -112,28 +109,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       const foundNode = wm().findNodeWindow(metaWindow);
       expect(foundNode).toBeNull();
     });
-
-    it("should find appropriate focus target after window closes", () => {
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow: node1 } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 0, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
-      });
-      const { nodeWindow: node2 } = createWindowNode(ctx.tree, monitor, {
-        windowOverrides: {
-          rect: new Rectangle({ x: 800, y: 0, width: 800, height: 600 }),
-          workspace: ctx.workspaces[0],
-        },
-      });
-
-      // Remove node1
-      ctx.tree.removeNode(node1);
-
-      // node2 should still be in tree as potential focus target
-      expect(monitor.childNodes).toContain(node2);
-    });
   });
 
   describe("Workspace Layout Independence", () => {
@@ -142,18 +117,6 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       const { workspace: workspace1, monitor: monitor1 } = getWorkspaceAndMonitor(ctx, 1);
 
       expect(monitor0).not.toBe(monitor1);
-    });
-
-    it("should allow different layouts per workspace", () => {
-      const { monitor: monitor0 } = getWorkspaceAndMonitor(ctx, 0);
-      const { monitor: monitor1 } = getWorkspaceAndMonitor(ctx, 1);
-
-      // Set different layouts
-      monitor0.layout = LAYOUT_TYPES.HSPLIT;
-      monitor1.layout = LAYOUT_TYPES.VSPLIT;
-
-      expect(monitor0.layout).toBe(LAYOUT_TYPES.HSPLIT);
-      expect(monitor1.layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
     it("should preserve windows in each workspace independently", () => {
@@ -233,40 +196,34 @@ describe("WindowManager - Layout and Mode Behaviors", () => {
       expect(container.layout).toBe(LAYOUT_TYPES.VSPLIT);
     });
 
-    it("should support stacked layout in container", () => {
+    it("should set STACKED via the real LayoutStackedToggle command", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow: node1 } = createWindowNode(ctx.tree, monitor, {
+      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
         windowOverrides: { workspace: ctx.workspaces[0] },
       });
-      ctx.tree.split(node1, 0, true);
+      ctx.display.get_focus_window.mockReturnValue(metaWindow);
 
-      const container = node1.parentNode;
-      container.layout = LAYOUT_TYPES.STACKED;
+      wm().command({ name: "LayoutStackedToggle" });
 
-      createWindowNode(ctx.tree, container, {
-        windowOverrides: { workspace: ctx.workspaces[0] },
-      });
+      expect(nodeWindow.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.STACKED);
 
-      expect(container.layout).toBe(LAYOUT_TYPES.STACKED);
-      expect(container.childNodes).toHaveLength(2);
+      // Toggling again restores a split layout.
+      wm().command({ name: "LayoutStackedToggle" });
+      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
     });
 
-    it("should support tabbed layout in container", () => {
+    it("should set TABBED via the real LayoutTabbedToggle command", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      const { nodeWindow: node1 } = createWindowNode(ctx.tree, monitor, {
+      const { nodeWindow, metaWindow } = createWindowNode(ctx.tree, monitor, {
         windowOverrides: { workspace: ctx.workspaces[0] },
       });
-      ctx.tree.split(node1, 0, true);
+      ctx.display.get_focus_window.mockReturnValue(metaWindow);
 
-      const container = node1.parentNode;
-      container.layout = LAYOUT_TYPES.TABBED;
+      wm().command({ name: "LayoutTabbedToggle" });
 
-      createWindowNode(ctx.tree, container, {
-        windowOverrides: { workspace: ctx.workspaces[0] },
-      });
-
-      expect(container.layout).toBe(LAYOUT_TYPES.TABBED);
-      expect(container.childNodes).toHaveLength(2);
+      expect(nodeWindow.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(nodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
     });
   });
 

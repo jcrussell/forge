@@ -79,9 +79,8 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
 
       // Comments are included in the AST but have no declarations
       const comment = ast.stylesheet.rules.find((r) => r.type === "comment");
-      if (comment) {
-        expect(comment.declarations).toBeUndefined();
-      }
+      expect(comment).toBeDefined();
+      expect(comment.declarations).toBeUndefined();
     });
 
     it("should parse CSS with @-rules (which may not have declarations)", () => {
@@ -96,9 +95,8 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
 
       // @charset is a different rule type
       const charsetRule = ast.stylesheet.rules.find((r) => r.type === "charset");
-      if (charsetRule) {
-        expect(charsetRule.declarations).toBeUndefined();
-      }
+      expect(charsetRule).toBeDefined();
+      expect(charsetRule.declarations).toBeUndefined();
     });
 
     it("should parse CSS with @import rules", () => {
@@ -112,9 +110,8 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
       const ast = parse(css);
 
       const importRule = ast.stylesheet.rules.find((r) => r.type === "import");
-      if (importRule) {
-        expect(importRule.declarations).toBeUndefined();
-      }
+      expect(importRule).toBeDefined();
+      expect(importRule.declarations).toBeUndefined();
     });
   });
 
@@ -197,10 +194,10 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
       const ast = parse(css);
 
       // All rules should be comments
+      expect(ast.stylesheet.rules.length).toBeGreaterThan(0);
       ast.stylesheet.rules.forEach((rule) => {
-        if (rule.type) {
-          expect(rule.declarations).toBeUndefined();
-        }
+        expect(rule.type).toBe("comment");
+        expect(rule.declarations).toBeUndefined();
       });
     });
 
@@ -219,11 +216,10 @@ describe("Bug #448: CSS parsing with rules without declarations", () => {
         (r) => r.selectors && r.selectors.includes(".empty")
       );
 
-      if (emptyRule) {
-        // Empty rule should have declarations array, just empty
-        expect(emptyRule.declarations).toBeDefined();
-        expect(emptyRule.declarations.length).toBe(0);
-      }
+      expect(emptyRule).toBeDefined();
+      // Empty rule should have declarations array, just empty
+      expect(emptyRule.declarations).toBeDefined();
+      expect(emptyRule.declarations.length).toBe(0);
     });
   });
 });

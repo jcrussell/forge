@@ -39,6 +39,10 @@ export class Widget extends withSignals() {
     // Mock destroy
   }
 
+  get_parent() {
+    return this._parent || null;
+  }
+
   set_size(width, height) {
     this.width = width;
     this.height = height;
