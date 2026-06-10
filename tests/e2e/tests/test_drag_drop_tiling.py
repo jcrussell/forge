@@ -233,3 +233,84 @@ class TestDragDropBasic:
         assert count_after == count_before, (
             f"Window count changed during drag: {count_before} -> {count_after}"
         )
+
+
+@pytest.mark.drag
+class TestDragPreviewCleanup:
+    """forge-63y (gh-529): no drag-preview overlay may survive a tab drag.
+
+    The reporter saw a red preview overlay stuck on screen after moving a
+    browser-tab window. The preview hint is an St.Bin cached on the dragged
+    WINDOW node, created by _handleMoving while a GRAB_TILE drag hovers drop
+    zones; _grabCleanup/_handleGrabOpEnd must release it on EVERY outcome.
+
+    Drop-zone detection only engages when allowDragDropTile() passes, i.e.
+    the mod-mask-mouse-tile modifier is held - which xdotool drags never do,
+    so with the default 'Super' mask the preview path is silently never
+    exercised headless. The test sets the mask to 'None' (a supported user
+    config, and the forge-2iw touch recommendation) so dragging a TABBED
+    member really creates the preview, then asserts nothing leaks.
+    """
+
+    def test_no_preview_hint_leak_after_tab_drag(
+        self, shell_proxy, input_sim, window_helper, restore_settings, two_windows
+    ):
+        from framework.wait import wait_for_layout
+
+        restore_settings.set_tabbed_tiling_mode_enabled(True)
+        restore_settings.set_keybinding_string("mod-mask-mouse-tile", "None")
+        time.sleep(Timing.SETTINGS_SETTLE)
+
+        # Wrap the LEFT window into a single-child TABBED CON (flat-monitor
+        # forceSplit wraps only the targeted window); the right one stays tiled.
+        shell_proxy.invoke_forge_action(
+            {"name": "LayoutTabbedToggle"}, focus_window="leftmost", also_activate=True
+        )
+        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
+        wait_for_layout(shell_proxy, "TABBED")
+
+        windows = shell_proxy.get_windows()
+        assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
+
+        # The tab member is the activated (focused) window; drag it onto the
+        # right zone of the plain tiled sibling.
+        source = next((w for w in windows if w.get("isFocused")), windows[0])
+        target = next(w for w in windows if w is not source)
+        src, tgt = source.get("rect", {}), target.get("rect", {})
+
+        # Landing detector: a landed drop pulls the member out of its
+        # single-child TABBED CON, which is then reaped - the rects alone can't
+        # discriminate (the two windows just swap identical half slots).
+        def count_cons(node):
+            if not isinstance(node, dict):
+                return 0
+            own = 1 if node.get("nodeType") == "CON" else 0
+            return own + sum(count_cons(c) for c in node.get("children") or [])
+
+        cons_before = count_cons(shell_proxy.get_tree_structure())
+        assert cons_before >= 1, "expected the TABBED CON in the tree before the drag"
+
+        input_sim.drag_window(
+            src["x"] + src["width"] // 2,
+            src["y"] + 10,
+            tgt["x"] + int(tgt["width"] * 0.85),
+            tgt["y"] + tgt["height"] // 2,
+        )
+        time.sleep(Timing.LAYOUT_CHANGE)
+
+        # The leak assertion runs regardless of whether the drop landed: no
+        # tree node may still hold a preview hint, visible or not.
+        hint_state = shell_proxy.get_preview_hint_state()
+        assert hint_state.get("count", -1) == 0, (
+            f"Drag preview hint leaked after tab drag: {hint_state}"
+        )
+        assert hint_state.get("visible", -1) == 0, (
+            f"Drag preview hint still VISIBLE after tab drag (gh-529 shape): {hint_state}"
+        )
+
+        # Landing gate (same xfail pattern as the other drag tests): if the
+        # TABBED CON is still in the tree, the member never left it - the drag
+        # didn't engage Mutter's grab-op protocol and the leak assert above was
+        # vacuous for the in-drag path.
+        if count_cons(shell_proxy.get_tree_structure()) >= cons_before:
+            pytest.xfail("xdotool drag did not trigger Mutter grab-op drop-zone detection")

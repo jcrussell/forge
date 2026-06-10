@@ -349,6 +349,22 @@ class ShellProxy:
         except (ValueError, TypeError):
             return -1
 
+    def get_preview_hint_state(self) -> dict:
+        """Return drag-preview hint leak state: {"count": n, "visible": n}.
+
+        forge-63y (gh-529): any tree node still holding a previewHint outside an
+        active grab is a leak; a non-zero "visible" is the stuck-red-overlay
+        shape. Returns {"error": ...} if the tree is unavailable.
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getPreviewHintState()")
+        if isinstance(result, dict):
+            return result
+        try:
+            return json.loads(result)
+        except (ValueError, TypeError):
+            return {"error": f"unparseable: {result!r}"}
+
     def get_monitor_count(self) -> int:
         """Return the number of monitors GNOME sees (global.display.get_n_monitors())."""
         self._ensure_bridge()

@@ -283,6 +283,26 @@ class ForgeSettings:
         except GLib.Error as e:
             raise GSettingsError(f"Failed to set keybinding '{action}': {e.message}")
 
+    def set_keybinding_string(self, key: str, value: str) -> None:
+        """Set a STRING key in the keybindings schema (e.g. mod-mask-mouse-tile).
+
+        set_keybinding() is strv-only; this covers the schema's plain string
+        keys. The original value is captured for restore_all() the same way.
+        """
+        if not self._keybinding_settings:
+            raise GSettingsError("Keybinding settings not available")
+
+        if key not in self._original_keybindings:
+            try:
+                self._original_keybindings[key] = self._keybinding_settings.get_value(key)
+            except GLib.Error:
+                pass
+
+        try:
+            self._keybinding_settings.set_string(key, value)
+        except GLib.Error as e:
+            raise GSettingsError(f"Failed to set keybinding string '{key}': {e.message}")
+
     def disable_keybinding(self, action: str) -> None:
         """
         Disable a keybinding.

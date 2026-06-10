@@ -856,6 +856,32 @@
       }
     },
 
+    // reduceTree — forge-63y (gh-529): drag-preview hint leak detector. The hint is an
+    // anonymous St.Bin cached on the WINDOW node (window.js previewHint, no type marker on
+    // the actor), created during a drag and released in _grabCleanup/_handleGrabOpEnd. Any
+    // node still holding one outside an active grab is a leak; `visible` is the stuck-red-
+    // overlay shape the reporter saw.
+    getPreviewHintState() {
+      try {
+        const r = root();
+        if (!r) return JSON.stringify({ error: "Tree not available" });
+        const state = reduceTree(
+          r,
+          (acc, n) => {
+            if (n.previewHint) {
+              acc.count += 1;
+              if (n.previewHint.visible) acc.visible += 1;
+            }
+            return { acc };
+          },
+          { count: 0, visible: 0 }
+        );
+        return JSON.stringify(state);
+      } catch (e) {
+        return JSON.stringify({ error: String(e) });
+      }
+    },
+
     // Render the screencast overlay label (forge-eyu): create-if-needed + set text + position +
     // raise + show. Cached on globalThis._forgeTestOverlay so it survives across evals. Parented
     // to uiGroup — NOT addChrome, which would register struts and perturb tiling geometry. Text
