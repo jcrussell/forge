@@ -136,4 +136,29 @@ describe("forge-u7xz: no-op override updates do not rewrite windows.json", () =>
     expect(writeCount).toBe(1);
     expect(props.overrides).toHaveLength(1);
   });
+
+  it("refreshes the WM override cache even on a skipped write", () => {
+    // Other writers (prefs process, the e2e bridge's removeClassFloatOverride)
+    // update configMgr.windowProps without touching wm.windowProps; the cache
+    // is healed by the next _updateWindowOverrides call. A no-op update must
+    // still refresh it — isFloatingExempt reads the cache, and a stale float
+    // override there misroutes the next FloatClassToggle into the tile
+    // direction (caught live on the F39 e2e lane).
+    const win = createMockWindow({ wm_class: "App" });
+    props = { overrides: [{ wmClass: "OtherApp", mode: "float" }] };
+
+    // No-op remove for a different class: write skipped, cache refreshed.
+    ctx.windowManager.removeFloatOverride(win, true);
+    expect(writeCount).toBe(0);
+    expect(ctx.windowManager.windowProps.overrides).toEqual([
+      { wmClass: "OtherApp", mode: "float" },
+    ]);
+
+    // Out-of-band removal (what the bridge does) followed by another no-op
+    // update: the stale "OtherApp floats" entry must be gone from the cache.
+    props = { overrides: [] };
+    ctx.windowManager.removeFloatOverride(win, true);
+    expect(writeCount).toBe(0);
+    expect(ctx.windowManager.windowProps.overrides).toEqual([]);
+  });
 });
