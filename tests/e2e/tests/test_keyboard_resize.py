@@ -101,6 +101,46 @@ class TestKeyboardResize:
         window_helper.assert_windows_fill_workspace()
 
 
+class TestResizeBoundaryIndependence:
+    """forge-12f (gh-305): resizing one boundary must not move the opposite one.
+
+    In a 3-window HSPLIT [W1|W2|W3], growing W1's east edge moves only the
+    W1|W2 boundary; the W2|W3 boundary and W3 must stay put. The reported bug
+    was the opposite boundary shifting too.
+    """
+
+    def test_resize_one_boundary_leaves_the_other_fixed(
+        self, shell_proxy, window_helper, three_windows
+    ):
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+
+        before = window_helper.get_windows_sorted_by_position("x")
+        assert len(before) == 3, f"Expected 3 tiled windows, got {len(before)}"
+        w1_before, _, w3_before = (w.get("rect", {}) for w in before)
+
+        _invoke_resize(shell_proxy, "WindowResizeRight", focus_window="leftmost")
+
+        after = window_helper.get_windows_sorted_by_position("x")
+        assert len(after) == 3, f"Expected 3 tiled windows after resize, got {len(after)}"
+        w1_after, _, w3_after = (w.get("rect", {}) for w in after)
+
+        # Sanity: the resize actually landed (W1's east edge moved right).
+        assert w1_after.get("width", 0) > w1_before.get("width", 0) + Tolerance.RESIZE_MIN_DELTA, (
+            f"W1 should be wider: {w1_before.get('width')} -> {w1_after.get('width')}"
+        )
+        # W1's west edge is untouched.
+        assert abs(w1_after.get("x", -1) - w1_before.get("x", -1)) <= Tolerance.POSITION, (
+            f"W1's west edge moved: {w1_before.get('x')} -> {w1_after.get('x')}"
+        )
+        # The OPPOSITE boundary (W2|W3) must not move: W3 keeps its x and width.
+        assert abs(w3_after.get("x", -1) - w3_before.get("x", -1)) <= Tolerance.POSITION, (
+            f"W2|W3 boundary moved: W3.x {w3_before.get('x')} -> {w3_after.get('x')}"
+        )
+        assert abs(w3_after.get("width", -1) - w3_before.get("width", -1)) <= Tolerance.POSITION, (
+            f"W3 resized: width {w3_before.get('width')} -> {w3_after.get('width')}"
+        )
+
+
 class TestResetSizes:
     """Test resetting window sizes to equal."""
 
