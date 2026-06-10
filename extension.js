@@ -180,7 +180,10 @@ export default class ForgeExtension extends Extension {
   }
 
   _addIndicator() {
-    this.indicator ??= new FeatureIndicator(this);
+    // Bug #354: repeated "user" session updates must not stack duplicate
+    // menu toggles; _removeIndicator nulls this.indicator on lock.
+    if (this.indicator) return;
+    this.indicator = new FeatureIndicator(this);
     this.indicator.quickSettingsItems.push(new FeatureMenuToggle(this));
     Main.panel.statusArea.quickSettings.addExternalIndicator(this.indicator);
   }

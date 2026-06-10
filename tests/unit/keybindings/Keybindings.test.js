@@ -189,8 +189,10 @@ describe("Keybindings", () => {
     it("should call removeKeybinding for each binding", () => {
       const removeKeybinding = vi.fn();
 
+      Main.wm.addKeybinding = vi.fn();
       Main.wm.removeKeybinding = removeKeybinding;
 
+      keybindings.enable();
       keybindings.disable();
 
       const bindingCount = Object.keys(keybindings._bindings).length;
@@ -200,8 +202,10 @@ describe("Keybindings", () => {
     it("should remove all binding keys by name", () => {
       const removedKeys = [];
 
+      Main.wm.addKeybinding = vi.fn();
       Main.wm.removeKeybinding = (key) => removedKeys.push(key);
 
+      keybindings.enable();
       keybindings.disable();
 
       for (const key of Object.keys(keybindings._bindings)) {

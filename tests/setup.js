@@ -14,7 +14,7 @@ vi.mock("gi://GObject", () => GnomeMocks.GObject);
 
 // Create shared mock objects that tests can modify
 // Using vi.hoisted() ensures these are created before mocks and are mutable
-const { mockOverview, mockWm } = vi.hoisted(() => {
+const { mockOverview, mockWm, mockPanel } = vi.hoisted(() => {
   return {
     mockOverview: {
       visible: false,
@@ -26,6 +26,13 @@ const { mockOverview, mockWm } = vi.hoisted(() => {
       addKeybinding: () => {},
       removeKeybinding: () => {},
       allowKeybinding: () => {},
+    },
+    mockPanel: {
+      statusArea: {
+        quickSettings: {
+          addExternalIndicator: () => {},
+        },
+      },
     },
   };
 });
@@ -51,6 +58,7 @@ vi.mock("resource:///org/gnome/shell/extensions/extension.js", () => ({
 vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   overview: mockOverview,
   wm: mockWm,
+  panel: mockPanel,
   notify: () => {},
 }));
 
@@ -58,6 +66,7 @@ vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
 global.Main = {
   overview: mockOverview,
   wm: mockWm,
+  panel: mockPanel,
   notify: () => {},
 };
 
