@@ -9,6 +9,7 @@ import time
 import pytest
 
 from framework.constants import Timing, Tolerance
+from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
 from framework.wait import wait_for_layout
 
 
@@ -228,69 +229,6 @@ class TestLayoutTransitions:
             )
 
 
-# forge-37r: deterministically focus a WINDOW whose parent CON also has a CON
-# child, so toggling tabbed produces a TABBED container with a nested split-con
-# child (the case that previously threw on the CON's missing actor.border).
-_FOCUS_WINDOW_SIBLING_OF_CON = """
-(() => {
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
-  const tree = ext && ext.extWm && ext.extWm.tree;
-  if (!tree) return 'no-tree';
-  let target = null;
-  const walk = (n) => {
-    if (!n || target) return;
-    const kids = n.childNodes || [];
-    if (n.nodeType === 'CON' &&
-        kids.some(c => c.nodeType === 'CON') &&
-        kids.some(c => c.nodeType === 'WINDOW')) {
-      target = kids.find(c => c.nodeType === 'WINDOW');
-      return;
-    }
-    kids.forEach(walk);
-  };
-  walk(tree);
-  if (target && target.nodeValue) {
-    target.nodeValue.activate(global.get_current_time());
-    return 'activated';
-  }
-  return 'no-target';
-})()
-"""
-
-
-def _tabbed_con_child_window_counts(shell_proxy):
-    """Per CON child of any TABBED node, count its WINDOW descendants.
-
-    A nested split preserved as one tab item (forge-37r) appears as a CON child
-    of a TABBED node; flattening would instead put those windows directly under
-    the TABBED node, leaving it with no CON child.
-    """
-
-    def count_windows(node):
-        if not isinstance(node, dict):
-            return 0
-        n = 1 if node.get("nodeType") == "WINDOW" else 0
-        for c in node.get("children") or []:
-            n += count_windows(c)
-        return n
-
-    counts = []
-
-    def walk(node):
-        if not isinstance(node, dict):
-            return
-        children = node.get("children") or []
-        if node.get("layout") == "TABBED":
-            for c in children:
-                if c.get("nodeType") == "CON":
-                    counts.append(count_windows(c))
-        for c in children:
-            walk(c)
-
-    walk(shell_proxy.get_forge_tree())
-    return counts
-
-
 class TestTabbedNestedSplitCon:
     """forge-37r (bug #57): a tabbed container with a nested split-con sibling.
 
@@ -311,7 +249,7 @@ class TestTabbedNestedSplitCon:
         assert len(shell_proxy.get_windows()) == 4, "expected four windows before tabbing"
 
         # Deterministically focus the window sibling of the nested con, then tab.
-        assert shell_proxy.eval(_FOCUS_WINDOW_SIBLING_OF_CON) == "activated"
+        assert shell_proxy.eval(FOCUS_WINDOW_SIBLING_OF_CON) == "activated"
         time.sleep(Timing.LAYOUT_CHANGE)
         input_sim.toggle_tabbed()
         time.sleep(Timing.STACKED_LAYOUT_CHANGE)
@@ -328,7 +266,7 @@ class TestTabbedNestedSplitCon:
 
         # The nested split-con is preserved as one tab item: a CON child of a
         # TABBED node still holding both of its windows (not flattened).
-        counts = _tabbed_con_child_window_counts(shell_proxy)
+        counts = con_child_window_counts(shell_proxy, "TABBED")
         assert counts, "no TABBED node has a CON child (nested split was flattened)"
         assert any(c >= 2 for c in counts), (
             f"nested split-con did not keep its windows as one tab item; counts={counts}"

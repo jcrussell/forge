@@ -16,6 +16,7 @@ import time
 import pytest
 
 from framework.constants import Tolerance, Timing
+from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
 from framework.wait import wait_for_layout, wait_for_window_count
 
 
@@ -185,14 +186,22 @@ class TestBug057SplitConSiblings:
     Bug #57: Do not stack nor put as tab windows with split con siblings.
 
     Problem: When a window W has a split container [A B] as a sibling, toggling
-    stacked/tabbed layout on the parent container incorrectly combines W, A, and B
-    into the same stack/tab group.
+    stacked layout on the parent container incorrectly absorbs W, A, and B into
+    the same stack group, flattening the nested split.
 
-    This test validates that:
-    - Layout toggles don't cause windows to disappear
-    - Window count remains stable after layout changes
-    - Windows maintain reasonable dimensions after layout changes
+    forge-3h8p: the old tests never constructed this topology (no Split action)
+    and asserted only window counts — a faithful #57 regression changes no
+    counts. Worse, their toggle_stacked() was a silent no-op because the
+    stacked-mode-enabling fixture was scoped to TestBug125 only. This now
+    mirrors test_stacked_tabbed.py::TestTabbedNestedSplitCon for STACKED.
     """
+
+    @pytest.fixture(autouse=True)
+    def _enable_stacked_tabbed_modes(self, restore_settings):
+        """Stacked mode defaults OFF; without it StackedLayoutToggle bails early."""
+        restore_settings.set_stacked_tiling_mode_enabled(True)
+        restore_settings.set_tabbed_tiling_mode_enabled(True)
+        time.sleep(Timing.SETTINGS_SETTLE)
 
     def test_window_count_stable_after_layout_toggle(
         self, shell_proxy, input_sim, three_windows
@@ -218,28 +227,35 @@ class TestBug057SplitConSiblings:
             f"Window count changed from {initial_count} to {len(after_toggle2)}"
         )
 
-    def test_windows_visible_after_stacked_toggle(
-        self, shell_proxy, input_sim, three_windows
+    def test_stacked_toggle_preserves_split_con_sibling(
+        self, shell_proxy, input_sim, two_windows, launch_window
     ):
-        """Verify windows remain visible after toggling to stacked."""
-        window1, window2, window3 = three_windows
+        """Stacking a window with a split-con sibling must not absorb the con."""
+        # Build CON[wA, conH[wB, wC]] nested under the monitor (same recipe as
+        # the forge-37r tabbed test).
+        input_sim.split_vertical()  # nest the focused window into a VSPLIT con
+        launch_window()  # -> conV[wA, wB]
+        input_sim.split_horizontal()  # split focused wB -> conV[wA, conH[wB]]
+        launch_window()  # -> conH[wB, wC]
+        assert len(shell_proxy.get_windows()) == 4, "expected four windows before stacking"
 
-        wait_for_window_count(shell_proxy, 3)
-
-        # Toggle to stacked (self-settles)
+        # Deterministically focus wA (the window sibling of the nested con),
+        # then toggle stacked on their shared parent.
+        assert shell_proxy.eval(FOCUS_WINDOW_SIBLING_OF_CON) == "activated"
+        time.sleep(Timing.LAYOUT_CHANGE)
         input_sim.toggle_stacked()
+        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
 
-        # All windows should still exist
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 3, f"Expected 3 windows after stacked toggle, got {len(windows)}"
+        # All four windows survive the toggle.
+        assert len(shell_proxy.get_windows()) == 4, "windows lost after stacking"
 
-        # Toggle back to normal layout
-        input_sim.toggle_layout()
-
-        # All windows should still exist
-        windows_after = wait_for_window_count(shell_proxy, 3)
-        assert len(windows_after) >= 3, (
-            f"Expected 3 windows after returning to split, got {len(windows_after)}"
+        # The Bug #57 assertion: the nested split-con is preserved as ONE stack
+        # item — a CON child of the STACKED node still holding both windows.
+        # Absorbing/flattening would leave the STACKED node with no CON child.
+        counts = con_child_window_counts(shell_proxy, "STACKED")
+        assert counts, "no STACKED node has a CON child (split-con sibling was absorbed)"
+        assert any(c >= 2 for c in counts), (
+            f"split-con sibling did not keep its windows as one stack item; counts={counts}"
         )
 
 
@@ -341,9 +357,12 @@ class TestWindowDimensions:
         """Verify single window fills workspace correctly."""
         wait_for_window_count(shell_proxy, 1)
 
+        # forge-3h8p: the fill assertion was wrapped in `if wm_class:` — a setup
+        # glitch yielding a class-less window dict made the test pass with zero
+        # behavioral assertions. Fail loudly instead.
         wm_class = test_window.get("wmClass")
-        if wm_class:
-            window_helper.assert_window_fills_workspace(wm_class)
+        assert wm_class, f"launched window has no wmClass: {test_window}"
+        window_helper.assert_window_fills_workspace(wm_class)
 
     def test_two_windows_equal_size(self, shell_proxy, two_windows):
         """Verify two tiled windows have approximately equal size."""
@@ -355,14 +374,14 @@ class TestWindowDimensions:
         rect1 = windows[0].get("rect", {})
         rect2 = windows[1].get("rect", {})
 
-        # In HSPLIT, widths should be similar
-        # In VSPLIT, heights should be similar
-        # Allow some tolerance for gaps
         width_diff = abs(rect1.get("width", 0) - rect2.get("width", 0))
         height_diff = abs(rect1.get("height", 0) - rect2.get("height", 0))
 
-        # At least one dimension should be similar (within tolerance)
-        assert width_diff < 100 or height_diff < 100, (
-            f"Windows should have similar dimensions: "
+        # forge-3h8p: the old `width_diff < 100 OR height_diff < 100` was always
+        # satisfied in HSPLIT (heights are equal regardless of how the widths
+        # split), so a 90/10 split passed a test named "equal size". Two evenly
+        # tiled windows must match in BOTH dimensions, whatever the split axis.
+        assert width_diff < 100 and height_diff < 100, (
+            f"Windows should have equal dimensions: "
             f"width diff={width_diff}, height diff={height_diff}"
         )

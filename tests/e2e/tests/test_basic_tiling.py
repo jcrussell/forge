@@ -112,23 +112,3 @@ class TestBasicTiling:
         assert fill_ratio > Tolerance.FILL_RATIO, (
             f"Windows only fill {fill_ratio*100:.1f}% of workspace"
         )
-
-
-class TestWindowGaps:
-    """Test window gap behavior."""
-
-    def test_gaps_between_windows(self, shell_proxy, two_windows):
-        """Windows should have gaps between them when configured."""
-        # Fetch fresh window positions once tiling settles
-        windows = wait_for_window_count(shell_proxy, 2)
-
-        # Sort by x position to determine left/right
-        sorted_windows = sorted(windows, key=lambda w: w.get("rect", {}).get("x", 0))
-        left = sorted_windows[0].get("rect", {})
-        right = sorted_windows[1].get("rect", {})
-
-        # Gap = left edge of right window - right edge of left window
-        gap = right.get("x", 0) - (left.get("x", 0) + left.get("width", 0))
-
-        # Gap should be non-negative (windows not overlapping)
-        assert gap >= 0, f"Windows should have gap, but overlap by {-gap}px"
