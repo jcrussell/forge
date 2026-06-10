@@ -48,6 +48,22 @@ export function withSignals(Base = class {}) {
   };
 }
 
+/**
+ * Graft the signal system onto a plain mock object (for object-literal mocks
+ * like the global display/workspace_manager that have no class to extend).
+ * @param {Object} obj - Mock object to augment in place
+ * @returns {Object} The same object with connect/disconnect/emit support
+ */
+const SignalBox = withSignals();
+export function addSignalSupport(obj) {
+  obj._signals = {};
+  for (const method of ["connect", "disconnect", "emit", "hasHandlers", "getHandlerCount"]) {
+    obj[method] = SignalBox.prototype[method];
+  }
+  return obj;
+}
+
 export default {
   withSignals,
+  addSignalSupport,
 };

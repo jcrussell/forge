@@ -7,6 +7,7 @@
 
 import { vi } from "vitest";
 import { Workspace, Rectangle } from "../gnome/Meta.js";
+import { addSignalSupport } from "./signalMixin.js";
 
 /**
  * Default monitor geometry
@@ -34,7 +35,7 @@ export function createMockDisplay(options = {}) {
       height: DEFAULT_MONITOR_GEOMETRY.height,
     }));
 
-  return {
+  return addSignalSupport({
     get_workspace_manager: vi.fn(),
     get_n_monitors: vi.fn(() => monitorCount),
     get_focus_window: vi.fn(getFocusWindow),
@@ -46,8 +47,9 @@ export function createMockDisplay(options = {}) {
     }),
     get_monitor_scale: vi.fn(() => 1),
     get_monitor_neighbor_index: vi.fn(() => -1),
+    get_tab_list: vi.fn(() => []),
     sort_windows_by_stacking: vi.fn((windows) => windows),
-  };
+  });
 }
 
 /**
@@ -65,12 +67,12 @@ export function createMockWorkspaceManager(options = {}) {
   const wsArray =
     workspaces || Array.from({ length: workspaceCount }, (_, i) => new Workspace({ index: i }));
 
-  const workspaceManager = {
+  const workspaceManager = addSignalSupport({
     get_n_workspaces: vi.fn(() => wsArray.length),
     get_workspace_by_index: vi.fn((i) => wsArray[i] || new Workspace({ index: i })),
     get_active_workspace_index: vi.fn(() => activeWorkspaceIndex),
     get_active_workspace: vi.fn(() => wsArray[activeWorkspaceIndex]),
-  };
+  });
 
   return { workspaceManager, workspaces: wsArray };
 }
@@ -174,6 +176,8 @@ export function installGnomeGlobals(options = {}) {
   // Install globals
   global.display = display;
   global.workspace_manager = workspaceManager;
+  // Shell window-manager (minimize/unminimize/show-tile-preview signals).
+  global.window_manager = addSignalSupport({});
 
   // Optional globals
   let windowGroup = null;
@@ -213,6 +217,7 @@ export function installGnomeGlobals(options = {}) {
     vi.clearAllTimers();
     delete global.display;
     delete global.workspace_manager;
+    delete global.window_manager;
     delete global.window_group;
     delete global.stage;
     delete global.get_current_time;
