@@ -87,6 +87,31 @@ describe("Bug #305: Resize keeps the non-adjacent boundary fixed", () => {
     expect(n3.percent).toBeCloseTo(1 / 3, 6);
   });
 
+  it("repeated size-changed passes within one grab do not move W3 (Mutter 48/X11 shape)", () => {
+    // On X11 (observed on Mutter 48) a single move_resize_frame emits SEVERAL
+    // size-changed events, so _handleResizing runs multiple times per step
+    // with a CUMULATIVE changePx. The focused window is anchored on its frozen
+    // initRect, but the pair was debited from its LIVE node rect - already
+    // debited by the previous pass and re-rendered in between - so it lost the
+    // delta twice and the slack drifted into W3 on normalize (e2e: W3.x
+    // 1282 -> 1253). The pair must be anchored on its start-of-grab rect too.
+    const v = buildThree(0);
+    const [n1, n2, n3] = v.nodes;
+
+    // Pass 1: the client has only partially applied the resize (+30).
+    dragW1Right(v, 0, 30);
+    // Between events the render pipeline applies the new percents to the
+    // node rects (tree.processNode).
+    for (const n of v.nodes) n.rect = { ...n.rect, width: n.percent * 900 };
+    // Pass 2: the resize finishes (+90 cumulative against the same initRect).
+    dragW1Right(v, 0, 90);
+
+    expect(n1.percent).toBeCloseTo(390 / 900, 6);
+    expect(n2.percent).toBeCloseTo(210 / 900, 6);
+    expect(n3.percent).toBeCloseTo(1 / 3, 6);
+    expect(n1.percent + n2.percent + n3.percent).toBeCloseTo(1.0, 6);
+  });
+
   it("does not move W3 when resizing with gaps enabled", () => {
     const v = buildThree(10);
     dragW1Right(v, 10, 90);
