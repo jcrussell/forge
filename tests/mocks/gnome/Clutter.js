@@ -64,6 +64,11 @@ export const Orientation = {
   VERTICAL: 1,
 };
 
+export const AnimationMode = {
+  LINEAR: 0,
+  EASE_OUT_QUAD: 1,
+};
+
 // Import vi from vitest for spying
 import { vi } from "vitest";
 
@@ -98,6 +103,7 @@ export default {
   Actor,
   ActorAlign,
   Orientation,
+  AnimationMode,
   Seat,
   Backend,
   get_default_backend,

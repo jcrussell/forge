@@ -52,6 +52,25 @@ export class Widget extends withSignals() {
     this.x = x;
     this.y = y;
   }
+
+  // Clutter.Actor preferred-size queries: return [min, natural].
+  get_preferred_width(_forHeight) {
+    return [0, this.width || 0];
+  }
+
+  get_preferred_height(_forWidth) {
+    return [0, this.height || 0];
+  }
+
+  // Clutter.Actor.ease: apply final values immediately and run onComplete
+  // synchronously unless a test overrides this to control timing.
+  ease(params = {}) {
+    for (const [key, value] of Object.entries(params)) {
+      if (key === "duration" || key === "mode" || key === "onComplete") continue;
+      this[key] = value;
+    }
+    if (typeof params.onComplete === "function") params.onComplete();
+  }
 }
 
 export class Bin extends Widget {
