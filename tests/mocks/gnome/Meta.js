@@ -399,6 +399,10 @@ export const GrabOp = {
   KEYBOARD_RESIZING_NE: 16,
   KEYBOARD_RESIZING_SE: 17,
   KEYBOARD_RESIZING_SW: 18,
+  // Distinct non-colliding sentinels (real Mutter uses bitfield values; tests only
+  // need identity). WINDOW_BASE = window-decoration drag, COMPOSITOR = shell grab.
+  WINDOW_BASE: 1024,
+  COMPOSITOR: 2048,
 };
 
 export const TabList = {
