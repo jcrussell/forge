@@ -361,6 +361,23 @@ describe("ThemeManagerBase", () => {
       themeManager.patchCss();
       expect(mockConfigMgr.stylesheetFile.copy).toHaveBeenCalled();
     });
+
+    // forge-0h9k: stylesheetFile is null when ~/.config/forge is unwritable and
+    // seeding fails. patchCss() must no-op (not deref null.get_path()) so enable()
+    // proceeds; css-last-update stays unwritten so it retries on a future launch.
+    it("is a no-op when stylesheetFile is null (unwritable config dir)", () => {
+      mockConfigMgr.stylesheetFile = null;
+      mockSettings.set_uint("css-last-update", 0);
+      expect(themeManager._needUpdate()).toBe(true);
+
+      let result;
+      expect(() => {
+        result = themeManager.patchCss();
+      }).not.toThrow();
+
+      expect(result).toBe(false);
+      expect(mockSettings.get_uint("css-last-update")).toBe(0);
+    });
   });
 
   describe("reloadStylesheet", () => {
