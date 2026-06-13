@@ -952,6 +952,23 @@ describe("WindowManager - Floating Mode", () => {
 
         expect(wm().windowProps).toBe(freshProps);
       });
+
+      // forge-8rm6: a runtime reload (prefs edit / ConfigReload) must keep live
+      // per-window (wmId) float overrides written this session by FloatToggle —
+      // only the startup load prunes them (stale prior-session ids).
+      it("should preserve wmId-based overrides when pruning is disabled", () => {
+        configMgr().windowProps.overrides = [
+          { wmClass: "App1", mode: "float" },
+          { wmClass: "App2", wmId: 123, mode: "float" },
+          { wmClass: "App3", mode: "tile" },
+        ];
+
+        wm().reloadWindowOverrides(false);
+
+        const overrides = wm().windowProps.overrides;
+        expect(overrides.length).toBe(3);
+        expect(overrides.some((o) => o.wmId === 123)).toBe(true);
+      });
     });
   });
 });

@@ -551,4 +551,25 @@ describe("ThemeManagerBase edge cases", () => {
     const rule = tm.getCssRule(".tiled");
     expect(rule.selectors).toContain(".tiled");
   });
+
+  // forge-lid6: a user stylesheet that parses but is missing Forge's color rules
+  // must not abort enable() — getDefaults() feeds removePx(undefined) for the
+  // missing border-width.
+  it("does not throw when the stylesheet is missing Forge color rules", () => {
+    const incompleteCss = `.window-tiled-color { background-color: #ff0000; }`;
+    const configMgr = createMockConfigMgr(incompleteCss);
+    const settings = createMockSettings();
+
+    expect(() => new ThemeManagerBase({ configMgr, settings })).not.toThrow();
+  });
+
+  // forge-lid6: a syntactically malformed stylesheet must not throw out of the
+  // constructor (which would abort the extension's enable()).
+  it("does not throw when the stylesheet is malformed", () => {
+    const malformedCss = `.tiled { color: red; border-width: 1px;  /* unterminated`;
+    const configMgr = createMockConfigMgr(malformedCss);
+    const settings = createMockSettings();
+
+    expect(() => new ThemeManagerBase({ configMgr, settings })).not.toThrow();
+  });
 });

@@ -105,6 +105,37 @@ describe("ConfigSync", () => {
     };
   }
 
+  /**
+   * Wraps createTypedSettings so that set_* DEFERS its "changed" emission until
+   * _drain() is called — faithful to real dconf, which delivers "changed" on a
+   * later main-loop turn rather than synchronously inside set_*. A synchronous
+   * stub would mask the forge-3t3a timing bug.
+   */
+  function createEmittingSettings() {
+    const obj = createTypedSettings();
+    const pending = [];
+    for (const name of [
+      "set_boolean",
+      "set_uint",
+      "set_uint64",
+      "set_int",
+      "set_string",
+      "set_double",
+      "set_strv",
+    ]) {
+      const orig = obj[name];
+      obj[name] = (key, value) => {
+        orig(key, value);
+        pending.push(key);
+      };
+    }
+    obj._drain = () => {
+      const queued = pending.splice(0);
+      for (const key of queued) obj._emit("changed", key);
+    };
+    return obj;
+  }
+
   beforeEach(() => {
     settings = createTypedSettings();
     kbdSettings = createTypedSettings();
@@ -262,6 +293,104 @@ describe("ConfigSync", () => {
       expect(kbdSettings.get_strv("focus-border-toggle")).toEqual(["<Super>b"]);
       expect(kbdSettings.get_strv("window-swap-left")).toEqual(["<Super>Left", "<Super>h"]);
       expect(kbdSettings.get_strv("con-split-layout-toggle")).toEqual(["<Super>e"]);
+    });
+  });
+
+  describe("respects a disabled auto-sync toggle on startup (forge-orrf)", () => {
+    it("does not force config-file-sync-enabled true when portable files exist", () => {
+      configMgr.hasPortableConfig = () => true;
+      configMgr.settingsProps = null; // import no-ops
+      configMgr.keybindingsProps = null;
+      settings.set_boolean("config-file-sync-enabled", false); // user previously disabled
+
+      configSync.init();
+
+      // The stored choice must be respected, not overwritten back to true.
+      expect(settings.get_boolean("config-file-sync-enabled")).toBe(false);
+      expect(configSync.configFilesLoaded).toBe(false);
+
+      // ...and no auto-export should fire on a subsequent change.
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+      settings._emit("changed", "window-gap-size");
+      expect(timeoutSpy).not.toHaveBeenCalled();
+      timeoutSpy.mockRestore();
+    });
+  });
+
+  describe("auto-sync toggle reacts at runtime (forge-el01)", () => {
+    it("enables and disables auto-export when config-file-sync-enabled changes", () => {
+      configMgr.hasPortableConfig = () => false;
+      settings.set_boolean("config-file-sync-enabled", false);
+      configSync.init();
+      expect(configSync.configFilesLoaded).toBe(false);
+
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+
+      // A normal change while sync is off -> no export.
+      settings._emit("changed", "window-gap-size");
+      expect(timeoutSpy).not.toHaveBeenCalled();
+
+      // User flips the toggle ON at runtime.
+      settings.set_boolean("config-file-sync-enabled", true);
+      settings._emit("changed", "config-file-sync-enabled");
+      expect(configSync.configFilesLoaded).toBe(true);
+
+      // Now a normal change DOES schedule an export.
+      settings._emit("changed", "window-gap-size");
+      expect(timeoutSpy).toHaveBeenCalledTimes(1);
+
+      // User flips the toggle OFF again -> exports stop without a restart.
+      settings.set_boolean("config-file-sync-enabled", false);
+      settings._emit("changed", "config-file-sync-enabled");
+      expect(configSync.configFilesLoaded).toBe(false);
+
+      timeoutSpy.mockClear();
+      settings._emit("changed", "window-gap-size");
+      expect(timeoutSpy).not.toHaveBeenCalled();
+
+      timeoutSpy.mockRestore();
+    });
+  });
+
+  describe("import does not trigger re-export (forge-3t3a)", () => {
+    it("keeps the in-flight guard up while import-triggered 'changed' signals drain", () => {
+      const emitting = createEmittingSettings();
+      const emittingKbd = createEmittingSettings();
+      const mgr = createMockConfigMgr();
+      const sync = new ConfigSync({
+        configMgr: mgr,
+        settings: emitting,
+        kbdSettings: emittingKbd,
+      });
+
+      // Pre-store a typed key so _setSettingValue dispatches set_boolean (type 'b').
+      emitting.set_boolean("tiling-mode-enabled", false);
+      sync.configFilesLoaded = true;
+      sync._connectSettingsSignals();
+
+      // Capture (do NOT run) the deferred idle that clears the guard, and observe
+      // whether an export debounce gets scheduled.
+      const idleSpy = vi.spyOn(GLib, "idle_add").mockImplementation(() => 7);
+      let exportScheduled = false;
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => {
+        exportScheduled = true;
+        return 42;
+      });
+
+      // A file the user just hand-edited and reloaded.
+      mgr.settingsProps = { behavior: { "tiling-mode-enabled": true } };
+      mgr.keybindingsProps = null;
+
+      sync.importAll();
+      // dconf delivers the 'changed' notifications on a LATER turn — simulate that
+      // now, before the deferred idle (still captured) clears the guard.
+      emitting._drain();
+
+      expect(exportScheduled).toBe(false);
+
+      idleSpy.mockRestore();
+      timeoutSpy.mockRestore();
+      sync.destroy();
     });
   });
 

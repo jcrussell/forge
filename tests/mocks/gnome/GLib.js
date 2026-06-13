@@ -40,6 +40,7 @@ export const FileTest = {
 };
 
 export const PRIORITY_DEFAULT = 0;
+export const PRIORITY_DEFAULT_IDLE = 200;
 export const PRIORITY_HIGH = -100;
 export const PRIORITY_LOW = 100;
 
@@ -81,6 +82,7 @@ export default {
   file_test,
   FileTest,
   PRIORITY_DEFAULT,
+  PRIORITY_DEFAULT_IDLE,
   PRIORITY_HIGH,
   PRIORITY_LOW,
   SOURCE_REMOVE,

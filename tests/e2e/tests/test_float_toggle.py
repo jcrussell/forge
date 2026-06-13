@@ -115,6 +115,49 @@ class TestFloatToggle:
             f"Window not centered vertically: {window_center_y} vs {workspace_center_y}"
         )
 
+    def test_float_survives_overrides_reload(
+        self, shell_proxy, input_sim, window_helper, test_window
+    ):
+        """forge-8rm6: a prefs-triggered window-overrides reload must NOT re-tile a
+        window that was just FloatToggle'd. FloatToggle writes a live per-window
+        (wmId) float override; reloadWindowOverrides used to strip every wmId entry
+        on the runtime path, so the next render tiled the floating window."""
+        wm_class = test_window.get("wmClass")
+        workspace = window_helper.get_workspace_rect()
+
+        shell_proxy.ensure_focus()
+        shell_proxy.invoke_forge_action({
+            "name": "FloatToggle",
+            "x": "center",
+            "y": "center",
+            "width": 0.65,
+            "height": 0.75,
+        })
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
+
+        rect_before = window_helper.get_window_rect(wm_class)
+        assert rect_before[2] < workspace["width"] * 0.9, (
+            "window should be floating (narrower than the work area) before the reload"
+        )
+
+        # Drive the exact runtime reload path the prefs trigger / ConfigReload use
+        # (reloadWindowOverrides(false)), then force a re-render. Calling the method
+        # synchronously avoids racing the async GSettings 'changed' dispatch against
+        # the idle-scheduled render. On buggy code the method strips the live wmId
+        # override regardless of the arg; the following render then tiles the float.
+        shell_proxy.eval(
+            'const ext = Main.extensionManager.lookup("forge@jmmaranan.com").stateObj;'
+            'ext.extWm.reloadWindowOverrides(false);'
+            'ext.extWm.renderTree("e2e-8rm6", true); true;'
+        )
+        wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
+
+        rect_after = window_helper.get_window_rect(wm_class)
+        assert rect_after[2] < workspace["width"] * 0.9, (
+            f"window should STILL be floating after an overrides reload (forge-8rm6); "
+            f"got width {rect_after[2]} of work-area {workspace['width']}"
+        )
+
 
 class TestFloatWithMultipleWindows:
     """Test floating behavior with multiple windows."""
