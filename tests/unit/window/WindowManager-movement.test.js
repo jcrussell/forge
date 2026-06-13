@@ -408,5 +408,68 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(Math.round(rect.x)).toBe(100);
       expect(Math.round(rect.y)).toBe(100);
     });
+
+    // forge-cm69: moving a window to a higher-x monitor from a source monitor
+    // that is NOT at x=0 (3+ monitor row) must land WITHIN the target monitor,
+    // not past its far edge. The old '>' branch used absolute rect.x directly.
+    it("places a window on the right monitor when moving off a non-origin middle monitor", () => {
+      // Three 1920-wide monitors at x=0 / 1920 / 3840; move from middle -> right.
+      const metaWindow = createMockWindow();
+      metaWindow.get_work_area_current_monitor = vi.fn(() => ({
+        x: 1920,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      }));
+      metaWindow.get_work_area_for_monitor = vi.fn(() => ({
+        x: 3840,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      }));
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      // Window sits on the middle monitor (absolute x ~ 2000).
+      nodeWindow.rect = { x: 2000, y: 100, width: 800, height: 600 };
+
+      const rect = wm().rectForMonitor(nodeWindow, 2);
+
+      // Must land within the right monitor [3840, 5760), not ~5840 (off-screen).
+      expect(rect.x).toBeGreaterThanOrEqual(3840);
+      expect(rect.x).toBeLessThan(5760);
+      // ((2000 - 1920) / 1920) * 1920 + 3840 = 80 + 3840 = 3920
+      expect(Math.round(rect.x)).toBe(3920);
+    });
+
+    // forge-cm69: simple same-size case (origin source -> adjacent target) stays
+    // unchanged, locking the affine remap's backward-compatible behavior.
+    it("places a window correctly moving from the origin monitor to an adjacent one", () => {
+      const metaWindow = createMockWindow();
+      metaWindow.get_work_area_current_monitor = vi.fn(() => ({
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      }));
+      metaWindow.get_work_area_for_monitor = vi.fn(() => ({
+        x: 1920,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      }));
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      nodeWindow.rect = { x: 100, y: 100, width: 800, height: 600 };
+
+      const rect = wm().rectForMonitor(nodeWindow, 1);
+
+      // ((100 - 0) / 1920) * 1920 + 1920 = 2020
+      expect(rect.x).toBe(2020);
+      expect(rect.y).toBe(100);
+    });
   });
 });
