@@ -168,7 +168,7 @@ describe("WindowManager - Resize Operations", () => {
       expect(movedRect.height).toBe(650); // 600 + 50
       expect(movedRect.width).toBe(800); // unchanged
       expect(movedRect.x).toBe(100); // unchanged
-      expect(movedRect.y).toBe(100); // unchanged (note: implementation doesn't adjust y for UP)
+      expect(movedRect.y).toBe(50); // forge-74em: 100 - 50, top edge grows up
     });
 
     it("should decrease height when resizing up with negative amount", () => {
@@ -201,11 +201,12 @@ describe("WindowManager - Resize Operations", () => {
 
       const movedRect = moveSpy.mock.calls[0][1];
       expect(movedRect.height).toBe(650);
+      expect(movedRect.y).toBe(50); // forge-74em: top edge grows up
     });
   });
 
   describe("resize() - Down/South Direction", () => {
-    it("should increase height and move up when resizing down", () => {
+    it("should increase height at the bottom edge when resizing down", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 800, height: 600 }),
         workspace: ctx.workspaces[0],
@@ -219,12 +220,12 @@ describe("WindowManager - Resize Operations", () => {
 
       const movedRect = moveSpy.mock.calls[0][1];
       expect(movedRect.height).toBe(650); // 600 + 50
-      expect(movedRect.y).toBe(50); // 100 - 50 (moved up to compensate)
+      expect(movedRect.y).toBe(100); // forge-74em: bottom edge grows, y unchanged
       expect(movedRect.width).toBe(800); // unchanged
       expect(movedRect.x).toBe(100); // unchanged
     });
 
-    it("should decrease height and move down when resizing down with negative amount", () => {
+    it("should decrease height at the bottom edge when resizing down with negative amount", () => {
       const metaWindow = createMockWindow({
         rect: new Rectangle({ x: 100, y: 100, width: 800, height: 600 }),
         workspace: ctx.workspaces[0],
@@ -238,7 +239,7 @@ describe("WindowManager - Resize Operations", () => {
 
       const movedRect = moveSpy.mock.calls[0][1];
       expect(movedRect.height).toBe(550); // 600 - 50
-      expect(movedRect.y).toBe(150); // 100 - (-50) = 100 + 50
+      expect(movedRect.y).toBe(100); // forge-74em: bottom edge shrinks, y unchanged
     });
 
     it("should handle keyboard resize down", () => {
@@ -255,7 +256,7 @@ describe("WindowManager - Resize Operations", () => {
 
       const movedRect = moveSpy.mock.calls[0][1];
       expect(movedRect.height).toBe(650);
-      expect(movedRect.y).toBe(50);
+      expect(movedRect.y).toBe(100); // forge-74em: bottom edge grows, y unchanged
     });
   });
 
@@ -402,8 +403,10 @@ describe("WindowManager - Resize Operations", () => {
       const directions = [
         { grabOp: GrabOp.RESIZING_E, amount: 100, expectWidth: 900, expectX: 500 },
         { grabOp: GrabOp.RESIZING_W, amount: 100, expectWidth: 900, expectX: 400 },
-        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 400 },
-        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 300 },
+        // forge-74em: N grows the top edge (y up, mirror of W); S grows the
+        // bottom edge (y fixed, mirror of E).
+        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 300 },
+        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 400 },
       ];
 
       directions.forEach(({ grabOp, amount, expectWidth, expectX, expectHeight, expectY }) => {
