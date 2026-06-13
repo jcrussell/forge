@@ -219,6 +219,7 @@ describe("ConfigSync", () => {
 
   describe("rapid changes produce one export", () => {
     it("should debounce rapid settings changes into a single export", () => {
+      configMgr.hasPortableConfig = () => true; // files exist, so export is allowed
       configSync.configFilesLoaded = true;
       configSync._connectSettingsSignals();
 
@@ -319,7 +320,9 @@ describe("ConfigSync", () => {
 
   describe("auto-sync toggle reacts at runtime (forge-el01)", () => {
     it("enables and disables auto-export when config-file-sync-enabled changes", () => {
-      configMgr.hasPortableConfig = () => false;
+      // Files exist on disk; this test exercises the runtime toggle, not the
+      // deleted-files guard (forge-qj5n), so portable config is present.
+      configMgr.hasPortableConfig = () => true;
       settings.set_boolean("config-file-sync-enabled", false);
       configSync.init();
       expect(configSync.configFilesLoaded).toBe(false);
@@ -391,6 +394,43 @@ describe("ConfigSync", () => {
       idleSpy.mockRestore();
       timeoutSpy.mockRestore();
       sync.destroy();
+    });
+  });
+
+  describe("deleted portable files are not resurrected (forge-qj5n)", () => {
+    it("does not auto-export when the portable files were deleted", () => {
+      // User deleted settings.json/keybindings.json but left the toggle on, so
+      // init() leaves configFilesLoaded true while hasPortableConfig() is false.
+      configMgr.hasPortableConfig = () => false;
+      configSync.configFilesLoaded = true;
+      settings.set_boolean("config-file-sync-enabled", true);
+      configSync._connectSettingsSignals();
+
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+
+      // A normal (non-internal) settings change must NOT resurrect the files.
+      settings._emit("changed", "tiling-mode-enabled");
+
+      expect(timeoutSpy).not.toHaveBeenCalled();
+      expect(configMgr.settingsProps).toBeNull();
+      expect(configMgr.keybindingsProps).toBeNull();
+
+      timeoutSpy.mockRestore();
+    });
+
+    it("still auto-exports when portable files exist (guard is not over-broad)", () => {
+      configMgr.hasPortableConfig = () => true;
+      configSync.configFilesLoaded = true;
+      settings.set_boolean("config-file-sync-enabled", true);
+      configSync._connectSettingsSignals();
+
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+
+      settings._emit("changed", "tiling-mode-enabled");
+
+      expect(timeoutSpy).toHaveBeenCalledTimes(1);
+
+      timeoutSpy.mockRestore();
     });
   });
 
