@@ -77,6 +77,8 @@ describe("CommandHandler", () => {
       toggleWorkspaceMonocle: vi.fn(),
       addFloatOverride: vi.fn(),
       resize: vi.fn(),
+      expand: vi.fn(),
+      shrink: vi.fn(),
       moveCenter: vi.fn(),
       eventQueue: [],
     };
@@ -412,24 +414,22 @@ describe("CommandHandler", () => {
   });
 
   describe("WindowExpand command", () => {
-    it("should resize all four edges", () => {
+    it("should expand on both axes via wm.expand (forge-gm0z)", () => {
       commandHandler.execute({ name: "WindowExpand", amount: 20 });
 
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_N, 20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_S, 20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_W, 20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_E, 20);
+      // forge-gm0z: a single two-axis expand replaces the four overlapping
+      // grabs that clobbered this.grabOp.
+      expect(mockWm.expand).toHaveBeenCalledWith(20);
+      expect(mockWm.resize).not.toHaveBeenCalled();
     });
   });
 
   describe("WindowShrink command", () => {
-    it("should resize all four edges with negative amount", () => {
+    it("should shrink on both axes via wm.shrink (forge-gm0z)", () => {
       commandHandler.execute({ name: "WindowShrink", amount: 20 });
 
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_N, -20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_S, -20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_W, -20);
-      expect(mockWm.resize).toHaveBeenCalledWith(GrabOp.KEYBOARD_RESIZING_E, -20);
+      expect(mockWm.shrink).toHaveBeenCalledWith(20);
+      expect(mockWm.resize).not.toHaveBeenCalled();
     });
   });
 
