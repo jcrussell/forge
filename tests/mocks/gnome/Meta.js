@@ -64,6 +64,7 @@ export class Window extends withSignals() {
     this._workspace = params.workspace ?? null;
     this._monitor = params.monitor ?? 0;
     this._size_hints = params.size_hints ?? null;
+    this._on_all_workspaces = params.on_all_workspaces ?? false;
   }
 
   get_size_hints() {
@@ -121,7 +122,16 @@ export class Window extends withSignals() {
   }
 
   is_on_all_workspaces() {
-    return false;
+    return this._on_all_workspaces;
+  }
+
+  // Test helper: pin/unpin "Always on Visible Workspace" (sticky). forge-yyum.
+  stick() {
+    this._on_all_workspaces = true;
+  }
+
+  unstick() {
+    this._on_all_workspaces = false;
   }
 
   showing_on_its_workspace() {
