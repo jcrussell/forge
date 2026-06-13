@@ -122,6 +122,12 @@ export class BoxLayout extends Widget {
   contains(child) {
     return this.children.includes(child);
   }
+
+  destroy_all_children() {
+    // Mirror Clutter: destroy and detach every child.
+    const kids = this.children.splice(0);
+    kids.forEach((c) => c.destroy && c.destroy());
+  }
 }
 
 export class Label extends Widget {
