@@ -38,8 +38,10 @@ export class File {
   }
 
   load_contents(cancellable) {
-    // Mock file loading - return empty content
-    return [true, "", null];
+    // Mock file loading - return empty content. Real Gio hands back a Uint8Array
+    // (GLib.Bytes data), so decode via TextDecoder works; returning a bare string
+    // here would diverge from production.
+    return [true, new TextEncoder().encode(""), null];
   }
 
   replace_contents(contents, etag, make_backup, flags, cancellable) {

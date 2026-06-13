@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ConfigManager } from "../../../lib/shared/settings.js";
 import { File } from "../../mocks/gnome/Gio.js";
 
@@ -197,6 +197,43 @@ describe("ConfigManager", () => {
 
       const result = configManager.loadFileContents(mockFile);
       expect(result).toBeUndefined();
+    });
+  });
+
+  // forge-f6go: settings.js is a pure ESM module but decoded file bytes via the
+  // deprecated legacy global `imports.byteArray.toString`. On any GJS build that
+  // drops the legacy module (a real risk on the GNOME 50 target) the call throws,
+  // so user windows.json overrides are silently ignored. Simulate that build by
+  // removing the legacy global and asserting decoding still works via TextDecoder.
+  describe("decoding without the legacy imports.byteArray module (forge-f6go)", () => {
+    let savedImports;
+
+    beforeEach(() => {
+      savedImports = global.imports;
+      delete global.imports;
+    });
+
+    afterEach(() => {
+      global.imports = savedImports;
+    });
+
+    it("loadFileContents decodes UTF-8 bytes (incl. non-ASCII) without imports.byteArray", () => {
+      const mockFile = createMockFile("/test/file.json", {
+        contents: '{"name": "Café — naïve"}',
+      });
+
+      const result = configManager.loadFileContents(mockFile);
+      expect(result).toBe('{"name": "Café — naïve"}');
+    });
+
+    it("_loadJsonConfig parses UTF-8 JSON (incl. non-ASCII) without imports.byteArray", () => {
+      const payload = { tile: [{ wmClass: "Café", title: "naïve—dash" }] };
+      const mockFile = createMockFile("/test/windows.json", {
+        contents: JSON.stringify(payload),
+      });
+
+      const result = configManager._loadJsonConfig(mockFile, "windows.json");
+      expect(result).toEqual(payload);
     });
   });
 
