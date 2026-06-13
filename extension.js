@@ -154,6 +154,7 @@ export default class ForgeExtension extends Extension {
     this.keybindings = null;
     this.cheatsheet = null;
     this.extWm = null;
+    this.theme?.unloadStylesheet();
     this.theme = null;
     this.configMgr = null;
     this.configSync = null;
