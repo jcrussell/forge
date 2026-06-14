@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
@@ -75,6 +75,23 @@ describe("forge-tnth: configurable new-window monitor placement", () => {
     wm().trackWindow(null, metaWindow);
 
     expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+  });
+
+  it("'window-actual' with get_monitor() === -1 (Wayland) falls back to the pointer monitor, no reload", () => {
+    // On Wayland a window can report monitor -1 before it's positioned. Building
+    // an id from -1 (mo-1ws0) misses findNode and used to fire a spurious full
+    // reloadTree('no-meta-monws') that abandoned placement. The guard falls back
+    // to the pointer monitor instead. (forge-4cv/4dm/91s/vmx)
+    setup("window-actual");
+    const reloadSpy = vi.spyOn(wm(), "reloadTree");
+    const metaWindow = createMockWindow({ workspace: ctx.workspaces[0], monitor: -1 });
+
+    wm().trackWindow(null, metaWindow);
+
+    // Placed on the pointer monitor (0), and no spurious reload — the reload is
+    // the actual defect, not the monitor index.
+    expect(monitorOf(wm().findNodeWindow(metaWindow))).toBe(0);
+    expect(reloadSpy).not.toHaveBeenCalled();
   });
 
   it("end-state is window-actual regardless of the setting (re-home wins) — documents MF-1", () => {
