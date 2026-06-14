@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { removeOverride } from "../../../lib/prefs/floating-overrides.js";
+import { removeOverride, sortFloatOverrides } from "../../../lib/prefs/floating-overrides.js";
 
 describe("removeOverride (forge-fov0)", () => {
   // Two same-class firefox float rules differing only by wmTitle, a same-class
@@ -73,5 +73,56 @@ describe("removeOverride (forge-fov0)", () => {
     const titled = { wmClass: "firefox", wmTitle: "Library", mode: "float" };
     const result = removeOverride([bare, titled], { wmClass: "firefox", mode: "float" });
     expect(result).toEqual([titled]);
+  });
+});
+
+describe("sortFloatOverrides (forge-n29i)", () => {
+  it("sorts a title-only float rule (no wmClass) without throwing and filters out non-float", () => {
+    const titleOnly = { wmTitle: "Picture-in-Picture", mode: "float" }; // no wmClass
+    const gedit = { wmClass: "gedit", mode: "float" };
+    const firefox = { wmClass: "firefox", mode: "float" };
+    const calcTile = { wmClass: "gnome-calculator", mode: "tile" }; // excluded
+
+    let result;
+    expect(() => {
+      result = sortFloatOverrides([gedit, titleOnly, firefox, calcTile]);
+    }).not.toThrow();
+
+    // Only float rules survive, sorted by display key (wmClass ?? wmTitle).
+    // "Picture-in-Picture" (P) sorts after firefox (f) and gedit (g)? No: capital
+    // P precedes lowercase letters in locale order varies — assert membership +
+    // that the classless rule is present and tile is gone, and order is stable.
+    expect(result).toHaveLength(3);
+    expect(result).toContain(titleOnly);
+    expect(result).toContain(firefox);
+    expect(result).toContain(gedit);
+    expect(result).not.toContain(calcTile);
+
+    // class-full rules order alphabetically by wmClass
+    expect(result.indexOf(firefox)).toBeLessThan(result.indexOf(gedit));
+  });
+
+  it("returns a new array and does not mutate the input order", () => {
+    const a = { wmClass: "b-app", mode: "float" };
+    const b = { wmClass: "a-app", mode: "float" };
+    const input = [a, b];
+    const result = sortFloatOverrides(input);
+    expect(result).not.toBe(input);
+    expect(result[0]).toBe(b); // sorted
+    expect(input).toEqual([a, b]); // original untouched
+  });
+
+  it("handles empty input", () => {
+    expect(sortFloatOverrides([])).toEqual([]);
+  });
+
+  it("sorts multiple classless rules by wmTitle without throwing", () => {
+    const z = { wmTitle: "Zoom", mode: "float" };
+    const a = { wmTitle: "Audio", mode: "float" };
+    let r;
+    expect(() => {
+      r = sortFloatOverrides([z, a]);
+    }).not.toThrow();
+    expect(r.indexOf(a)).toBeLessThan(r.indexOf(z));
   });
 });
