@@ -41,111 +41,16 @@ For Wayland nested testing, use `make test-open` to launch apps in the nested se
 
 ## Architecture
 
-### Entry Points
+Forge models each workspace's windows as an i3/sway-style **tree** and reconciles it onto the screen. Entry points: `extension.js` (lifecycle) and `prefs.js` (GTK4/Adwaita preferences).
 
-- `extension.js` - Main extension entry point, creates ForgeExtension class that manages lifecycle
-- `prefs.js` - Preferences window entry point (GTK4/Adwaita)
+Core modules (`lib/extension/`): **tree.js** (Node/Tree data model, node + layout types), **window.js** (WindowManager — signals, tiling, focus, grab, `renderTree`), **command.js** (CommandHandler — action dispatch), **workspace.js** / **monitor.js** (per-workspace/monitor node + signal managers), **keybindings.js** (vim-like shortcuts), **cheatsheet.js** (in-shell help overlay), **indicator.js** (quick settings), **utils.js**, **enum.js**. Shared (`lib/shared/`): **settings.js** (ConfigManager + `windows.json` overrides), **config-sync.js** (GSettings ⇄ portable JSON), **logger.js**, **theme.js** (+ `lib/css/`). GSettings schema: `schemas/org.gnome.shell.extensions.forge.gschema.xml`. Prefs UI (`lib/prefs/`) is GTK4/Adwaita, not unit-tested.
 
-### Core Components (lib/extension/)
-
-- **tree.js** - Tree data structure for window layout (central to tiling logic)
-  - `Node` class: Represents monitors, workspaces, containers, and windows in a tree hierarchy
-  - `Tree` class: Manages the entire tree structure, handles layout calculations
-  - `Queue` class: Event queue for window operations
-  - Node types: ROOT, MONITOR, WORKSPACE, CON (container), WINDOW
-  - Layout types: HSPLIT, VSPLIT, STACKED, TABBED, PRESET
-
-- **window.js** - WindowManager class, handles window signals, grab operations, tiling logic, and focus management
-
-- **command.js** - CommandHandler class, processes keyboard and action commands (extracted from window.js)
-
-- **workspace.js** - WorkspaceManager class, handles workspace nodes and signal lifecycle (extracted from tree.js/window.js)
-
-- **monitor.js** - MonitorManager class, handles monitor nodes per workspace (extracted from tree.js)
-
-- **keybindings.js** - Keyboard shortcut management (vim-like hjkl navigation)
-
-- **utils.js** - Utility functions for geometry calculations, window operations
-
-- **enum.js** - `createEnum()` helper for creating frozen enum objects
-
-- **indicator.js** - Quick settings panel integration
-
-### Shared Modules (lib/shared/)
-
-- **settings.js** - ConfigManager for loading window overrides from `~/.config/forge/config/windows.json`
-- **logger.js** - Debug logging (controlled by settings)
-- **theme.js** - ThemeManagerBase for CSS parsing and stylesheet management
-
-### Preferences UI (lib/prefs/)
-
-GTK4/Adwaita preference pages - not covered by unit tests.
-
-### GSettings Schemas
-
-Located in `schemas/org.gnome.shell.extensions.forge.gschema.xml`. Compiled during build.
+See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](docs/dev/architecture.md) (lifecycle, tree model, command dispatch, signal/cleanup discipline, config sources), [rendering.md](docs/dev/rendering.md) (render/placement pipeline, reload triggers, floating subsystem, theme engine), [compat.md](docs/dev/compat.md) (Mutter API drift + shim recipe).
 
 ## Testing Infrastructure
 
-Tests use Vitest with mocked GNOME APIs (tests/mocks/gnome/). The mocks simulate Meta, Gio, GLib, Shell, St, Clutter, and GObject APIs so tests can run in Node.js without GNOME Shell.
-
-**Always run tests in Docker** to ensure consistent environment:
-
-```bash
-# Run all tests in Docker (preferred)
-make unit-test-docker
-
-# Run with coverage report
-make unit-test-docker-coverage
-
-# Watch mode for development
-make unit-test-docker-watch
-
-# Run locally (if Node.js environment matches)
-npm test
-npm run test:coverage
-```
-
-Test structure:
-- `tests/setup.js` - Global test setup, loads mocks
-- `tests/mocks/gnome/` - GNOME API mocks (Meta.js, GLib.js, etc.)
-- `tests/mocks/helpers/` - Test helpers like `createMockWindow()`
-- `tests/unit/` - Unit tests organized by module
-- `tests/regression/` - Bug regression tests
-
-### E2E Testing (Real GNOME Shell)
-
-E2E tests run against real GNOME Shell in self-contained Docker containers built from Fedora base images. Tests use D-Bus `Shell.Eval` to query window state and xdotool for input simulation.
-
-Supported GNOME versions are defined in `tests/e2e/gnome-versions.json`.
-
-```bash
-# Run E2E tests (default GNOME 49)
-make e2e-test
-
-# Run for specific GNOME version
-make e2e-test GNOME_VERSION=47
-make e2e-test GNOME_VERSION=48
-
-# Run for all supported versions
-make e2e-test-all
-
-# List supported versions
-make e2e-versions
-
-# Interactive debugging in container
-make e2e-debug
-
-# Clean E2E artifacts
-make e2e-clean
-```
-
-E2E test structure:
-- `tests/e2e/framework/` - Testing utilities (ShellProxy, InputSimulator, WindowHelper)
-- `tests/e2e/tests/` - Test scenarios (basic tiling, focus, swap, layout, float)
-- `tests/e2e/README.md` - Detailed E2E infrastructure documentation
-- `docker/Dockerfile.e2e` - Self-contained container definition (Fedora base)
-- `docker/scripts/` - Test runner and session management scripts
+- **Unit tests** — Vitest with mocked GNOME APIs (`tests/mocks/`); run `npm test`, or `make unit-test-docker` for the canonical Docker environment. Structure, mock helpers, and how to write non-vacuous tests: **[tests/README.md](tests/README.md)**.
+- **E2E tests** — real GNOME Shell in self-contained Fedora Docker containers (D-Bus `Shell.Eval` + xdotool); run `make e2e-test` (default GNOME 49), `make e2e-test GNOME_VERSION=<n>`, or `make e2e-test-all`. Supported versions in `tests/e2e/gnome-versions.json`. Full infrastructure docs: **[tests/e2e/README.md](tests/e2e/README.md)**.
 
 ## Key Concepts
 

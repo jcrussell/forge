@@ -82,6 +82,18 @@ After installation, log out and log back in (or restart GNOME Shell on X11 with 
 
 ![image](https://user-images.githubusercontent.com/348125/146386593-8f53ea8b-2cf3-4d44-a613-bbcaf89f9d4a.png)
 
+## Documentation
+
+Full docs live in [`docs/`](docs/):
+
+- **User guide** ([`docs/user/`](docs/user/)) — [layouts & tiling](docs/user/layouts.md),
+  [keybindings](docs/user/keybindings.md), [theming](docs/user/theming.md),
+  [window rules](docs/user/rules.md), [portable config](docs/user/config.md),
+  [multi-monitor](docs/user/monitors.md), [troubleshooting](docs/user/troubleshooting.md).
+- **Developer reference** ([`docs/dev/`](docs/dev/)) — architecture, rendering
+  pipeline, Mutter compatibility.
+- Press **`Super+Shift+/`** in-session for the keybinding cheatsheet.
+
 ## Forge Override Paths
 
 - Window Overrides: `$HOME/.config/forge/config/windows.json`
@@ -112,8 +124,8 @@ make build && make debug && make install
 # X11 - build from source and restarts gnome-shell
 make test-x
 
-# Wayland - build from source and starts a wayland instance (no restart)
-make test-wayland
+# Wayland - build from source and starts a nested wayland instance (no restart)
+make test
 
 # Run unit tests
 npm test
@@ -124,7 +136,9 @@ npm run format
 
 ## Contributing
 
-See the [upstream discussion](https://github.com/orgs/forge-ext/discussions/501) about the path to merging this fork back into the main project.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and code style, and the
+[upstream discussion](https://github.com/orgs/forge-ext/discussions/501) about the
+path to merging this fork back into the main project.
 
 ## Credits
 
