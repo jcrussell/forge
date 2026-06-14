@@ -88,10 +88,10 @@ describe("sortFloatOverrides (forge-n29i)", () => {
       result = sortFloatOverrides([gedit, titleOnly, firefox, calcTile]);
     }).not.toThrow();
 
-    // Only float rules survive, sorted by display key (wmClass ?? wmTitle).
-    // "Picture-in-Picture" (P) sorts after firefox (f) and gedit (g)? No: capital
-    // P precedes lowercase letters in locale order varies — assert membership +
-    // that the classless rule is present and tile is gone, and order is stable.
+    // Only float rules survive. Absolute position of the classless rule is not
+    // asserted (its capital-P key vs lowercase keys orders differently across
+    // locales); we assert membership, exclusion of the tile rule, and the stable
+    // class-full ordering below.
     expect(result).toHaveLength(3);
     expect(result).toContain(titleOnly);
     expect(result).toContain(firefox);
