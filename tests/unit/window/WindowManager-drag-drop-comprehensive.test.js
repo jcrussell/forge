@@ -993,9 +993,12 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       wm().moveWindowToPointer(dragged, false);
 
-      // Dragged should be in a new VSPLIT container with win2
-      // or positioned before win2 depending on implementation
-      expect(dragged.parentNode).toBeDefined();
+      // Dropping TOP on the middle window inserts the dragged node ahead of win2
+      // within a VSPLIT parent (mirror of the LEFT/TOP ordering tests above).
+      const parent = dragged.parentNode;
+      expect(parent.layout).toBe(LAYOUT_TYPES.VSPLIT);
+      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      expect(children.indexOf(dragged)).toBeLessThan(children.indexOf(win2));
     });
   });
 
@@ -1020,19 +1023,20 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         WINDOW_MODES.GRAB_TILE
       );
 
-      // Add a mock tab with parent
+      // Add a mock tab with a stable parent so we can assert cleanup.
+      const tabParent = { remove_child: vi.fn() };
       const mockTab = {
-        get_parent: vi.fn(() => ({
-          remove_child: vi.fn(),
-        })),
+        get_parent: vi.fn(() => tabParent),
       };
       dragged.tab = mockTab;
 
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      // Should not throw
-      expect(() => wm().moveWindowToPointer(dragged, false)).not.toThrow();
+      wm().moveWindowToPointer(dragged, false);
+
+      // Bug #328: the dragged window's tab decoration is detached from its parent.
+      expect(tabParent.remove_child).toHaveBeenCalledWith(mockTab);
     });
 
     it("should handle tab decoration removal when parent is null", () => {
@@ -1051,17 +1055,31 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
         WINDOW_MODES.GRAB_TILE
       );
 
-      // Add a mock tab with null parent
+      // Add a mock tab with null parent. remove_child must NOT be invoked when
+      // there is no parent (the `if (decoParent)` guard), otherwise a null deref
+      // would be swallowed by the try/catch and silently skip the drop side effects.
+      const remove_child = vi.fn();
       const mockTab = {
         get_parent: vi.fn(() => null),
+        remove_child,
       };
       dragged.tab = mockTab;
 
       setPointer(100, 540);
       wm().nodeWinAtPointer = target;
 
-      // Should not throw
-      expect(() => wm().moveWindowToPointer(dragged, false)).not.toThrow();
+      wm().moveWindowToPointer(dragged, false);
+
+      // No parent => no detach attempt.
+      expect(remove_child).not.toHaveBeenCalled();
+
+      // The drop still completed: dragged dropped LEFT on target, so it is parented
+      // in an HSPLIT and ordered before target.
+      const parent = dragged.parentNode;
+      expect(parent).toBeTruthy();
+      expect(parent.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      const children = parent.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      expect(children.indexOf(dragged)).toBeLessThan(children.indexOf(target));
     });
 
     it("should handle tab decoration removal error gracefully", () => {

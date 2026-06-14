@@ -3,7 +3,11 @@ import St from "gi://St";
 import { Tree, Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { Bin } from "../../mocks/gnome/St.js";
-import { createTreeFixture, getWorkspaceAndMonitor } from "../../mocks/helpers/index.js";
+import {
+  createMockWindow,
+  createTreeFixture,
+  getWorkspaceAndMonitor,
+} from "../../mocks/helpers/index.js";
 
 /**
  * Tree class tests
@@ -92,11 +96,10 @@ describe("Tree", () => {
 
     it("should create node with default TILE mode", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      // Note: This would work for WINDOW type nodes
-      const newNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      // WINDOW nodes get the default `mode` (TILE) assigned in createNode.
+      const newNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
 
-      // CON nodes don't have mode set, but WINDOW nodes would
-      expect(newNode).toBeDefined();
+      expect(newNode.mode).toBe(WINDOW_MODES.TILE);
     });
 
     it("should return undefined if parent not found", () => {
@@ -149,13 +152,15 @@ describe("Tree", () => {
     it("should return all window nodes when windows exist", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      // Create mock window node (without actual Meta.Window to avoid UI init)
-      // In real usage, windows would be created differently
-      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      const windowNode = ctx.tree.createNode(
+        monitor.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow()
+      );
 
-      // We can verify the getter works
       const windows = ctx.tree.nodeWindows;
-      expect(Array.isArray(windows)).toBe(true);
+      expect(windows.length).toBe(1);
+      expect(windows).toContain(windowNode);
     });
   });
 

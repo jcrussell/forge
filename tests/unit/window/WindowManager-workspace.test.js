@@ -278,22 +278,43 @@ describe("WindowManager - Workspace Management", () => {
 
   describe("trackCurrentMonWs", () => {
     it("should track monitor and workspace for focused window", () => {
-      const metaWindow = createMockWindow({ workspace: workspace0(), monitor: 0 });
-      global.display.get_focus_window.mockReturnValue(metaWindow);
-      global.display.get_current_monitor.mockReturnValue(0);
+      const { monitor } = getWorkspaceAndMonitor(ctx);
 
-      expect(() => wm().trackCurrentMonWs()).not.toThrow();
-    });
+      // Focused window plus a sibling tiled window, both on monitor 0 / ws0.
+      const focused = createMockWindow({ id: 1, workspace: workspace0(), monitor: 0 });
+      const sibling = createMockWindow({ id: 2, workspace: workspace0(), monitor: 0 });
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, focused);
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, sibling);
 
-    it("should handle window on different workspace", () => {
-      const metaWindow = createMockWindow({ workspace: workspace1(), monitor: 0 });
-      metaWindow._monitor = 0;
-
-      global.display.get_focus_window.mockReturnValue(metaWindow);
+      global.display.get_focus_window.mockReturnValue(focused);
       global.display.get_current_monitor.mockReturnValue(0);
       global.workspace_manager.get_active_workspace_index.mockReturnValue(0);
 
-      expect(() => wm().trackCurrentMonWs()).not.toThrow();
+      wm().trackCurrentMonWs();
+
+      // trackCurrentMonWs assigns the other tiled windows on the focused
+      // monitor/workspace to sortedWindows (the focused window is excluded).
+      expect(wm().sortedWindows).toEqual([sibling]);
+    });
+
+    it("should handle window on different workspace", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      // A tiled window exists on ws0, but the focused window reports ws1, so the
+      // monitor/workspace guard (currentMonWs !== activeMetaMonWs) must exclude it.
+      const sibling = createMockWindow({ id: 2, workspace: workspace0(), monitor: 0 });
+      ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, sibling);
+
+      const focused = createMockWindow({ id: 1, workspace: workspace1(), monitor: 0 });
+
+      global.display.get_focus_window.mockReturnValue(focused);
+      global.display.get_current_monitor.mockReturnValue(0);
+      global.workspace_manager.get_active_workspace_index.mockReturnValue(0);
+
+      wm().trackCurrentMonWs();
+
+      // Off-workspace focus means no windows are collected for the current mon/ws.
+      expect(wm().sortedWindows).toEqual([]);
     });
   });
 

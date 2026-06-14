@@ -563,9 +563,18 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       wm().moveWindowToPointer(nodeWindow3, false);
 
-      // Remaining stacked windows should still have valid parent
-      expect(nodeWindow1.parentNode).not.toBeNull();
-      expect(nodeWindow2.parentNode).not.toBeNull();
+      // The dragged window is detached into a new HSPLIT container under the
+      // monitor (the drop re-creates the node, so locate it by metaWindow).
+      const draggedNode = ctx.tree.findNode(metaWindow3);
+      expect(draggedNode).not.toBeNull();
+      expect(draggedNode.parentNode.nodeType).toBe(NODE_TYPES.CON);
+      expect(draggedNode.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+
+      // The stacked container keeps exactly the two non-dragged windows and stays
+      // a direct-child parent of both (not collapsed into a 1-child invalid state).
+      expect(monitor.layout).toBe(LAYOUT_TYPES.STACKED);
+      const stackedWindows = monitor.childNodes.filter((c) => c.nodeType === NODE_TYPES.WINDOW);
+      expect(stackedWindows).toEqual([nodeWindow1, nodeWindow2]);
     });
   });
 

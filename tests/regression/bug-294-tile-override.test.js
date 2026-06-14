@@ -103,17 +103,41 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         },
       ];
 
-      // Window class matches but title doesn't
+      // Window class matches but title doesn't. The window is non-resizable so it
+      // floats BY DEFAULT — making the title-specific TILE override the only thing
+      // that could tile it. Since the title doesn't match, the override doesn't
+      // apply and the window must stay floating exempt.
       const neovideWindow = createMockWindow({
         wm_class: "Neovide",
         id: "neovide-1",
         title: "different-project",
-        allows_resize: true,
+        allows_resize: false,
       });
 
-      // The title-specific TILE override doesn't match, so it doesn't apply.
-      // The window is otherwise a normal, resizable, titled, non-dialog window
-      // with no built-in float rule — so default behavior is to tile (not exempt).
+      const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
+
+      expect(isExempt).toBe(true);
+    });
+
+    it("should tile when window title DOES match the override title", () => {
+      ctx.configMgr.windowProps.overrides = [
+        {
+          wmClass: "Neovide",
+          wmTitle: "specific-project",
+          mode: "tile",
+        },
+      ];
+
+      // Same non-resizable (float-by-default) window, but now its title matches
+      // the override's wmTitle (substring match), so the specific TILE override
+      // applies and force-tiles it.
+      const neovideWindow = createMockWindow({
+        wm_class: "Neovide",
+        id: "neovide-1",
+        title: "specific-project - editing",
+        allows_resize: false,
+      });
+
       const isExempt = ctx.windowManager.isFloatingExempt(neovideWindow);
 
       expect(isExempt).toBe(false);
@@ -171,10 +195,14 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
   });
 
   describe("Override matching behavior", () => {
-    it("should match partial wmClass names", () => {
+    // The window is non-resizable, so it floats BY DEFAULT (floatByType). That
+    // makes the class-only TILE override the only thing that can tile it, so the
+    // result is decisive about how _wmClassMatches() compares the override class.
+    // _wmClassMatches uses strict, comma-split equality (no substring matching).
+    it("should NOT tile when override wmClass is only a partial (substring) of the window class", () => {
       ctx.configMgr.windowProps.overrides = [
         {
-          wmClass: "raggesilver.BlackBox", // Partial match
+          wmClass: "raggesilver.BlackBox", // substring of the real class, NOT equal
           mode: "tile",
         },
       ];
@@ -183,14 +211,36 @@ describe("Bug #294: Explicit TILE override for windows that default to float", (
         wm_class: "com.raggesilver.BlackBox",
         id: "blackbox-1",
         title: "Black Box",
-        allows_resize: true,
+        allows_resize: false, // floats by default unless the override tiles it
       });
 
-      // Check if the override uses includes() for matching
       const isExempt = ctx.windowManager.isFloatingExempt(blackboxWindow);
 
-      // Depending on implementation, partial match might or might not work
-      expect(isExempt).toBeDefined();
+      // Partial class does not match (strict equality), so the tile override does
+      // not apply and the non-resizable window stays floating exempt.
+      expect(isExempt).toBe(true);
+    });
+
+    it("should tile when override wmClass exactly equals the window class", () => {
+      ctx.configMgr.windowProps.overrides = [
+        {
+          wmClass: "com.raggesilver.BlackBox", // exact match
+          mode: "tile",
+        },
+      ];
+
+      const blackboxWindow = createMockWindow({
+        wm_class: "com.raggesilver.BlackBox",
+        id: "blackbox-1",
+        title: "Black Box",
+        allows_resize: false, // would float by default; the override force-tiles it
+      });
+
+      const isExempt = ctx.windowManager.isFloatingExempt(blackboxWindow);
+
+      // Exact class match => class-only TILE override applies (floatByRole is
+      // false), so the window is force-tiled (not exempt).
+      expect(isExempt).toBe(false);
     });
   });
 });

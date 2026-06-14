@@ -139,18 +139,12 @@ describe("WindowManager - Movement & Positioning", () => {
       const callArgs = moveSpy.mock.calls[0];
       const rect = callArgs[1];
 
-      // Should be centered: (1920 - 800) / 2 = 560, (1080 - 600) / 2 = 240
-      // But Utils.resolveX/Y use `this.resolveWidth` which may not work as module exports
-      // so we check that move was called with the window positioned
+      // Work area is 1920x1080 at origin, so centering an 800x600 window yields:
+      //   x = 1920/2 - 800/2 = 560, y = 1080/2 - 600/2 = 240
       expect(rect.width).toBe(800);
       expect(rect.height).toBe(600);
-      expect(moveSpy).toHaveBeenCalledWith(
-        metaWindow,
-        expect.objectContaining({
-          width: 800,
-          height: 600,
-        })
-      );
+      expect(rect.x).toBe((1920 - 800) / 2);
+      expect(rect.y).toBe((1080 - 600) / 2);
     });
 
     it("should preserve window dimensions when centering", () => {
@@ -181,6 +175,9 @@ describe("WindowManager - Movement & Positioning", () => {
       // Dimensions should be preserved
       expect(rect.width).toBe(400);
       expect(rect.height).toBe(300);
+      // Centered on the 1920x1080 work area: x = (1920-400)/2, y = (1080-300)/2
+      expect(rect.x).toBe((1920 - 400) / 2);
+      expect(rect.y).toBe((1080 - 300) / 2);
     });
 
     it("should center large windows correctly", () => {

@@ -57,7 +57,7 @@ describe("Bug #482: Windows with null wm_class handling", () => {
       expect(isExempt).toBe(false);
     });
 
-    it("should treat window with empty string wm_class as floating exempt", () => {
+    it("should NOT treat a window with empty string wm_class as floating exempt", () => {
       const emptyClassWindow = createMockWindow({
         wm_class: "",
         id: "empty-1",
@@ -65,13 +65,14 @@ describe("Bug #482: Windows with null wm_class handling", () => {
         allows_resize: true,
       });
 
-      // Note: empty string !== null, so it may not be caught by wm_class check
-      // But other checks (like empty title) might catch it
       const isExempt = ctx.windowManager.isFloatingExempt(emptyClassWindow);
 
-      // This depends on exact implementation - empty string is truthy for === null
-      // But the app may still be exempt for other reasons
-      expect(isExempt).toBeDefined();
+      // The float-by-role check tests `get_wm_class() === null` specifically; an
+      // empty string is NOT null, so it does not float by role. This window is a
+      // normal, resizable, titled window with no matching override, so it is NOT
+      // floating exempt — it tiles. (Only a genuinely null wm_class floats; see
+      // the test above.)
+      expect(isExempt).toBe(false);
     });
   });
 

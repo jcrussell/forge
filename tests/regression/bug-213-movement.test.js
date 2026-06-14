@@ -149,12 +149,20 @@ describe("Bug #213: Window movement directions", () => {
 
       expect(container.childNodes.length).toBe(2);
 
-      // Move A up - when at the edge of a container, should move to parent level
+      // Move A up. A is the first child of a VSPLIT container, so next(UP) walks
+      // up to the monitor and hits the -1 monitor-boundary sentinel (single
+      // monitor). The edge-wrap branch then lifts A OUT of the container and
+      // prepends it at the monitor level (position UP => BEFORE).
       const result = tree.move(nodeA, MotionDirection.UP);
 
-      // The result depends on how next() handles edge cases
-      // At minimum, the move should complete without error
-      expect(typeof result).toBe("boolean");
+      // The move succeeds (edge-wrap), so it returns true...
+      expect(result).toBe(true);
+      // ...A is re-parented to the monitor and is its first child...
+      expect(nodeA.parentNode).toBe(monitorNode);
+      expect(monitorNode.childNodes[0]).toBe(nodeA);
+      // ...and the container is left holding only B.
+      expect(container.childNodes.length).toBe(1);
+      expect(container.childNodes[0]).toBe(nodeB);
     });
   });
 
@@ -176,11 +184,21 @@ describe("Bug #213: Window movement directions", () => {
       container.appendChild(nodeA);
       container.appendChild(nodeB);
 
-      // Moving A RIGHT in a VSPLIT container - should try to move out
+      // Moving A RIGHT in a VSPLIT container: the requested orientation
+      // (horizontal) is perpendicular to the container, so next() finds no
+      // in-container sibling and walks up to the single-monitor boundary (-1).
+      // The edge-wrap branch lifts A out of the container and appends it at the
+      // monitor level (position RIGHT => AFTER).
       const result = tree.move(nodeA, MotionDirection.RIGHT);
 
-      // Should not error and should return boolean
-      expect(typeof result).toBe("boolean");
+      // Edge-wrap succeeds...
+      expect(result).toBe(true);
+      // ...A is re-parented to the monitor as its last child (appended)...
+      expect(nodeA.parentNode).toBe(monitorNode);
+      expect(monitorNode.childNodes[monitorNode.childNodes.length - 1]).toBe(nodeA);
+      // ...and the container retains only B.
+      expect(container.childNodes.length).toBe(1);
+      expect(container.childNodes[0]).toBe(nodeB);
     });
 
     it("should handle vertical movement in horizontal container", () => {

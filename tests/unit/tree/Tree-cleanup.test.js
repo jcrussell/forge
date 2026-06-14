@@ -221,16 +221,14 @@ describe("Tree Cleanup and Container Management", () => {
       node1.percent = 0.6;
       node2.percent = 0.4;
 
-      // Store original percents
-      const percent1Before = node1.percent;
-      const percent2Before = node2.percent;
-
-      // Remove node1 - since parent is MONITOR, reset should NOT occur
+      // Remove node1 - since the parent is a MONITOR, the boundary guard
+      // (tree.js: !isWorkspace() && !isMonitor()) must skip resetSiblingPercent.
       ctx.tree.removeNode(node1);
 
-      // Workspace/monitor level should not reset percents (Bug #470)
-      // However, this depends on implementation details
+      // node2 survives AND keeps its percent untouched (Bug #470): zeroing it
+      // here is what disrupted tiling in other workspaces.
       expect(monitor.childNodes).toContain(node2);
+      expect(node2.percent).toBe(0.4);
     });
   });
 

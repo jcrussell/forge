@@ -80,10 +80,10 @@ describe("ConfigManager", () => {
 
   describe("stylesheetFile", () => {
     it("should attempt to load custom stylesheet", () => {
-      // The default mock returns file that exists, so loadFile returns it
+      // The default mock reports the custom file exists, so loadFile returns it.
       const file = configManager.stylesheetFile;
-      // loadFile returns the custom file if it exists
-      expect(file).toBeDefined();
+      expect(file).not.toBeNull();
+      expect(file.get_path()).toContain("stylesheet.css");
     });
   });
 
@@ -102,8 +102,11 @@ describe("ConfigManager", () => {
 
   describe("windowConfigFile", () => {
     it("should attempt to load custom window config", () => {
+      // The default mock reports the custom file exists, so loadFile returns it.
       const file = configManager.windowConfigFile;
-      expect(file).toBeDefined();
+      expect(file).not.toBeNull();
+      expect(file.get_path()).toContain("windows.json");
+      expect(file.get_path()).toContain("config");
     });
   });
 
@@ -420,10 +423,9 @@ describe("ConfigManager integration scenarios", () => {
     const mockDir = createMockDir("/test/extension");
     const cm = new ConfigManager({ dir: mockDir });
 
-    // These should not throw
-    expect(() => cm.confDir).not.toThrow();
-    expect(() => cm.defaultStylesheetFile).not.toThrow();
-    expect(() => cm.defaultWindowConfigFile).not.toThrow();
+    expect(cm.confDir).toContain("forge");
+    expect(cm.defaultStylesheetFile.get_path()).toContain("stylesheet.css");
+    expect(cm.defaultWindowConfigFile.get_path()).toContain("windows.json");
   });
 
   it("should handle missing default files gracefully", () => {
