@@ -50,6 +50,14 @@ PROBE_JS = r"""
 
 
 def test_split_border_renders_for_focused_split_window(shell_proxy, two_windows):
+    # Headless older Mutter (GNOME 45-48) drops display focus after a mid-test
+    # launch, so focusMetaWindow (= global.display.get_focus_window()) is null and
+    # the probe returns 'no-focus' (forge-fjs/forge-gwo). Pin focus onto a window in
+    # the HSPLIT deterministically before probing, like test_window_swap does.
+    pinned = shell_proxy.activate_last_sibling_of("HSPLIT")
+    assert "id" in pinned, f"could not pin a window in the HSPLIT: {pinned!r}"
+    shell_proxy.wait_for_idle()
+
     probe = shell_proxy.eval(PROBE_JS)
     print("\nsplit-border probe:", json.dumps(probe, indent=2))
 
