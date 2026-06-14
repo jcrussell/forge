@@ -80,7 +80,7 @@ class TestDragDropBasic:
                 # drag DOES land, the test passes normally (xpass is expected
                 # and allowed here — see forge-q0k).
                 pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
                 )
 
     def test_drag_float_to_bottom_zone(
@@ -138,7 +138,7 @@ class TestDragDropBasic:
                 # drag DOES land, the test passes normally (xpass is expected
                 # and allowed here — see forge-q0k).
                 pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
                 )
 
     def test_drag_float_to_left_zone(
@@ -192,7 +192,7 @@ class TestDragDropBasic:
                 # drag DOES land, the test passes normally (xpass is expected
                 # and allowed here — see forge-q0k).
                 pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection"
+                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
                 )
 
     def test_drag_preserves_window_count(
@@ -313,4 +313,4 @@ class TestDragPreviewCleanup:
         # didn't engage Mutter's grab-op protocol and the leak assert above was
         # vacuous for the in-drag path.
         if count_cons(shell_proxy.get_tree_structure()) >= cons_before:
-            pytest.xfail("xdotool drag did not trigger Mutter grab-op drop-zone detection")
+            pytest.xfail("xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)")
