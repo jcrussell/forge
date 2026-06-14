@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Cheatsheet } from "../../../lib/extension/cheatsheet.js";
+import Clutter from "gi://Clutter";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { installGnomeGlobals } from "../../mocks/helpers/index.js";
 
@@ -73,15 +74,66 @@ describe("Cheatsheet", () => {
 
       uiGroup.add_child.mockClear();
 
-      // Toggling back on must not call add_child on the already-parented overlay.
+      // Toggling back on must not re-parent the already-parented overlay (a
+      // fresh backdrop may be re-added, but never the overlay).
       expect(() => cheatsheet.show()).not.toThrow();
-      expect(uiGroup.add_child).not.toHaveBeenCalled();
+      expect(uiGroup.add_child).not.toHaveBeenCalledWith(overlay);
     });
 
     it("adds the overlay exactly once on a normal show", () => {
       cheatsheet.show();
-      expect(uiGroup.add_child).toHaveBeenCalledTimes(1);
+      const overlayAdds = uiGroup.add_child.mock.calls.filter((c) => c[0] === cheatsheet._overlay);
+      expect(overlayAdds).toHaveLength(1);
       expect(cheatsheet._overlay._parent).toBe(uiGroup);
+    });
+  });
+
+  describe("dismiss affordances (forge-0rb6)", () => {
+    it("closes on Escape", () => {
+      cheatsheet.show();
+      const overlay = cheatsheet._overlay;
+      expect(cheatsheet.visible).toBe(true);
+
+      overlay.emit("key-press-event", overlay, { get_key_symbol: () => Clutter.KEY_Escape });
+
+      expect(cheatsheet.visible).toBe(false);
+    });
+
+    it("ignores non-Escape keys", () => {
+      cheatsheet.show();
+      const overlay = cheatsheet._overlay;
+
+      overlay.emit("key-press-event", overlay, { get_key_symbol: () => 0x61 /* 'a' */ });
+
+      expect(cheatsheet.visible).toBe(true);
+    });
+
+    it("closes on a click outside the panel (backdrop)", () => {
+      cheatsheet.show();
+      const backdrop = cheatsheet._backdrop;
+      expect(backdrop).toBeTruthy();
+
+      backdrop.emit("button-press-event", {});
+
+      expect(cheatsheet.visible).toBe(false);
+    });
+
+    it("closes when the close button is clicked", () => {
+      cheatsheet.show();
+      // headerRow is the first child; its close button is the last child.
+      const headerRow = cheatsheet._overlay.get_children()[0];
+      const closeButton = headerRow.get_children()[headerRow.get_children().length - 1];
+
+      closeButton.emit("clicked");
+
+      expect(cheatsheet.visible).toBe(false);
+    });
+
+    it("removes the backdrop on hide", () => {
+      cheatsheet.show();
+      expect(cheatsheet._backdrop).toBeTruthy();
+      cheatsheet.hide();
+      expect(cheatsheet._backdrop).toBeNull();
     });
   });
 

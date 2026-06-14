@@ -39,6 +39,14 @@ export class Widget extends withSignals() {
     // Mock destroy
   }
 
+  grab_key_focus() {
+    // Mock: actor-level key focus is a no-op in tests
+  }
+
+  remove_all_transitions() {
+    // Mock: no in-flight Clutter transitions to cancel in tests
+  }
+
   get_parent() {
     return this._parent || null;
   }

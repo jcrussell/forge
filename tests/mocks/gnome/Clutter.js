@@ -69,6 +69,11 @@ export const AnimationMode = {
   EASE_OUT_QUAD: 1,
 };
 
+// Clutter key symbol + event-handler return constants used by the cheatsheet.
+export const KEY_Escape = 0xff1b;
+export const EVENT_STOP = true;
+export const EVENT_PROPAGATE = false;
+
 // Import vi from vitest for spying
 import { vi } from "vitest";
 
@@ -104,6 +109,9 @@ export default {
   ActorAlign,
   Orientation,
   AnimationMode,
+  KEY_Escape,
+  EVENT_STOP,
+  EVENT_PROPAGATE,
   Seat,
   Backend,
   get_default_backend,
