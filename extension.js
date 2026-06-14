@@ -61,8 +61,9 @@ const SETTINGS_OVERRIDES = [
   },
   // forge-m37 (#249): free GNOME's native Super+L lock so it doesn't collide with
   // Forge's vim window-focus-right (<Super>l). Forge provides locking via
-  // prefs-lock-screen (<Super>q). Restored on disable() like the others; kept last
-  // so a missing media-keys schema can't abort the overrides above.
+  // prefs-lock-screen (<Super>q). Restored on disable() like the others. The
+  // enable() loop now skips any override whose schema/key is absent (forge-rj4x),
+  // so this no longer depends on being ordered last for crash-safety.
   {
     schemaId: "org.gnome.settings-daemon.plugins.media-keys",
     key: "screensaver",
@@ -83,6 +84,17 @@ export default class ForgeExtension extends Extension {
     this._gnomeSettings = new Map();
     try {
       for (const desc of SETTINGS_OVERRIDES) {
+        // Constructing Gio.Settings for an absent schema — or reading/writing an
+        // absent key — raises a C-level g_error that TERMINATES gnome-shell; it
+        // is NOT a catchable JS exception, so the try/catch around this loop
+        // cannot save us. Probe the schema source (and the key) first and skip
+        // the override if either is missing (forge-rj4x). On a normal GNOME
+        // 45-50 desktop every schema/key here is present, so this is a no-op.
+        const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
+        if (!schema || !schema.has_key(desc.key)) {
+          Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
+          continue;
+        }
         if (!this._gnomeSettings.has(desc.schemaId)) {
           this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schema_id: desc.schemaId }));
         }
