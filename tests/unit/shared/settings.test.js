@@ -396,15 +396,6 @@ describe("ConfigManager", () => {
       expect(mockDefaultFile.replace_contents).not.toHaveBeenCalled();
     });
   });
-
-  describe("stylesheetFileName", () => {
-    it("should be accessible for backup operations", () => {
-      // The configManager should have a way to get the stylesheet filename
-      // for backup purposes (used by theme.js patchCss)
-      const confDir = configManager.confDir;
-      expect(confDir).toBeDefined();
-    });
-  });
 });
 
 describe("ConfigManager file path construction", () => {

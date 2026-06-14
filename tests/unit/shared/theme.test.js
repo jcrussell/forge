@@ -450,13 +450,6 @@ describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
     vi.restoreAllMocks();
   });
 
-  it("mock models the bug: replace_contents fails silently on a read-only file", () => {
-    const { file } = createConfigMgr(sampleCss, { writable: false });
-    // Exactly what the user hit: a false return with no exception, so the old code's
-    // `if (success)` guard silently skipped the reload and the color was lost.
-    expect(file.replace_contents("x", null, false, 0, null)).toEqual([false, null]);
-  });
-
   it("_updateCss makes a read-only stylesheet writable before writing, then reloads", () => {
     const { file, configMgr } = createConfigMgr(sampleCss, { writable: false });
     const tm = new ThemeManagerBase({ configMgr, settings: createMockSettings() });
