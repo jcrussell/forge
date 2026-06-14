@@ -42,16 +42,21 @@
   border-radius: 14px;
 }
 
+/* forge-36le: St does not paint an asymmetric (single-side) border when a
+ * border-radius is set, so the directional hint never rendered. Drop the radius
+ * on the one-edge variants; St paints a straight single-side border reliably. */
 .window-split-horizontal {
   border-left-width: 0;
   border-top-width: 0;
   border-bottom-width: 0;
+  border-radius: 0;
 }
 
 .window-split-vertical {
   border-left-width: 0;
   border-top-width: 0;
   border-right-width: 0;
+  border-radius: 0;
 }
 
 .window-stacked-border {
