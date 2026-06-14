@@ -96,6 +96,7 @@ describe("Utility Functions", () => {
   describe("resolveWidth", () => {
     const mockWindow = {
       get_frame_rect: () => ({ x: 0, y: 0, width: 800, height: 600 }),
+      get_monitor: () => 0,
       get_work_area_current_monitor: () => ({ x: 0, y: 0, width: 1920, height: 1080 }),
     };
 
@@ -123,6 +124,7 @@ describe("Utility Functions", () => {
   describe("resolveHeight", () => {
     const mockWindow = {
       get_frame_rect: () => ({ x: 0, y: 0, width: 800, height: 600 }),
+      get_monitor: () => 0,
       get_work_area_current_monitor: () => ({ x: 0, y: 0, width: 1920, height: 1080 }),
     };
 
