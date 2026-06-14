@@ -10,7 +10,7 @@ SHELL := /bin/bash
 HAS_XGETTEXT := $(shell command -v xgettext &>/dev/null && echo yes || echo no)
 HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
-.PHONY: all clean install schemas uninstall enable disable log debug patchcss check-deps \
+.PHONY: all clean install schemas uninstall enable disable log debug check-deps \
 	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
@@ -28,10 +28,6 @@ schemas: schemas/gschemas.compiled
 
 schemas/gschemas.compiled: schemas/*.gschema.xml
 	glib-compile-schemas schemas
-
-patchcss:
-	# TODO: add the script to update css tag when delivering theme.js
-
 
 metadata:
 	@echo "Generating developer metadata..."
