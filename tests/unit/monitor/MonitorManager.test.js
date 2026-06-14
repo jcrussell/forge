@@ -130,8 +130,10 @@ describe("MonitorManager", () => {
 
       monitorManager.addMonitor(0);
 
-      // add_child should still be called (for the new bin)
-      // but contains check prevents duplicate
+      // contains() reports the bin already present, so the dedup guard at
+      // monitor.js:69 must skip add_child — otherwise duplicate actors / a
+      // Clutter "actor already has a parent" error.
+      expect(global.window_group.add_child).not.toHaveBeenCalled();
     });
 
     it("should use correct naming convention: mo{monitorIndex}ws{workspaceIndex}", () => {

@@ -7,6 +7,7 @@ import {
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
 import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
+import { Bin } from "../../mocks/gnome/St.js";
 
 /**
  * WindowManager _handleResizing behavior tests
@@ -18,6 +19,12 @@ import { Rectangle, GrabOp, MotionDirection } from "../../mocks/gnome/Meta.js";
  * - Stacked/tabbed container resizing
  * - Monitor boundary handling
  * - Edge cases (floating, minimized windows)
+ *
+ * IMPORTANT: the production resize delta is `get_frame_rect().width - initRect.width`.
+ * The mock's get_frame_rect() returns the window's `_rect`, which `move_resize_frame()`
+ * updates — so each test simulates the drag by calling move_resize_frame() to the new
+ * size (NOT by setting a dead `_frameRect` property), then asserts the resulting
+ * node.percent shares actually shifted.
  */
 describe("WindowManager - Handle Resizing Behavior", () => {
   let ctx;
@@ -33,7 +40,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
   const workspace0 = () => ctx.workspaces[0];
 
   describe("_handleResizing - Horizontal Split Resizing", () => {
-    it("should process horizontal resize without error", () => {
+    it("grows the grabbed window and shrinks its split sibling (RESIZING_E)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
@@ -59,13 +66,17 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 960, y: 0, width: 960, height: 1080 };
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
+      // Drag the right edge: frame grows 960 -> 1100 (changePx = +140).
+      metaWindow1.move_resize_frame(false, 0, 0, 1100, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      // Should process resize without throwing
-      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
+      wm()._handleResizing(nodeWindow1);
+
+      expect(nodeWindow1.percent).toBeGreaterThan(0.5);
+      expect(nodeWindow2.percent).toBeLessThan(0.5);
+      expect(nodeWindow1.percent + nodeWindow2.percent).toBeCloseTo(1, 5);
     });
 
     it("should call nextVisible to find resize pair", () => {
@@ -85,7 +96,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
+      metaWindow1.move_resize_frame(false, 0, 0, 1100, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
@@ -97,7 +108,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       expect(nextVisibleSpy).toHaveBeenCalled();
     });
 
-    it("should maintain total percent sum close to 1", () => {
+    it("redistributes the resize so sibling percents still sum to 1", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
@@ -123,19 +134,20 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 960, y: 0, width: 960, height: 1080 };
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
+      metaWindow1.move_resize_frame(false, 0, 0, 1100, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       wm()._handleResizing(nodeWindow1);
 
-      // Total should be close to 1 (accounting for normalization)
+      // The grabbed window grew, and the pair absorbed the loss; sum stays ~1.
+      expect(nodeWindow1.percent).toBeGreaterThan(0.5);
       const totalPercent = nodeWindow1.percent + nodeWindow2.percent;
       expect(totalPercent).toBeCloseTo(1, 1);
     });
 
-    it("should process left edge resize (RESIZING_W) without error", () => {
+    it("grows the grabbed window and shrinks its left sibling (RESIZING_W)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
@@ -161,18 +173,21 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow2.rect = { x: 960, y: 0, width: 960, height: 1080 };
       nodeWindow2.initGrabOp = GrabOp.RESIZING_W;
 
-      metaWindow2._frameRect = new Rectangle({ x: 800, y: 0, width: 1120, height: 1080 });
+      // Drag window2's LEFT edge leftward: frame grows 960 -> 1120, x 960 -> 800.
+      metaWindow2.move_resize_frame(false, 800, 0, 1120, 1080);
 
       wm().grabOp = GrabOp.RESIZING_W;
       global.display.get_focus_window.mockReturnValue(metaWindow2);
 
-      // Should process left edge resize without throwing
-      expect(() => wm()._handleResizing(nodeWindow2)).not.toThrow();
+      wm()._handleResizing(nodeWindow2);
+
+      expect(nodeWindow2.percent).toBeGreaterThan(0.5);
+      expect(nodeWindow1.percent).toBeLessThan(0.5);
     });
   });
 
   describe("_handleResizing - Vertical Split Resizing", () => {
-    it("should process vertical resize without error", () => {
+    it("grows the grabbed window and shrinks its split sibling (RESIZING_S)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 540 }),
         workspace: workspace0(),
@@ -198,16 +213,20 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow2.percent = 0.5;
       nodeWindow2.rect = { x: 0, y: 540, width: 1920, height: 540 };
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1920, height: 700 });
+      // Drag the bottom edge: frame grows 540 -> 700 (changePx = +160).
+      metaWindow1.move_resize_frame(false, 0, 0, 1920, 700);
 
       wm().grabOp = GrabOp.RESIZING_S;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      // Should process vertical resize without throwing
-      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
+      wm()._handleResizing(nodeWindow1);
+
+      expect(nodeWindow1.percent).toBeGreaterThan(0.5);
+      expect(nodeWindow2.percent).toBeLessThan(0.5);
+      expect(nodeWindow1.percent + nodeWindow2.percent).toBeCloseTo(1, 5);
     });
 
-    it("should process top edge resize (RESIZING_N) without error", () => {
+    it("grows the grabbed window and shrinks its top sibling (RESIZING_N)", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 540 }),
         workspace: workspace0(),
@@ -233,99 +252,103 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow2.rect = { x: 0, y: 540, width: 1920, height: 540 };
       nodeWindow2.initGrabOp = GrabOp.RESIZING_N;
 
-      metaWindow2._frameRect = new Rectangle({ x: 0, y: 400, width: 1920, height: 680 });
+      // Drag window2's TOP edge upward: frame grows 540 -> 680, y 540 -> 400.
+      metaWindow2.move_resize_frame(false, 0, 400, 1920, 680);
 
       wm().grabOp = GrabOp.RESIZING_N;
       global.display.get_focus_window.mockReturnValue(metaWindow2);
 
-      // Should process top edge resize without throwing
-      expect(() => wm()._handleResizing(nodeWindow2)).not.toThrow();
+      wm()._handleResizing(nodeWindow2);
+
+      expect(nodeWindow2.percent).toBeGreaterThan(0.5);
+      expect(nodeWindow1.percent).toBeLessThan(0.5);
     });
   });
 
   describe("_handleResizing - Stacked/Tabbed Containers", () => {
-    it("should keep tabbed sibling percents valid and normalized on resize (Bug #497)", () => {
-      const metaWindow1 = createMockWindow({
+    // Bug #497 (forge-pak): a tab inside a tabbed/stacked container shares the
+    // container's rect, so a sibling tab is never a meaningful resize pair.
+    // Resizing a tab must resize the ENCLOSING container against its split
+    // sibling. These tests nest the tabbed/stacked container in an HSPLIT next
+    // to a plain window and assert the container (not the tab) takes the delta.
+    const buildNestedContainer = (containerLayout) => {
+      const metaTab1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
       });
-      const metaWindow2 = createMockWindow({
+      const metaTab2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      const metaSibling = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
       });
 
       const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.TABBED;
-      monitor.rect = { x: 0, y: 0, width: 960, height: 1080 };
-
-      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      nodeWindow1.mode = WINDOW_MODES.TILE;
-      nodeWindow1.percent = 0.5;
-      nodeWindow1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
-      nodeWindow1.rect = { x: 0, y: 0, width: 960, height: 1080 };
-      nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
-
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
-      nodeWindow2.mode = WINDOW_MODES.TILE;
-      nodeWindow2.percent = 0.5;
-      nodeWindow2.rect = { x: 0, y: 0, width: 960, height: 1080 };
-
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 1100, height: 1080 });
-
-      wm().grabOp = GrabOp.RESIZING_E;
-      global.display.get_focus_window.mockReturnValue(metaWindow1);
-
-      // Bug #497: tabbed siblings share a rect. Whatever the resize does, it must
-      // leave both siblings with valid positive shares (never collapse one to a
-      // negative/zero percent).
-      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
-
-      expect(nodeWindow1.percent).toBeGreaterThan(0);
-      expect(nodeWindow2.percent).toBeGreaterThan(0);
-    });
-
-    it("should keep stacked sibling percents valid and normalized on resize (Bug #497)", () => {
-      const metaWindow1 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0(),
-      });
-      const metaWindow2 = createMockWindow({
-        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
-        workspace: workspace0(),
-      });
-
-      const { monitor } = getWorkspaceAndMonitor(ctx);
-      monitor.layout = LAYOUT_TYPES.STACKED;
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
       monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
-      const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow1);
-      nodeWindow1.mode = WINDOW_MODES.TILE;
-      nodeWindow1.percent = 0.5;
-      nodeWindow1.initRect = { x: 0, y: 0, width: 1920, height: 1080 };
-      nodeWindow1.rect = { x: 0, y: 0, width: 1920, height: 1080 };
-      nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
+      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = containerLayout;
+      container.percent = 0.5;
+      container.initRect = { x: 0, y: 0, width: 960, height: 1080 };
+      container.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
-      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
-      nodeWindow2.mode = WINDOW_MODES.TILE;
-      nodeWindow2.percent = 0.5;
-      nodeWindow2.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+      const tab1 = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaTab1);
+      tab1.mode = WINDOW_MODES.TILE;
+      tab1.percent = 0.5;
+      tab1.initRect = { x: 0, y: 0, width: 960, height: 1080 };
+      tab1.rect = { x: 0, y: 0, width: 960, height: 1080 };
+      tab1.initGrabOp = GrabOp.RESIZING_E;
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 2100, height: 1080 });
+      const tab2 = ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, metaTab2);
+      tab2.mode = WINDOW_MODES.TILE;
+      tab2.percent = 0.5;
+      tab2.rect = { x: 0, y: 0, width: 960, height: 1080 };
 
+      const sibling = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaSibling);
+      sibling.mode = WINDOW_MODES.TILE;
+      sibling.percent = 0.5;
+      sibling.rect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      // Drag tab1's right edge: its frame (== container frame) grows 960 -> 1100.
+      metaTab1.move_resize_frame(false, 0, 0, 1100, 1080);
       wm().grabOp = GrabOp.RESIZING_E;
-      global.display.get_focus_window.mockReturnValue(metaWindow1);
+      global.display.get_focus_window.mockReturnValue(metaTab1);
 
-      // Stacked siblings share a rect like tabbed ones (Bug #497). The resize
-      // must leave both siblings with valid positive shares.
-      expect(() => wm()._handleResizing(nodeWindow1)).not.toThrow();
+      return { container, tab1, tab2, sibling };
+    };
 
-      expect(nodeWindow1.percent).toBeGreaterThan(0);
-      expect(nodeWindow2.percent).toBeGreaterThan(0);
+    it("resizes a TABBED container against its split sibling, tabs stay valid (Bug #497)", () => {
+      const { container, tab1, tab2, sibling } = buildNestedContainer(LAYOUT_TYPES.TABBED);
+
+      wm()._handleResizing(tab1);
+
+      // The container took the delta against its split sibling...
+      expect(container.percent).toBeGreaterThan(0.5);
+      expect(sibling.percent).toBeLessThan(0.5);
+      expect(container.percent + sibling.percent).toBeCloseTo(1, 5);
+      // ...and the sibling tabs keep valid positive shares (never collapse).
+      expect(tab1.percent).toBeGreaterThan(0);
+      expect(tab2.percent).toBeGreaterThan(0);
+    });
+
+    it("resizes a STACKED container against its split sibling, tabs stay valid (Bug #497)", () => {
+      const { container, tab1, tab2, sibling } = buildNestedContainer(LAYOUT_TYPES.STACKED);
+
+      wm()._handleResizing(tab1);
+
+      expect(container.percent).toBeGreaterThan(0.5);
+      expect(sibling.percent).toBeLessThan(0.5);
+      expect(container.percent + sibling.percent).toBeCloseTo(1, 5);
+      expect(tab1.percent).toBeGreaterThan(0);
+      expect(tab2.percent).toBeGreaterThan(0);
     });
   });
 
   describe("_handleResizing - Skip Invalid Resize Pairs", () => {
-    it("should skip floating windows when finding resize pair", () => {
+    it("skips a floating window and lands the delta on the next tiled sibling", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 640, height: 1080 }),
         workspace: workspace0(),
@@ -350,7 +373,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow1.rect = { x: 0, y: 0, width: 640, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      // Window 2 is floating - should be skipped
+      // Window 2 is floating - the immediate right neighbor, must be skipped.
       const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
       nodeWindow2.mode = WINDOW_MODES.FLOAT;
       nodeWindow2.percent = 0.333;
@@ -361,18 +384,22 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow3.percent = 0.333;
       nodeWindow3.rect = { x: 1280, y: 0, width: 640, height: 1080 };
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 800, height: 1080 });
+      metaWindow1.move_resize_frame(false, 0, 0, 800, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       wm()._handleResizing(nodeWindow1);
 
-      // Floating window should be skipped, resize should affect window 3
+      // Grabbed window grew; the floating window is left untouched; the delta
+      // reached the next TILED sibling (window3), proving window2 was skipped.
       expect(nodeWindow1.percent).toBeGreaterThan(0.333);
+      expect(nodeWindow2.percent).toBeCloseTo(0.333, 3);
+      expect(Math.abs(nodeWindow3.percent - 0.333)).toBeGreaterThan(0.02);
+      expect(nodeWindow1.percent).toBeGreaterThan(nodeWindow3.percent);
     });
 
-    it("should skip minimized windows when finding resize pair", () => {
+    it("skips a minimized window and lands the delta on the next tiled sibling", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 640, height: 1080 }),
         workspace: workspace0(),
@@ -409,15 +436,18 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow3.percent = 0.333;
       nodeWindow3.rect = { x: 1280, y: 0, width: 640, height: 1080 };
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 800, height: 1080 });
+      metaWindow1.move_resize_frame(false, 0, 0, 800, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
       wm()._handleResizing(nodeWindow1);
 
-      // Minimized window should be skipped
+      // Minimized window2 is skipped; the delta reaches window3.
       expect(nodeWindow1.percent).toBeGreaterThan(0.333);
+      expect(nodeWindow2.percent).toBeCloseTo(0.333, 3);
+      expect(Math.abs(nodeWindow3.percent - 0.333)).toBeGreaterThan(0.02);
+      expect(nodeWindow1.percent).toBeGreaterThan(nodeWindow3.percent);
     });
   });
 
@@ -439,7 +469,8 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       nodeWindow1.rect = { x: 0, y: 0, width: 1920, height: 1080 };
       nodeWindow1.initGrabOp = GrabOp.RESIZING_E;
 
-      metaWindow1._frameRect = new Rectangle({ x: 0, y: 0, width: 2000, height: 1080 });
+      // Even with a real frame delta, a lone tiled child has no resize pair.
+      metaWindow1.move_resize_frame(false, 0, 0, 2000, 1080);
 
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
@@ -517,8 +548,8 @@ describe("WindowManager - Handle Resizing Behavior", () => {
 
       wm()._repositionDuringResize(nodeWindow);
 
-      // If x and y match, move_frame should not be called
-      // (depends on gap calculation)
+      // Frame x/y already match initRect, so the anti-travel reposition is a no-op.
+      expect(moveSpy).not.toHaveBeenCalled();
     });
   });
 
