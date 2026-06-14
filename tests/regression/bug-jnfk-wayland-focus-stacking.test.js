@@ -20,7 +20,14 @@ import { MotionDirection } from "../mocks/gnome/Meta.js";
  *
  * Fix: import GLib in tree.js; wrap the make_above/unmake_above pair in
  * _withSuppressedAboveHandler so Forge's own transient pin is never mistaken
- * for a user pin; clear a pending _waylandStackingTimeoutId on disable().
+ * for a user pin; clear a pending restore timer on disable().
+ *
+ * forge-ph7f follow-up: the restore timer was a single shared id on the tree,
+ * so focusing faster than 50ms cancelled the previous window's pending
+ * unmake_above() — leaving earlier windows stuck always-on-top, which
+ * isFloatingExempt then float-ejected so they overlapped. The pin is now keyed
+ * per-MetaWindow (_forgeStackTimeoutId) and flagged (_forgeTransientAbove) so
+ * isFloatingExempt skips Forge's own transient pin.
  */
 describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
   let ctx;
@@ -107,9 +114,43 @@ describe("forge-jnfk: Wayland focus stacking restores above-state", () => {
     const removeSpy = vi.spyOn(GLib.Source, "remove");
 
     ctx.tree.focus(nodeA, MotionDirection.RIGHT);
-    expect(ctx.tree._waylandStackingTimeoutId).toBe(42);
+    expect(winB._forgeStackTimeoutId).toBe(42);
 
     ctx.windowManager.disable();
     expect(removeSpy).toHaveBeenCalledWith(42);
+  });
+
+  // forge-ph7f: rapid focus must not strand earlier windows always-on-top.
+  it("does not float-eject a window carrying Forge's transient focus pin", () => {
+    vi.spyOn(GLib, "timeout_add").mockReturnValue(42);
+
+    ctx.tree.focus(nodeA, MotionDirection.RIGHT);
+
+    // winB is transiently pinned above, but Forge's own pin must not read as a
+    // user "Always on Top" overlay (which isFloatingExempt would float out).
+    expect(winB.is_above()).toBe(true);
+    expect(winB._forgeTransientAbove).toBe(true);
+    expect(ctx.windowManager.isFloatingExempt(winB)).toBe(false);
+  });
+
+  it("keys the restore timer per-window so a fast focus burst can't cancel an earlier unpin", () => {
+    let nextId = 100;
+    const ids = [];
+    vi.spyOn(GLib, "timeout_add").mockImplementation(() => {
+      const id = nextId++;
+      ids.push(id);
+      return id;
+    });
+    const removeSpy = vi.spyOn(GLib.Source, "remove");
+
+    // Focus B then back to A faster than the 50ms restore — two distinct pins.
+    ctx.tree.focus(nodeA, MotionDirection.RIGHT);
+    ctx.tree.focus(nodeB, MotionDirection.LEFT);
+
+    expect(ids).toHaveLength(2);
+    expect(winB._forgeStackTimeoutId).toBe(ids[0]);
+    expect(winA._forgeStackTimeoutId).toBe(ids[1]);
+    // Neither pending unpin was cancelled by the other (the shared-id bug).
+    expect(removeSpy).not.toHaveBeenCalled();
   });
 });
