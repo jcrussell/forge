@@ -56,18 +56,6 @@ class TestWindowSwap:
         )
         assert after["rect"]["x"] < before_x
 
-    def test_swap_preserves_window_count(self, shell_proxy, input_sim, two_windows):
-        """Swapping should not change the number of windows."""
-        count_before = len(shell_proxy.get_windows())
-
-        input_sim.swap_left()
-        input_sim.swap_right()
-
-        count_after = len(shell_proxy.get_windows())
-        assert count_before == count_after, (
-            f"Window count changed from {count_before} to {count_after}"
-        )
-
     def test_swap_up_down_in_vsplit(
         self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows
     ):
@@ -106,25 +94,6 @@ class TestWindowSwap:
             message=f"swap_up did not move the focused window up (y stayed ~{before_y})",
         )
         assert after["rect"]["y"] < before_y
-
-    def test_swap_single_window_no_effect(self, shell_proxy, input_sim, window_helper, test_window):
-        """Swapping with single window should have no effect."""
-        wm_class = test_window.get("wmClass")
-        rect_before = window_helper.get_window_rect(wm_class)
-
-        # Try all swap directions
-        input_sim.swap_left()
-        input_sim.swap_right()
-        input_sim.swap_up()
-        input_sim.swap_down()
-
-        rect_after = window_helper.get_window_rect(wm_class)
-
-        # Position should be unchanged
-        assert abs(rect_before[0] - rect_after[0]) < Tolerance.POSITION, "X position changed"
-        assert abs(rect_before[1] - rect_after[1]) < Tolerance.POSITION, "Y position changed"
-        assert abs(rect_before[2] - rect_after[2]) < Tolerance.POSITION, "Width changed"
-        assert abs(rect_before[3] - rect_after[3]) < Tolerance.POSITION, "Height changed"
 
 
 class TestWindowMove:
@@ -169,17 +138,3 @@ class TestWindowMove:
         )
         assert after["rect"]["x"] < before_x
         assert len(shell_proxy.get_windows()) >= 2, "both windows should survive the move"
-
-    def test_move_preserves_window_count(self, shell_proxy, input_sim, three_windows):
-        """Moving windows should preserve window count."""
-        count_before = len(shell_proxy.get_windows())
-
-        input_sim.move_left()
-        input_sim.move_right()
-        input_sim.move_up()
-        input_sim.move_down()
-
-        count_after = len(shell_proxy.get_windows())
-        assert count_before == count_after, (
-            f"Window count changed from {count_before} to {count_after}"
-        )

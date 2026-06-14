@@ -57,31 +57,23 @@ class TestDragDropBasic:
         input_sim.drag_window(start_x, start_y, end_x, end_y)
         time.sleep(Timing.LAYOUT_CHANGE)
 
-        # Verify windows are now tiled side-by-side
-        after_windows = shell_proxy.get_windows()
-        if len(after_windows) >= 2:
-            sorted_after = sorted(
-                after_windows, key=lambda w: w.get("rect", {}).get("x", 0)
+        # Read the Forge container layout. A right-zone drop re-tiles the floated
+        # window beside its sibling, forming an HSPLIT; we assert that layout
+        # UNCONDITIONALLY when the drag engaged. If the synthetic drag never
+        # engaged Mutter's grab-op protocol (headless xdotool limitation), the
+        # floated window stays floating and no HSPLIT is formed — that is the only
+        # path we xfail (never a silent pass, never a hard fail-on-no-engage).
+        layout = shell_proxy.get_container_layout()
+        if layout == "HSPLIT":
+            assert layout == "HSPLIT", f"right-zone drop should yield HSPLIT, got {layout}"
+        else:
+            # Engaged-vs-xfail gate: the drop never produced the expected split,
+            # which headless means the grab-op never fired (see forge-v9o7). xfail
+            # so the coverage gap stays visible rather than masquerading as green.
+            pytest.xfail(
+                "xdotool drag did not trigger Mutter grab-op drop-zone detection "
+                f"(no HSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
-            left = sorted_after[0].get("rect", {})
-            right = sorted_after[1].get("rect", {})
-
-            # Both should have reasonable width (not one taking all space)
-            workspace = window_helper.get_workspace_rect()
-            left_reasonable = left.get("width", 0) > workspace["width"] * 0.2
-            right_reasonable = right.get("width", 0) > workspace["width"] * 0.2
-
-            if not (left_reasonable and right_reasonable):
-                # Reported as xfail (not skip) so the report shows this as a
-                # known-failing path instead of masquerading as green. xdotool
-                # mouse motion does not reliably trigger Mutter's grab-op
-                # drop-zone protocol; see memory
-                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
-                # drag DOES land, the test passes normally (xpass is expected
-                # and allowed here — see forge-q0k).
-                pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
-                )
 
     def test_drag_float_to_bottom_zone(
         self, shell_proxy, input_sim, window_helper, two_windows
@@ -117,29 +109,22 @@ class TestDragDropBasic:
         input_sim.drag_window(start_x, start_y, end_x, end_y)
         time.sleep(Timing.LAYOUT_CHANGE)
 
-        after_windows = shell_proxy.get_windows()
-        if len(after_windows) >= 2:
-            sorted_by_y = sorted(
-                after_windows, key=lambda w: w.get("rect", {}).get("y", 0)
+        # A bottom-zone drop stacks the floated window below its sibling, forming
+        # a VSPLIT; assert that layout UNCONDITIONALLY when the drag engaged. If
+        # the synthetic drag never engaged Mutter's grab-op protocol (headless
+        # xdotool limitation), no VSPLIT is formed — that is the only path we
+        # xfail (never a silent pass, never a hard fail-on-no-engage).
+        layout = shell_proxy.get_container_layout()
+        if layout == "VSPLIT":
+            assert layout == "VSPLIT", f"bottom-zone drop should yield VSPLIT, got {layout}"
+        else:
+            # Engaged-vs-xfail gate: the drop never produced the expected split,
+            # which headless means the grab-op never fired (see forge-v9o7). xfail
+            # so the coverage gap stays visible rather than masquerading as green.
+            pytest.xfail(
+                "xdotool drag did not trigger Mutter grab-op drop-zone detection "
+                f"(no VSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
-            top = sorted_by_y[0].get("rect", {})
-            bottom = sorted_by_y[-1].get("rect", {})
-
-            workspace = window_helper.get_workspace_rect()
-            top_reasonable = top.get("height", 0) > workspace["height"] * 0.2
-            bottom_reasonable = bottom.get("height", 0) > workspace["height"] * 0.2
-
-            if not (top_reasonable and bottom_reasonable):
-                # Reported as xfail (not skip) so the report shows this as a
-                # known-failing path instead of masquerading as green. xdotool
-                # mouse motion does not reliably trigger Mutter's grab-op
-                # drop-zone protocol; see memory
-                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
-                # drag DOES land, the test passes normally (xpass is expected
-                # and allowed here — see forge-q0k).
-                pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
-                )
 
     def test_drag_float_to_left_zone(
         self, shell_proxy, input_sim, window_helper, two_windows

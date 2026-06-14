@@ -103,17 +103,26 @@ class TestTilingModeToggle:
     """Test enabling/disabling tiling mode."""
 
     def test_disable_tiling_mode(
-        self, shell_proxy, window_helper, restore_settings, two_windows
+        self, shell_proxy, window_helper, restore_settings, launch_window, two_windows
     ):
-        """Disabling tiling mode should stop managing windows."""
+        """Disabling tiling mode should stop Forge from RE-LAYING-OUT windows.
+
+        The old test only read back the GSetting it had just written — it never
+        touched Forge. Forge still TRACKS every new window into the tree
+        regardless of the setting (trackWindow has no tiling-mode gate); the
+        setting short-circuits renderTree (window.js:1323). So the real,
+        observable post-condition is: with tiling disabled, opening a new window
+        must NOT trigger a re-tile of the existing windows — their rects stay put.
+        With tiling ON, a third window shrinks the first two to make room, so if
+        the renderTree gate were ignored this test goes red.
+        """
         wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
-        sorted_before = window_helper.get_windows_sorted_by_position("x")
-        widths_before = [w.get("rect", {}).get("width", 0) for w in sorted_before]
+        before_rects = [w["rect"] for w in window_helper.get_windows_sorted_by_position("x")]
+        assert len(before_rects) >= 2, "expected the two tiled fixture windows"
 
         restore_settings.set_tiling_mode_enabled(False)
-        # Gate on the GSetting actually flipping (its propagation is the real
-        # post-condition); existing windows stay put, so we also keep the
-        # existence check below.
+        # Gate on the GSetting actually flipping (its propagation to Forge is the
+        # real precondition for the launch below).
         wait_for(
             lambda: restore_settings.get("tiling-mode-enabled"),
             predicate=lambda enabled: not enabled,
@@ -123,9 +132,28 @@ class TestTilingModeToggle:
             "tiling mode should be disabled"
         )
 
-        # Windows may remain where they are, but new behavior would be untiled.
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 2, "Windows should still exist after disabling tiling"
+        # Open a NEW window with tiling disabled; renderTree is skipped, so each
+        # pre-existing window must still be present at its exact geometry. (windows
+        # carry no id, so match by full rect — with tiling ON a third window would
+        # re-tile the originals and their rects would no longer appear.)
+        launch_window()
+        after_rects = [w["rect"] for w in window_helper.get_windows_sorted_by_position("x")]
+
+        def _present(r, rects):
+            t = Tolerance.POSITION
+            return any(
+                abs(r["x"] - o["x"]) <= t
+                and abs(r["y"] - o["y"]) <= t
+                and abs(r["width"] - o["width"]) <= t
+                and abs(r["height"] - o["height"]) <= t
+                for o in rects
+            )
+
+        for r in before_rects:
+            assert _present(r, after_rects), (
+                f"an existing window was re-tiled (rect {r} gone after a new window "
+                "opened) despite tiling being disabled"
+            )
 
     def test_reenable_tiling_retiles(
         self, shell_proxy, window_helper, restore_settings, two_windows

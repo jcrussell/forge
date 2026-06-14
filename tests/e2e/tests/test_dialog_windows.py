@@ -148,45 +148,34 @@ class TestDialogWindows:
             _safe_terminate(proc)
             _wait_zenity_closed(shell_proxy)
 
-    def test_dialog_window_type_detected(
+    def test_dialog_is_not_tiled(
         self, shell_proxy, test_window, zenity_available
     ):
-        """At least one dialog window should be detected by window type."""
+        """A dialog window must not become a tiled node in the Forge tree.
+
+        With a tiled window present and a zenity dialog open, Forge's dialog/
+        transient exclusion (_isDialogLike / WINDOW_TYPES) must keep the dialog
+        out of the tree. The old test read raw Mutter window types and ended in
+        `has_dialog or has_zenity` — always true because the test already blocks
+        on a zenity window being present, so it never exercised Forge. Mirror
+        test_dialog_preserves_tiling: derive the real (case-sensitive) wmClass
+        from the live window, then assert Forge tiled exactly zero of them.
+        """
         proc = _open_zenity_dialog()
         wait_for(shell_proxy.get_windows, predicate=_zenity_present,
                  message="zenity dialog did not appear")
 
         try:
-            js = """
-            (function() {
-                const actors = global.get_window_actors();
-                const types = actors.map(a => {
-                    const w = a.meta_window;
-                    return {
-                        wmClass: w.get_wm_class(),
-                        windowType: w.get_window_type(),
-                        transientFor: w.get_transient_for() ? true : false
-                    };
-                });
-                return JSON.stringify(types);
-            })();
-            """
-            result = shell_proxy.eval(js)
-
-            has_dialog = any(
-                w.get("windowType") in [1, 2] or w.get("transientFor", False)
-                for w in result
-                if isinstance(w, dict)
+            all_windows = shell_proxy.get_windows()
+            # The tree query is case-sensitive (wmClass case varies, e.g.
+            # "Zenity"); derive it from the live window rather than guessing.
+            zenity_class = next(
+                w.get("wmClass")
+                for w in all_windows
+                if w.get("wmClass", "").lower() == "zenity"
             )
-            # Zenity may create a NORMAL window (type 0) in some versions,
-            # so also check wmClass (case-insensitive)
-            has_zenity = any(
-                w.get("wmClass", "").lower() == "zenity"
-                for w in result
-                if isinstance(w, dict)
-            )
-            assert has_dialog or has_zenity, (
-                f"Should detect dialog/transient window or zenity wmClass, got: {result}"
+            assert shell_proxy.count_tiled_windows_of_class(zenity_class) == 0, (
+                f"Dialog '{zenity_class}' should not be a tiled node in the Forge tree"
             )
         finally:
             _safe_terminate(proc)

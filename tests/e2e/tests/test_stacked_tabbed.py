@@ -10,7 +10,7 @@ import pytest
 
 from framework.constants import Timing, Tolerance
 from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
-from framework.wait import wait_for_layout
+from framework.wait import wait_for, wait_for_layout
 
 
 def _assert_windows_within_workspace(shell_proxy):
@@ -124,19 +124,26 @@ class TestStackedLayout:
         assert len(shell_proxy.get_windows()) >= 2, "the sibling window should still exist"
 
     def test_stacked_toggle_off(self, shell_proxy, input_sim, window_helper, two_windows):
-        """Toggling stacked twice should restore normal layout."""
+        """Toggling stacked twice should restore a split (non-STACKED) layout."""
         window1, window2 = two_windows
         wm_class1 = window1.get("wmClass")
 
-        rect_before = window_helper.get_window_rect(wm_class1)
-
-        # Toggle stacked on then off
+        # Toggle stacked ON, gating on it actually taking effect, then OFF.
         input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")
         input_sim.toggle_stacked()
+        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
 
+        # The real post-condition the old bare width/height check missed: the
+        # container must return to a split (the single-child STACKED CON is
+        # converted back), no longer STACKED.
+        layout = shell_proxy.get_container_layout()
+        assert layout != "STACKED", (
+            f"toggling stacked off should restore a split layout, still {layout}"
+        )
+
+        # Geometry sanity check: the window survived with valid dimensions.
         rect_after = window_helper.get_window_rect(wm_class1)
-
-        # Window should have valid dimensions
         assert rect_after[2] > 0, "Window should have width"
         assert rect_after[3] > 0, "Window should have height"
 
@@ -210,19 +217,44 @@ class TestLayoutTransitions:
         assert len(windows) >= 2, "Windows should exist after layout toggle"
 
     def test_layout_changes_preserve_windows(self, shell_proxy, input_sim, three_windows):
-        """All layout transitions should preserve window count."""
+        """All layout transitions preserve window count AND take real effect.
+
+        The old test asserted only the Mutter window count, which none of these
+        transitions change — a fully no-op transition layer (broken
+        toggle_stacked/tabbed/layout) passed. Each transition below is now gated
+        on its real layout post-condition (raises on timeout) in addition to the
+        count, so a no-op transition fails loudly. toggle_stacked/toggle_tabbed
+        round-trip split<->mode; toggle_layout only flips a split's axis (it is a
+        no-op inside tabbed/stacked), so the sequence returns to a split before
+        toggling the axis. "SPLIT" means HSPLIT|VSPLIT (axis is geometry-dependent
+        on a flat monitor).
+        """
         initial_count = len(shell_proxy.get_windows())
 
+        # (transition, expected layout post-condition). "SPLIT" => HSPLIT|VSPLIT.
         transitions = [
-            input_sim.toggle_stacked,
-            input_sim.toggle_tabbed,
-            input_sim.toggle_layout,
-            input_sim.split_vertical,
-            input_sim.split_horizontal,
+            (input_sim.toggle_stacked, "STACKED"),
+            (input_sim.toggle_stacked, "SPLIT"),
+            (input_sim.toggle_tabbed, "TABBED"),
+            (input_sim.toggle_tabbed, "SPLIT"),
+            (input_sim.toggle_layout, "SPLIT"),
         ]
 
-        for transition in transitions:
+        for transition, expected in transitions:
             transition()
+            if expected == "SPLIT":
+                layout = wait_for(
+                    shell_proxy.get_container_layout,
+                    predicate=lambda l: l in ("HSPLIT", "VSPLIT"),
+                    message=f"{transition.__name__} should yield a split layout",
+                )
+                assert layout in ("HSPLIT", "VSPLIT")
+            else:
+                layout = wait_for_layout(shell_proxy, expected)
+                assert layout == expected, (
+                    f"{transition.__name__} should yield {expected}, got {layout}"
+                )
+
             current_count = len(shell_proxy.get_windows())
             assert current_count == initial_count, (
                 f"Window count changed from {initial_count} to {current_count}"
