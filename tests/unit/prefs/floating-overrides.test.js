@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { removeOverride, sortFloatOverrides } from "../../../lib/prefs/floating-overrides.js";
+import {
+  removeOverride,
+  sortFloatOverrides,
+  floatRowSubtitle,
+} from "../../../lib/prefs/floating-overrides.js";
 
 describe("removeOverride (forge-fov0)", () => {
   // Two same-class firefox float rules differing only by wmTitle, a same-class
@@ -124,5 +128,19 @@ describe("sortFloatOverrides (forge-n29i)", () => {
       r = sortFloatOverrides([z, a]);
     }).not.toThrow();
     expect(r.indexOf(a)).toBeLessThan(r.indexOf(z));
+  });
+});
+
+describe("floatRowSubtitle (forge-4w7e)", () => {
+  it("uses wmClass as the subtitle when present", () => {
+    expect(floatRowSubtitle({ wmClass: "firefox", mode: "float" }, "Title-only rule")).toBe(
+      "firefox"
+    );
+  });
+
+  it("falls back to the title-only label for a classless rule (no blank subtitle)", () => {
+    expect(
+      floatRowSubtitle({ wmTitle: "Picture-in-Picture", mode: "float" }, "Title-only rule")
+    ).toBe("Title-only rule");
   });
 });
