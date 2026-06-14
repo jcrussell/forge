@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Forge\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-06 13:15-0300\n"
+"POT-Creation-Date: 2026-06-14 15:06+0000\n"
 "PO-Revision-Date: 2025-08-22 12:00+0300\n"
 "Last-Translator: Mucahit Sahin <mucahitsahin786@gmail.com>\n"
 "Language-Team: Turkish\n"
@@ -15,11 +15,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
 
-#: lib/extension/indicator.js:47 lib/prefs/settings.js:55
+#: lib/extension/indicator.js:47 lib/prefs/settings.js:57
 msgid "Tiling"
 msgstr "Döşeme"
 
-#: lib/extension/indicator.js:66 lib/prefs/settings.js:24
+#: lib/extension/indicator.js:66 lib/prefs/settings.js:25
 msgid "Forge"
 msgstr "Forge"
 
@@ -39,136 +39,253 @@ msgstr "Odak İpucu Kenarlığını Göster"
 msgid "Move Pointer with the Focus"
 msgstr "İmleci Odakla Birlikte Taşı"
 
-#: lib/extension/indicator.js:94 lib/extension/window.js:67
+#: lib/extension/indicator.js:94 lib/extension/window.js:109
 msgid "Settings"
 msgstr "Ayarlar"
 
-#: lib/prefs/appearance.js:29
+#: lib/prefs/appearance.js:30
 msgid "Tiled window"
 msgstr "Döşenmiş pencere"
 
-#: lib/prefs/appearance.js:31
+#: lib/prefs/appearance.js:32
 msgid "Tabbed window"
 msgstr "Sekmeli pencere"
 
-#: lib/prefs/appearance.js:33
+#: lib/prefs/appearance.js:34
 msgid "Stacked window"
 msgstr "Yığılmış pencere"
 
-#: lib/prefs/appearance.js:35
+#: lib/prefs/appearance.js:36
 msgid "Floating window"
 msgstr "Yüzen pencere"
 
-#: lib/prefs/appearance.js:37
+#: lib/prefs/appearance.js:38
 msgid "Split direction hint"
 msgstr "Bölme yönü ipucu"
 
-#: lib/prefs/appearance.js:42
+#: lib/prefs/appearance.js:43
 msgid "Appearance"
 msgstr "Görünüm"
 
-#: lib/prefs/appearance.js:47
+#: lib/prefs/appearance.js:48
 msgid "Gaps"
 msgstr "Boşluklar"
 
-#: lib/prefs/appearance.js:48
+#: lib/prefs/appearance.js:49
 msgid "Change the gap size between windows"
 msgstr "Pencereler arasındaki boşluk boyutunu değiştir"
 
-#: lib/prefs/appearance.js:51
+#: lib/prefs/appearance.js:52
 msgid "Gap size"
 msgstr "Boşluk boyutu"
 
-#: lib/prefs/appearance.js:57
+#: lib/prefs/appearance.js:58
 msgid "Gap size multiplier"
 msgstr "Boşluk boyutu çarpanı"
 
-#: lib/prefs/appearance.js:63
+#: lib/prefs/appearance.js:64
 msgid "Disable gaps for single window"
 msgstr "Tek pencere için boşlukları devre dışı bırak"
 
-#: lib/prefs/appearance.js:64
+#: lib/prefs/appearance.js:65
 msgid "Disables window gaps when only a single window is present"
 msgstr "Sadece tek pencere olduğunda pencere boşluklarını devre dışı bırakır"
 
+#: lib/prefs/appearance.js:70
+#, fuzzy
+msgid "Maximize single window"
+msgstr "Tek pencere için boşlukları devre dışı bırak"
+
 #: lib/prefs/appearance.js:71
+#, fuzzy
+msgid "Automatically maximize when only one window is present"
+msgstr "Sadece tek pencere olduğunda pencere boşluklarını devre dışı bırakır"
+
+#: lib/prefs/appearance.js:78
+msgid "Screen Edge Margins"
+msgstr ""
+
+#: lib/prefs/appearance.js:79
+msgid "Add extra space at screen edges (useful for auto-hide panels/docks)"
+msgstr ""
+
+#: lib/prefs/appearance.js:82
+msgid "Top margin"
+msgstr ""
+
+#: lib/prefs/appearance.js:83
+msgid "Extra space at top of screen (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js:89
+msgid "Bottom margin"
+msgstr ""
+
+#: lib/prefs/appearance.js:90
+msgid "Extra space at bottom of screen (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js:96
+msgid "Left margin"
+msgstr ""
+
+#: lib/prefs/appearance.js:97
+msgid "Extra space at left of screen (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js:103
+msgid "Right margin"
+msgstr ""
+
+#: lib/prefs/appearance.js:104
+msgid "Extra space at right of screen (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js:112
 msgid "Style"
 msgstr "Stil"
 
-#: lib/prefs/appearance.js:72
+#: lib/prefs/appearance.js:113
 msgid "Change how the shell looks"
 msgstr "Kabuğun nasıl göründüğünü değiştir"
 
-#: lib/prefs/appearance.js:75
+#: lib/prefs/appearance.js:116
 msgid "Preview hint"
 msgstr "Önizleme ipucu"
 
-#: lib/prefs/appearance.js:76
+#: lib/prefs/appearance.js:117
 msgid "Shows where the window will be tiled when you let go of it"
 msgstr "Pencereyi bıraktığınızda nerede döşeneceğini gösterir"
 
-#: lib/prefs/appearance.js:82
+#: lib/prefs/appearance.js:123
 msgid "Border around focused window"
 msgstr "Odaklanmış pencere etrafında kenarlık"
 
-#: lib/prefs/appearance.js:83
+#: lib/prefs/appearance.js:124
 msgid "Display a colored border around the focused window"
 msgstr "Odaklanmış pencere etrafında renkli kenarlık göster"
 
-#: lib/prefs/appearance.js:88
+#: lib/prefs/appearance.js:129
+#, fuzzy
+msgid "Disable focus border when single"
+msgstr "Tek pencere için boşlukları devre dışı bırak"
+
+#: lib/prefs/appearance.js:130
+#, fuzzy
+msgid "Hides focus border when only a single window is present"
+msgstr "Sadece tek pencere olduğunda pencere boşluklarını devre dışı bırakır"
+
+#: lib/prefs/appearance.js:135
 msgid "Window split hint border"
 msgstr "Pencere bölme ipucu kenarlığı"
 
-#: lib/prefs/appearance.js:89
+#: lib/prefs/appearance.js:136
 msgid "Show split direction border on focused window"
 msgstr "Odaklanmış pencerede bölme yönü kenarlığını göster"
 
-#: lib/prefs/appearance.js:94
+#: lib/prefs/appearance.js:141
+#, fuzzy
+msgid "Border radius"
+msgstr "Kenarlık boyutu"
+
+#: lib/prefs/appearance.js:142
+msgid "Corner radius of the focus borders (0 for square corners)"
+msgstr ""
+
+#: lib/prefs/appearance.js:149
+msgid "Tab margin"
+msgstr ""
+
+#: lib/prefs/appearance.js:150
+msgid "Spacing between tabs in tabbed tiling mode (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js:157
 msgid "Forge in quick settings"
 msgstr "Hızlı ayarlarda Forge"
 
-#: lib/prefs/appearance.js:95
+#: lib/prefs/appearance.js:158
 msgid "Toggles the Forge tile in quick settings"
 msgstr "Hızlı ayarlarda Forge döşemesini açar/kapatır"
 
-#: lib/prefs/appearance.js:103
+#: lib/prefs/appearance.js:164
+msgid "Show tray icon"
+msgstr ""
+
+#: lib/prefs/appearance.js:165
+msgid "Show Forge icon in the top bar (separate from quick settings menu)"
+msgstr ""
+
+#: lib/prefs/appearance.js:172
 msgid "Color"
 msgstr "Renk"
 
-#: lib/prefs/appearance.js:104
+#: lib/prefs/appearance.js:173
 msgid "Changes the focused window's border and preview hint colors"
 msgstr "Odaklanmış pencerenin kenarlık ve önizleme ipucu renklerini değiştirir"
 
-#: lib/prefs/appearance.js:126
+#: lib/prefs/appearance.js:195
 msgid "Border size"
 msgstr "Kenarlık boyutu"
 
-#: lib/prefs/appearance.js:198
+#: lib/prefs/appearance.js:267
 msgid "Border color"
 msgstr "Kenarlık rengi"
 
-#: lib/prefs/floating.js:18
+#: lib/prefs/floating.js:20
 msgid "Windows"
 msgstr ""
 
+#: lib/prefs/floating.js:26
+msgid "Window Class"
+msgstr ""
+
 #: lib/prefs/floating.js:27
+msgid "Window Title (optional)"
+msgstr ""
+
+#: lib/prefs/floating.js:30
+msgid "Add"
+msgstr ""
+
+#: lib/prefs/floating.js:40
+#, fuzzy
+msgid "Add Floating Window"
+msgstr "Yüzen pencere"
+
+#: lib/prefs/floating.js:42
+msgid ""
+"Add a rule to exclude windows from tiling. Use xprop WM_CLASS to find window "
+"class."
+msgstr ""
+
+#: lib/prefs/floating.js:49
+#, fuzzy
+msgid "Search windows..."
+msgstr "Yığılmış pencere"
+
+#: lib/prefs/floating.js:69
 #, fuzzy
 msgid "Floating Windows"
 msgstr "Yüzen pencere"
 
-#: lib/prefs/floating.js:28
+#: lib/prefs/floating.js:70
 msgid "Windows that will not be tiled"
 msgstr ""
 
-#: lib/prefs/keyboard.js:19
+#: lib/prefs/floating.js:93
+msgid "Title-only rule"
+msgstr ""
+
+#: lib/prefs/keyboard.js:20
 msgid "Keyboard"
 msgstr "Klavye"
 
-#: lib/prefs/keyboard.js:22
+#: lib/prefs/keyboard.js:24
 msgid "Drag-and-drop modifier key"
 msgstr "Sürükle-bırak değiştirici tuşu"
 
-#: lib/prefs/keyboard.js:24
+#: lib/prefs/keyboard.js:26
 msgid ""
 "Change the modifier key for tiling windows via drag-and-drop. Select 'None' "
 "to always tile"
@@ -176,157 +293,388 @@ msgstr ""
 "Sürükle-bırak ile pencere döşeme için değiştirici tuşu değiştirir. Her zaman "
 "döşemek için 'Hiçbiri'ni seçin"
 
-#: lib/prefs/keyboard.js:28
+#: lib/prefs/keyboard.js:30
 msgid "Modifier key"
 msgstr "Değiştirici tuş"
 
-#: lib/prefs/keyboard.js:32
+#: lib/prefs/keyboard.js:34
 msgid "Super"
 msgstr "Super"
 
-#: lib/prefs/keyboard.js:33
+#: lib/prefs/keyboard.js:35
 msgid "Ctrl"
 msgstr "Ctrl"
 
-#: lib/prefs/keyboard.js:34
+#: lib/prefs/keyboard.js:36
 msgid "Alt"
 msgstr "Alt"
 
-#: lib/prefs/keyboard.js:35
+#: lib/prefs/keyboard.js:37
 msgid "None"
 msgstr "Hiçbiri"
 
-#: lib/prefs/keyboard.js:41
+#: lib/prefs/keyboard.js:43
 msgid "Shortcuts"
 msgstr "Kısayollar"
 
-#: lib/prefs/keyboard.js:43
+#: lib/prefs/keyboard.js:45
+#, fuzzy
 msgid ""
 "Change the tiling shortcuts. To clear a shortcut clear the input field. To "
-"apply a shortcut press enter. <a href=\"https://github.com/forge-ext/forge/"
-"wiki/Keyboard-Shortcuts\">Syntax examples</a>"
+"apply a shortcut press enter. <a href=\"https://github.com/jcrussell/forge/"
+"blob/main/docs/user/keybindings.md\">Keyboard shortcuts guide</a>"
 msgstr ""
 "Döşeme kısayollarını değiştir. Bir kısayolu temizlemek için giriş alanını "
 "temizleyin. Bir kısayolu uygulamak için enter tuşuna basın. <a "
 "href=\"https://github.com/forge-ext/forge/wiki/Keyboard-"
 "Shortcuts\">Sözdizimi örnekleri</a>"
 
-#: lib/prefs/settings.js:34
+#: lib/prefs/keyboard.js:58
+msgid "Bulk Actions"
+msgstr ""
+
+#: lib/prefs/keyboard.js:59
+msgid "Disable all shortcuts or restore default keybindings"
+msgstr ""
+
+#: lib/prefs/keyboard.js:66
+#, fuzzy
+msgid "Manage all shortcuts"
+msgstr "Kısayolu temizle"
+
+#: lib/prefs/keyboard.js:67
+msgid "Quickly disable all shortcuts or restore defaults"
+msgstr ""
+
+#: lib/prefs/keyboard.js:77
+msgid "Disable All"
+msgstr ""
+
+#: lib/prefs/keyboard.js:83
+#, fuzzy
+msgid "Restore Defaults"
+msgstr "Varsayılana sıfırla"
+
+#: lib/prefs/keyboard.js:108
+msgid "All shortcuts disabled"
+msgstr ""
+
+#: lib/prefs/keyboard.js:124
+#, fuzzy
+msgid "Shortcuts restored to defaults"
+msgstr "Varsayılana sıfırla"
+
+#: lib/prefs/portability.js:44
+msgid "Never"
+msgstr ""
+
+#: lib/prefs/portability.js:114
+msgid "Portability"
+msgstr ""
+
+#: lib/prefs/portability.js:142
+msgid "Portable Configuration"
+msgstr ""
+
+#: lib/prefs/portability.js:144
+msgid ""
+"Export your settings and keybindings to JSON files for backup or syncing "
+"across machines. Files are stored in ~/.config/forge/config/"
+msgstr ""
+
+#: lib/prefs/portability.js:149
+msgid "Config directory"
+msgstr ""
+
+#: lib/prefs/portability.js:154
+msgid "Open config directory"
+msgstr ""
+
+#: lib/prefs/portability.js:155
+msgid "Open the configuration folder in your file manager"
+msgstr ""
+
+#: lib/prefs/portability.js:156
+msgid "Open"
+msgstr ""
+
+#: lib/prefs/portability.js:164
+#, fuzzy
+msgid "settings.json"
+msgstr "Ayarlar"
+
+#: lib/prefs/portability.js:165 lib/prefs/portability.js:170
+#: lib/prefs/portability.js:175 lib/prefs/portability.js:180
+msgid "Checking..."
+msgstr ""
+
+#: lib/prefs/portability.js:169
+msgid "keybindings.json"
+msgstr ""
+
+#: lib/prefs/portability.js:174
+msgid "Last import"
+msgstr ""
+
+#: lib/prefs/portability.js:179
+msgid "Last export"
+msgstr ""
+
+#: lib/prefs/portability.js:184
+msgid "Status"
+msgstr ""
+
+#: lib/prefs/portability.js:185
+msgid "Current state of portable configuration files"
+msgstr ""
+
+#: lib/prefs/portability.js:196
+msgid "Actions"
+msgstr ""
+
+#: lib/prefs/portability.js:197
+msgid "Export or import your configuration"
+msgstr ""
+
+#: lib/prefs/portability.js:200
+msgid "Export current settings"
+msgstr ""
+
+#: lib/prefs/portability.js:201
+msgid "Save all settings and keybindings to JSON files"
+msgstr ""
+
+#: lib/prefs/portability.js:202
+msgid "Export"
+msgstr ""
+
+#: lib/prefs/portability.js:207
+msgid "Import from files"
+msgstr ""
+
+#: lib/prefs/portability.js:208
+msgid "Load settings and keybindings from existing JSON files"
+msgstr ""
+
+#: lib/prefs/portability.js:209
+msgid "Import"
+msgstr ""
+
+#: lib/prefs/portability.js:213
+msgid "Auto-sync changes"
+msgstr ""
+
+#: lib/prefs/portability.js:214
+msgid "Automatically update config files when settings change in Preferences"
+msgstr ""
+
+#: lib/prefs/portability.js:223
+msgid "How it works"
+msgstr ""
+
+#: lib/prefs/portability.js:225
+msgid ""
+"1. Click 'Export' to create settings.json and keybindings.json files\n"
+"2. Copy ~/.config/forge/config/ to your dotfiles or cloud storage\n"
+"3. On a new machine, place the files and restart Forge to auto-import\n"
+"4. Use Super+Shift+R to manually reload configuration at any time"
+msgstr ""
+
+#: lib/prefs/portability.js:239 lib/prefs/portability.js:240
+msgid "Present"
+msgstr ""
+
+#: lib/prefs/portability.js:239 lib/prefs/portability.js:240
+msgid "Not created"
+msgstr ""
+
+#: lib/prefs/portability.js:275
+msgid "Failed to open config directory"
+msgstr ""
+
+#: lib/prefs/portability.js:285
+msgid "Configuration exported successfully"
+msgstr ""
+
+#: lib/prefs/portability.js:288
+msgid "Export failed"
+msgstr ""
+
+#: lib/prefs/portability.js:297
+msgid "No config files found to import"
+msgstr ""
+
+#: lib/prefs/portability.js:304
+msgid "Configuration imported successfully"
+msgstr ""
+
+#: lib/prefs/portability.js:307
+msgid "Import failed"
+msgstr ""
+
+#: lib/prefs/settings.js:35
 msgid "translator-credits"
 msgstr "Çevirmen kredileri"
 
-#: lib/prefs/settings.js:42
+#: lib/prefs/settings.js:37
+msgid "Documentation"
+msgstr ""
+
+#: lib/prefs/settings.js:44
 msgid "About"
 msgstr "Hakkında"
 
-#: lib/prefs/settings.js:57
+#: lib/prefs/settings.js:59
 msgid "Behavior"
 msgstr "Davranış"
 
-#: lib/prefs/settings.js:58
+#: lib/prefs/settings.js:60
 msgid "Change how the tiling behaves"
 msgstr "Döşemenin nasıl davrandığını değiştir"
 
-#: lib/prefs/settings.js:62
+#: lib/prefs/settings.js:64
 msgid "Focus on Hover"
 msgstr "Üzerine Gelince Odaklan"
 
-#: lib/prefs/settings.js:63
+#: lib/prefs/settings.js:65
 msgid "Window focus follows the pointer"
 msgstr "Pencere odağı imleci takip eder"
 
-#: lib/prefs/settings.js:69
+#: lib/prefs/settings.js:71
 msgid "Move pointer with focused window"
 msgstr "İmleci odaklanmış pencereyle taşı"
 
-#: lib/prefs/settings.js:70
+#: lib/prefs/settings.js:72
 msgid "Moves the pointer when focusing or swapping via keyboard"
 msgstr "Klavye ile odaklanma veya takas yaparken imleci taşır"
 
-#: lib/prefs/settings.js:76
+#: lib/prefs/settings.js:78
 msgid "Quarter tiling"
 msgstr "Çeyrek döşeme"
 
-#: lib/prefs/settings.js:77
+#: lib/prefs/settings.js:79
 msgid "Places new windows in a clock-wise fashion"
 msgstr "Yeni pencereleri saat yönünde yerleştirir"
 
-#: lib/prefs/settings.js:83
+#: lib/prefs/settings.js:85
 msgid "Stacked tiling"
 msgstr "Yığılmış döşeme"
 
-#: lib/prefs/settings.js:84
+#: lib/prefs/settings.js:86
 msgid "Stacks windows on top of each other while still tiling them"
 msgstr "Pencereleri döşerken birbirinin üzerine yığar"
 
-#: lib/prefs/settings.js:90
+#: lib/prefs/settings.js:92
 msgid "Tabbed tiling"
 msgstr "Sekmeli döşeme"
 
-#: lib/prefs/settings.js:91
+#: lib/prefs/settings.js:93
 msgid "Groups windows as tabs"
 msgstr "Pencereleri sekme olarak gruplar"
 
-#: lib/prefs/settings.js:97
+#: lib/prefs/settings.js:99
 msgid "Auto exit tabbed tiling"
 msgstr "Sekmeli döşemeden otomatik çık"
 
-#: lib/prefs/settings.js:98
+#: lib/prefs/settings.js:100
 msgid "Exit tabbed tiling mode when only a single tab remains"
 msgstr "Sadece tek sekme kaldığında sekmeli döşeme modundan çık"
 
-#: lib/prefs/settings.js:104
-msgid "Drag-and-drop behavior"
-msgstr "Sürükle-bırak davranışı"
-
 #: lib/prefs/settings.js:105
-msgid "What to do when dragging one window on top of another"
-msgstr "Bir pencereyi diğerinin üzerine sürüklerken ne yapılacağı"
+#, fuzzy
+msgid "Default layout for new windows"
+msgstr "Tek pencere için boşlukları devre dışı bırak"
 
-#: lib/prefs/settings.js:110
-msgid "Swap"
-msgstr "Takas"
+#: lib/prefs/settings.js:106
+msgid "Layout used when creating new containers"
+msgstr ""
 
 #: lib/prefs/settings.js:111
+msgid "Tiled (default)"
+msgstr ""
+
+#: lib/prefs/settings.js:112 lib/prefs/settings.js:124
 msgid "Tabbed"
 msgstr "Sekmeli"
 
-#: lib/prefs/settings.js:112
+#: lib/prefs/settings.js:113 lib/prefs/settings.js:125
 msgid "Stacked"
 msgstr "Yığılmış"
 
-#: lib/prefs/settings.js:116
+#: lib/prefs/settings.js:117
+msgid "Drag-and-drop behavior"
+msgstr "Sürükle-bırak davranışı"
+
+#: lib/prefs/settings.js:118
+msgid "What to do when dragging one window on top of another"
+msgstr "Bir pencereyi diğerinin üzerine sürüklerken ne yapılacağı"
+
+#: lib/prefs/settings.js:123
+msgid "Swap"
+msgstr "Takas"
+
+#: lib/prefs/settings.js:129
 msgid "Always on Top mode for floating windows"
 msgstr "Yüzen pencereler için Her Zaman Üstte modu"
 
-#: lib/prefs/settings.js:117
+#: lib/prefs/settings.js:130
 msgid "Makes floating windows appear above tiled windows"
 msgstr "Yüzen pencerelerin döşenmiş pencerelerin üzerinde görünmesini sağlar"
 
-#: lib/prefs/settings.js:125
+#: lib/prefs/settings.js:157
 msgid "Non-tiling workspaces"
 msgstr "Döşeme yapılmayan çalışma alanları"
 
-#: lib/prefs/settings.js:126
+#: lib/prefs/settings.js:158
 msgid ""
 "Disables tiling on specified workspaces. Starts from 0, separated by commas"
 msgstr ""
 "Belirtilen çalışma alanlarında döşemeyi devre dışı bırakır. 0'dan başlar, "
 "virgülle ayrılır"
 
-#: lib/prefs/settings.js:129
+#: lib/prefs/settings.js:161
 msgid "Example: 0,1,2"
 msgstr "Örnek: 0,1,2"
 
-#: lib/prefs/settings.js:137
+#: lib/prefs/settings.js:169
+#, fuzzy
+msgid "Non-tiling monitors"
+msgstr "Döşeme yapılmayan çalışma alanları"
+
+#: lib/prefs/settings.js:170
+#, fuzzy
+msgid ""
+"Disables tiling on specified monitors. Starts from 0, separated by commas"
+msgstr ""
+"Belirtilen çalışma alanlarında döşemeyi devre dışı bırakır. 0'dan başlar, "
+"virgülle ayrılır"
+
+#: lib/prefs/settings.js:173
+#, fuzzy
+msgid "Example: 0,1"
+msgstr "Örnek: 0,1,2"
+
+#: lib/prefs/settings.js:181
+msgid "Application Launcher"
+msgstr ""
+
+#: lib/prefs/settings.js:182
+msgid "Command to launch (shortcut configurable in Keyboard tab)"
+msgstr ""
+
+#: lib/prefs/settings.js:185
+msgid "Command (e.g., gnome-terminal)"
+msgstr ""
+
+#: lib/prefs/settings.js:193
 msgid "Logger"
 msgstr "Günlükçü"
 
-#: lib/prefs/settings.js:140
+#: lib/prefs/settings.js:196
 msgid "Log level"
 msgstr "Günlük seviyesi"
 
-#: lib/prefs/widgets.js:44
+#: lib/prefs/widgets.js:45
 msgid ""
 "<b>CAUTION</b>: Enabling this setting can lead to bugs or cause the shell to "
 "crash"
@@ -334,16 +682,24 @@ msgstr ""
 "<b>DİKKAT</b>: Bu ayarı etkinleştirmek hatalara yol açabilir veya kabuğun "
 "çökmesine neden olabilir"
 
-#: lib/prefs/widgets.js:223
+#: lib/prefs/widgets.js:235
 msgid "Clear shortcut"
 msgstr "Kısayolu temizle"
 
-#: lib/prefs/widgets.js:240
+#: lib/prefs/widgets.js:252
 msgid "Reset to default"
 msgstr "Varsayılana sıfırla"
 
-#: lib/prefs/widgets.js:258
+#: lib/prefs/widgets.js:270
 msgid "Remove Item"
+msgstr ""
+
+#: lib/prefs/widgets.js:305
+msgid "Saved"
+msgstr ""
+
+#: lib/prefs/widgets.js:310
+msgid "Invalid input"
 msgstr ""
 
 #, fuzzy
