@@ -90,17 +90,25 @@ describe("ConfigSync", () => {
       hasPortableConfig: () => false,
       _settingsProps: null,
       _keybindingsProps: null,
+      // Simulated on-disk mtimes (forge-nn0m). Our writes bump them; a test can
+      // bump them directly to simulate an out-of-band writer (prefs / hand edit).
+      _mtimes: { settings: 0, keybindings: 0 },
+      getConfigMtime(name) {
+        return this._mtimes[name];
+      },
       get settingsProps() {
         return this._settingsProps;
       },
       set settingsProps(props) {
         this._settingsProps = props;
+        this._mtimes.settings += 1;
       },
       get keybindingsProps() {
         return this._keybindingsProps;
       },
       set keybindingsProps(props) {
         this._keybindingsProps = props;
+        this._mtimes.keybindings += 1;
       },
     };
   }
@@ -246,6 +254,83 @@ describe("ConfigSync", () => {
       expect(configMgr.keybindingsProps).not.toBeNull();
 
       timeoutSpy.mockRestore();
+    });
+  });
+
+  describe("auto-export skips out-of-band writes (forge-nn0m)", () => {
+    function captureDebounce() {
+      let cb = null;
+      vi.spyOn(GLib, "timeout_add").mockImplementation((priority, delay, fn) => {
+        cb = fn;
+        return 123;
+      });
+      return () => cb && cb();
+    }
+
+    beforeEach(() => {
+      configMgr.hasPortableConfig = () => true;
+      configSync.configFilesLoaded = true;
+      configSync._connectSettingsSignals();
+    });
+
+    it("skips the debounced export when a config file was written out of band", () => {
+      // Establish our baseline with one (user-initiated) export.
+      configSync.exportAll();
+      const exportSpy = vi.spyOn(configSync, "exportAll");
+
+      // Another writer (prefs Export or a hand edit) touches settings.json after
+      // our export — its mtime now differs from our last-written baseline.
+      configMgr._mtimes.settings += 100;
+
+      const fire = captureDebounce();
+      settings._emit("changed", "tiling-mode-enabled");
+      fire();
+
+      // The stale debounced export must NOT overwrite the out-of-band content.
+      expect(exportSpy).not.toHaveBeenCalled();
+    });
+
+    it("still exports when the files are unchanged since our last write", () => {
+      configSync.exportAll();
+      const exportSpy = vi.spyOn(configSync, "exportAll");
+
+      // No out-of-band write — the guard must not disable normal auto-export.
+      const fire = captureDebounce();
+      settings._emit("changed", "tiling-mode-enabled");
+      fire();
+
+      expect(exportSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips a keybindings.json out-of-band write too", () => {
+      configSync.exportAll();
+      const exportSpy = vi.spyOn(configSync, "exportAll");
+
+      configMgr._mtimes.keybindings += 100;
+
+      const fire = captureDebounce();
+      settings._emit("changed", "tiling-mode-enabled");
+      fire();
+
+      expect(exportSpy).not.toHaveBeenCalled();
+    });
+
+    it("resumes auto-export on the NEXT change after a skip (no permanent latch)", () => {
+      configSync.exportAll();
+
+      // External write → first debounced export skips (and adopts the new baseline).
+      configMgr._mtimes.settings += 100;
+      let fire = captureDebounce();
+      settings._emit("changed", "tiling-mode-enabled");
+      fire();
+
+      // A later genuine change, with no further out-of-band write, must export.
+      const exportSpy = vi.spyOn(configSync, "exportAll");
+      fire = captureDebounce();
+      settings._emit("changed", "window-gap-size");
+      fire();
+
+      expect(exportSpy).toHaveBeenCalledTimes(1);
     });
   });
 
