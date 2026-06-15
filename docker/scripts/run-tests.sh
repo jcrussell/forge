@@ -140,6 +140,64 @@ echo "=========================================="
 echo "Tests completed with exit code: ${TEST_EXIT:-0}"
 echo "=========================================="
 
+# Surface pass/fail counts and the NAMES of any failing tests directly in the
+# run log (and in a top-level summary.txt inside the results artifact), so a red
+# CI run doesn't force a dig into junit.xml just to learn which test failed.
+# Parses the junit.xml pytest already wrote (stdlib only — no extra dep); the
+# parse pattern mirrors .scratch/summarize-lanes.py. Best-effort: never touches
+# TEST_EXIT and swallows its own errors so a malformed/missing report can't fail
+# the run.
+python3 - "${RESULTS_DIR}/junit.xml" "${RESULTS_DIR}/summary.txt" <<'PYEOF' || true
+import sys, xml.etree.ElementTree as ET
+
+junit_path, summary_path = sys.argv[1], sys.argv[2]
+lines = []
+try:
+    root = ET.parse(junit_path).getroot()
+    suites = root.iter("testsuite")
+    tests = failures = errors = skipped = 0
+    failing = []
+    for ts in suites:
+        tests += int(ts.get("tests", 0))
+        failures += int(ts.get("failures", 0))
+        errors += int(ts.get("errors", 0))
+        skipped += int(ts.get("skipped", 0))
+    for tc in root.iter("testcase"):
+        node = tc.find("failure")
+        kind = "FAIL"
+        if node is None:
+            node = tc.find("error")
+            kind = "ERROR"
+        if node is None:
+            continue
+        name = tc.get("name", "?")
+        classname = tc.get("classname", "")
+        msg = (node.get("message") or "").strip().splitlines()
+        msg = msg[0] if msg else ""
+        ident = f"{classname}::{name}" if classname else name
+        failing.append(f"  [{kind}] {ident}" + (f" — {msg}" if msg else ""))
+    passed = tests - failures - errors - skipped
+    lines.append("E2E test summary:")
+    lines.append(
+        f"  {passed} passed, {failures} failed, {errors} errored, "
+        f"{skipped} skipped (of {tests})"
+    )
+    if failing:
+        lines.append("Failing tests:")
+        lines.extend(failing)
+except Exception as e:  # noqa: BLE001 - diagnostic, must never fail the run
+    lines = [f"(could not parse {junit_path}: {e})"]
+
+text = "\n".join(lines)
+print(text)
+try:
+    with open(summary_path, "w") as f:
+        f.write(text + "\n")
+except Exception:
+    pass
+PYEOF
+echo "=========================================="
+
 # Always copy gnome-shell.log + extract forge debug trace for Phase 4 analysis.
 cp /tmp/gnome-shell.log "${RESULTS_DIR}/gnome-shell.log" 2>/dev/null || true
 grep '\[Forge\]' /tmp/gnome-shell.log > "${RESULTS_DIR}/forge-trace.log" 2>/dev/null || true

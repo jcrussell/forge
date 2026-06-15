@@ -375,18 +375,21 @@ su - gnomeshell -c "$DBUS_ENV gnome-extensions list --enabled" 2>&1 || true
 
 # Headless gnome-shell comes up in the Overview and nothing in the E2E flow
 # dismisses it (tests drive Forge via D-Bus and avoid the Super key on purpose).
-# Hide it on every Wayland session — NOT just recording — so the suite runs on
-# the real tiled desktop (the production state), giving parity between what the
-# tests exercise and what the screencast shows. Leaving the Overview up was
-# masking a real resize-persistence bug (resize "passed" only because real focus
-# was null while the Overview held it; see forge-2n0). Install a 'showing'
-# suppressor so it stays hidden. Only touches the focus-on-hover path (the
-# Main.overview.visible guards in window.js), which the action-driven tests
-# drive explicitly rather than via hover.
-if [ "$SESSION_TYPE" = "wayland" ]; then
-    echo "Hiding GNOME Overview (parity: tests + screencast run on the real desktop)..."
-    su - gnomeshell -c "$DBUS_ENV gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval '(function(){ if(!globalThis._forgeNoOverview){ globalThis._forgeNoOverview = Main.overview.connect(\"showing\", () => Main.overview.hide()); } Main.overview.hide(); return Main.overview.visible ? \"visible\" : \"hidden\"; })()'" 2>&1 || true
-fi
+# Hide it on every session — X11 AND Wayland, NOT just recording — so the suite
+# runs on the real tiled desktop (the production state), giving parity between
+# what the tests exercise and what the screencast shows. Leaving the Overview up
+# was masking a real resize-persistence bug (resize "passed" only because real
+# focus was null while the Overview held it; see forge-2n0) AND caused a flaky
+# wait_for_stable timeout on X11/Mutter 48: the X11 lane was previously excluded
+# from this suppressor, so the Overview's animating geometry kept get_frame_rect
+# churning and test_snap_position[two_third_right] never settled (forge-2n0
+# follow-up). Install a 'showing' suppressor so it stays hidden — the persistent
+# connect re-hides it whenever the headless shell tries to return to the
+# Overview. Only touches the focus-on-hover path (the Main.overview.visible
+# guards in window.js), which the action-driven tests drive explicitly rather
+# than via hover.
+echo "Hiding GNOME Overview (parity: tests + screencast run on the real desktop)..."
+su - gnomeshell -c "$DBUS_ENV gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval '(function(){ if(!globalThis._forgeNoOverview){ globalThis._forgeNoOverview = Main.overview.connect(\"showing\", () => Main.overview.hide()); } Main.overview.hide(); return Main.overview.visible ? \"visible\" : \"hidden\"; })()'" 2>&1 || true
 
 echo "GNOME Shell session ready (${SESSION_TYPE} mode)"
 exit 0

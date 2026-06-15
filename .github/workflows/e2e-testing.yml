@@ -310,6 +310,52 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      # Pull every lane's results artifact (each contains the summary.txt that
+      # run-tests.sh writes) so the roll-up below can name the failing lane+test
+      # in one place — instead of the old generic "Some E2E tests failed", which
+      # forced a dig into each lane's junit.xml. Pattern matches the three result
+      # artifacts (e2e-results-fedora*, e2e-keybinding-gate-results,
+      # e2e-multimonitor-gate-results-fedora*) and excludes the screenshots
+      # artifact. Best-effort: never fail the summary job over missing artifacts.
+      - name: Download lane results
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          path: all-lane-results
+          pattern: "*results*"
+      - name: Roll up per-lane summaries
+        if: always()
+        run: |
+          # Aggregate each lane's summary.txt into the GitHub Step Summary (the
+          # run's UI panel) and the job log. Each artifact unpacks to
+          # all-lane-results/<artifact-name>/summary.txt.
+          shopt -s nullglob
+          {
+            echo "## E2E lane summaries"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          found=0
+          for dir in all-lane-results/*/; do
+            lane=$(basename "$dir")
+            summary="${dir}summary.txt"
+            [ -f "$summary" ] || continue
+            found=1
+            echo "----- ${lane} -----"
+            cat "$summary"
+            echo ""
+            {
+              echo "### ${lane}"
+              echo '```'
+              cat "$summary"
+              echo '```'
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+          if [ "$found" = 0 ]; then
+            echo "_No per-lane summary.txt found in the result artifacts._" >> "$GITHUB_STEP_SUMMARY"
+            echo "No per-lane summary.txt found in the result artifacts."
+          fi
       - name: Check E2E test results
         run: |
           # e2e-multimonitor-gate (forge-wrt/forge-1zn) is now BLOCKING: a failure on
