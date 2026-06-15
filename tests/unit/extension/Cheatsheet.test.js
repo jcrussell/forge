@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Cheatsheet } from "../../../lib/extension/cheatsheet.js";
 import Clutter from "gi://Clutter";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
-import { installGnomeGlobals } from "../../mocks/helpers/index.js";
+import { installGnomeGlobals, addSignalSupport } from "../../mocks/helpers/index.js";
 
 /**
  * Cheatsheet behavioral tests.
@@ -39,8 +39,11 @@ describe("Cheatsheet", () => {
         if (i !== -1) this.children.splice(i, 1);
         if (child._parent === this) child._parent = null;
       }),
+      set_child_above_sibling: vi.fn(),
     };
-    Main.layoutManager = { uiGroup };
+    // Main.layoutManager emits monitors-changed (the real source the cheatsheet
+    // connects to), so give it signal support alongside the uiGroup.
+    Main.layoutManager = addSignalSupport({ uiGroup });
 
     mockExt = {
       kbdSettings: {
@@ -135,12 +138,29 @@ describe("Cheatsheet", () => {
       cheatsheet.hide();
       expect(cheatsheet._backdrop).toBeNull();
     });
+
+    it("never strands a parented overlay/backdrop if show() throws (forge-0rb6)", () => {
+      // The real bug: connecting monitors-changed on the wrong object threw
+      // mid-show, AFTER parenting the reactive backdrop+panel but BEFORE
+      // _visible was set — leaving an input-grabbing overlay that no dismiss
+      // path could clear. show() must catch any such throw and tear down.
+      Main.layoutManager.connect = vi.fn(() => {
+        throw new Error("No signal 'monitors-changed' on object 'MetaDisplay'");
+      });
+
+      expect(() => cheatsheet.show()).not.toThrow();
+
+      expect(cheatsheet.visible).toBe(false);
+      // Nothing cheatsheet-owned may remain parented in the uiGroup.
+      expect(uiGroup.children).toHaveLength(0);
+      expect(cheatsheet._backdrop).toBeNull();
+    });
   });
 
   describe("re-center on monitors-changed (forge-k5m6)", () => {
     it("connects monitors-changed on show and re-centers when geometry changes", () => {
       cheatsheet.show();
-      expect(global.display.hasHandlers("monitors-changed")).toBe(true);
+      expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(true);
 
       const overlay = cheatsheet._overlay;
       // Give the overlay a known size so centering math is deterministic.
@@ -156,7 +176,7 @@ describe("Cheatsheet", () => {
         height: 600,
       });
       const setPosSpy = vi.spyOn(overlay, "set_position");
-      global.display.emit("monitors-changed");
+      Main.layoutManager.emit("monitors-changed");
 
       expect(setPosSpy).toHaveBeenCalled();
       // New center: (800-400)/2 = 200, (600-300)/2 = 150.
@@ -167,20 +187,20 @@ describe("Cheatsheet", () => {
 
     it("disconnects monitors-changed on hide", () => {
       cheatsheet.show();
-      const disconnectSpy = vi.spyOn(global.display, "disconnect");
+      const disconnectSpy = vi.spyOn(Main.layoutManager, "disconnect");
       cheatsheet.hide();
       expect(disconnectSpy).toHaveBeenCalled();
-      expect(global.display.hasHandlers("monitors-changed")).toBe(false);
+      expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(false);
     });
 
     it("disconnects monitors-changed on destroy", () => {
       cheatsheet.show();
       // Keep the overlay parented (defer ease) so destroy exercises the live path.
       cheatsheet._overlay.ease = vi.fn();
-      const disconnectSpy = vi.spyOn(global.display, "disconnect");
+      const disconnectSpy = vi.spyOn(Main.layoutManager, "disconnect");
       cheatsheet.destroy();
       expect(disconnectSpy).toHaveBeenCalled();
-      expect(global.display.hasHandlers("monitors-changed")).toBe(false);
+      expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(false);
     });
   });
 });

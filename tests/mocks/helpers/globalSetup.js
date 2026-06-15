@@ -111,9 +111,14 @@ export function createMockWindowGroup() {
  */
 export function createMockStage(options = {}) {
   const { width = 1920, height = 1080 } = options;
+  let keyFocus = null;
   return {
     get_width: vi.fn(() => width),
     get_height: vi.fn(() => height),
+    get_key_focus: vi.fn(() => keyFocus),
+    set_key_focus: vi.fn((actor) => {
+      keyFocus = actor;
+    }),
   };
 }
 
