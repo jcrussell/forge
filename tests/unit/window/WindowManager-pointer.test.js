@@ -184,4 +184,25 @@ describe("WindowManager - Focus-Follows-Pointer Behavior", () => {
       expect(focusSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("focus-on-hover pointer loop", () => {
+    it("starts the pointer loop when focus-on-hover-enabled is true at construction", () => {
+      const fixture = createWindowManagerFixture({
+        settings: { "focus-on-hover-enabled": true },
+      });
+
+      expect(fixture.windowManager.shouldFocusOnHover).toBe(true);
+      // pointerLoopInit() runs in the constructor and registers a GLib timeout
+      expect(fixture.windowManager._pointerFocusTimeoutId).toBeTruthy();
+    });
+
+    it("does not start the pointer loop when focus-on-hover-enabled is false", () => {
+      const fixture = createWindowManagerFixture({
+        settings: { "focus-on-hover-enabled": false },
+      });
+
+      expect(fixture.windowManager.shouldFocusOnHover).toBe(false);
+      expect(fixture.windowManager._pointerFocusTimeoutId).toBeFalsy();
+    });
+  });
 });
