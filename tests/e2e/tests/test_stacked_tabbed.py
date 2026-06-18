@@ -60,13 +60,12 @@ def _layout_node_child_count(shell_proxy, layout):
 
 @pytest.fixture(autouse=True)
 def _enable_stacked_tabbed_modes(restore_settings):
-    """Enable stacked + tabbed tiling for every test in this module.
+    """Pin stacked + tabbed tiling ON for every test in this module.
 
-    Both modes default to OFF in the gschema, so StackedLayoutToggle /
-    TabbedLayoutToggle bail early (command.js) and toggle_stacked()/toggle_tabbed()
-    are silent no-ops — which is why these tests historically accepted HSPLIT/NO_NODE
-    and never actually exercised stacked/tabbed. restore_settings reverts after each
-    test; the settle lets the GSetting reach Forge before the first toggle.
+    Both modes default to ON in the gschema; setting them explicitly keeps this
+    module independent of any prior test that disabled them (toggle_stacked()/
+    toggle_tabbed() are silent no-ops while a mode is off). restore_settings reverts
+    after each test; the settle lets the GSetting reach Forge before the first toggle.
     """
     restore_settings.set_stacked_tiling_mode_enabled(True)
     restore_settings.set_tabbed_tiling_mode_enabled(True)

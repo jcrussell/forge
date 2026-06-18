@@ -36,6 +36,7 @@ PROBE_JS = r"""
     const tn = sb && sb.get_theme_node && sb.get_theme_node();
     if (tn) borderW = [0,1,2,3].map((s) => tn.get_border_width(s));
   } catch (e) { borderW = 'err:' + e; }
+  const fr = mw.get_frame_rect();
   return JSON.stringify({
     parentLayout: parent && parent.layout,
     appearsFocused: mw.appears_focused,
@@ -44,6 +45,11 @@ PROBE_JS = r"""
     splitVisible: sb ? sb.visible : null,
     splitInGroup: sb ? global.window_group.contains(sb) : false,
     borderWidthsTRBL: borderW,
+    splitWidth: sb ? sb.width : null,
+    splitHeight: sb ? sb.height : null,
+    frameWidth: fr.width,
+    frameHeight: fr.height,
+    focusBorderRadius: wm.ext.settings.get_uint('focus-border-radius'),
   });
 })()
 """
@@ -78,3 +84,20 @@ def test_split_border_renders_for_focused_split_window(shell_proxy, two_windows)
     # The horizontal hint is a single right-edge border (T,R,B,L) = (0,3,0,0).
     # This is what St failed to paint while a border-radius was also set.
     assert probe["borderWidthsTRBL"] == [0, 3, 0, 0], probe["borderWidthsTRBL"]
+
+    # forge: the right-edge hint is shortened along its long (vertical) axis by the
+    # focus-border radius at each end so it no longer overshoots the window's rounded
+    # corners. Without the fix the bin is frameHeight + 2*inset (longer than the
+    # window); with it, 2*radius (28 at the default) exceeds 2*inset (6), making the
+    # drawn edge strictly shorter than the window frame.
+    assert probe["focusBorderRadius"] > 0, probe["focusBorderRadius"]
+    assert probe["splitHeight"] < probe["frameHeight"], (
+        probe["splitHeight"],
+        probe["frameHeight"],
+    )
+    # The cross axis (width) stays expanded by the inset so the edge sits flush on the
+    # window's outer border rather than inside it.
+    assert probe["splitWidth"] >= probe["frameWidth"], (
+        probe["splitWidth"],
+        probe["frameWidth"],
+    )

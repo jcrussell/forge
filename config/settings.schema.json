@@ -41,12 +41,12 @@
         "stacked-tiling-mode-enabled": {
           "type": "boolean",
           "description": "Enable stacked tiling layout",
-          "default": false
+          "default": true
         },
         "tabbed-tiling-mode-enabled": {
           "type": "boolean",
           "description": "Enable tabbed tiling layout",
-          "default": false
+          "default": true
         },
         "auto-exit-tabbed": {
           "type": "boolean",

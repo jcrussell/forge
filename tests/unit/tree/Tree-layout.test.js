@@ -246,25 +246,26 @@ describe("Tree Layout Algorithms", () => {
   });
 
   describe("processStacked", () => {
-    it("should stack single window with full container size", () => {
+    it("should place a single stacked window below its title bar", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
-      container.childNodes = [new Node(NODE_TYPES.CON, new St.Bin())];
-
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      const params = {};
+      container.childNodes = [child];
+
+      const stackHeight = 35;
+      const params = { stackedHeight: stackHeight, tiledChildren: [child] };
 
       ctx.tree.processStacked(container, child, params, 0);
 
-      // Single window should use full container
+      // One title bar at the top; window fills the rest.
       expect(child.rect.x).toBe(0);
-      expect(child.rect.y).toBe(0);
+      expect(child.rect.y).toBe(stackHeight);
       expect(child.rect.width).toBe(1000);
-      expect(child.rect.height).toBe(800);
+      expect(child.rect.height).toBe(800 - stackHeight);
     });
 
-    it("should stack multiple windows with tabs", () => {
+    it("should place every stacked window below the full title-bar column", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 0, y: 0, width: 1000, height: 800 };
@@ -272,51 +273,48 @@ describe("Tree Layout Algorithms", () => {
       const child1 = new Node(NODE_TYPES.CON, new St.Bin());
       const child2 = new Node(NODE_TYPES.CON, new St.Bin());
       const child3 = new Node(NODE_TYPES.CON, new St.Bin());
-
       container.childNodes = [child1, child2, child3];
 
-      const params = {};
-      const stackHeight = ctx.tree.defaultStackHeight;
+      const stackHeight = 35;
+      const params = {
+        stackedHeight: stackHeight,
+        tiledChildren: [child1, child2, child3],
+      };
+      const totalBars = stackHeight * 3;
 
       ctx.tree.processStacked(container, child1, params, 0);
       ctx.tree.processStacked(container, child2, params, 1);
       ctx.tree.processStacked(container, child3, params, 2);
 
-      // First window - no offset
-      expect(child1.rect.y).toBe(0);
-      expect(child1.rect.height).toBe(800);
-
-      // Second window - offset by one stack height
-      expect(child2.rect.y).toBe(stackHeight);
-      expect(child2.rect.height).toBe(800 - stackHeight);
-
-      // Third window - offset by two stack heights
-      expect(child3.rect.y).toBe(stackHeight * 2);
-      expect(child3.rect.height).toBe(800 - stackHeight * 2);
-
-      // All should have same width and x position
+      // i3 stacked: N title bars at the top, every window fills the same area below.
       [child1, child2, child3].forEach((child) => {
         expect(child.rect.x).toBe(0);
+        expect(child.rect.y).toBe(totalBars);
         expect(child.rect.width).toBe(1000);
+        expect(child.rect.height).toBe(800 - totalBars);
       });
+
+      // The decoration hosts the title-bar column vertically and is shown.
+      expect(container.decoration.vertical).toBe(true);
+      expect(container.decoration.visible).toBe(true);
+      expect(container.decoration.height).toBe(totalBars);
     });
 
     it("should respect container offset", () => {
       const container = new Node(NODE_TYPES.CON, new St.Bin());
       container.layout = LAYOUT_TYPES.STACKED;
       container.rect = { x: 100, y: 50, width: 800, height: 600 };
-      container.childNodes = [
-        new Node(NODE_TYPES.CON, new St.Bin()),
-        new Node(NODE_TYPES.CON, new St.Bin()),
-      ];
-
       const child = new Node(NODE_TYPES.CON, new St.Bin());
-      const params = {};
+      const sibling = new Node(NODE_TYPES.CON, new St.Bin());
+      container.childNodes = [child, sibling];
+
+      const stackHeight = 35;
+      const params = { stackedHeight: stackHeight, tiledChildren: [child, sibling] };
 
       ctx.tree.processStacked(container, child, params, 0);
 
       expect(child.rect.x).toBe(100);
-      expect(child.rect.y).toBe(50);
+      expect(child.rect.y).toBe(50 + stackHeight * 2);
     });
   });
 

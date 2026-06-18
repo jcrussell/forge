@@ -21,6 +21,30 @@ from framework.constants import Timing
 from framework.wait import wait_for_layout, wait_for_window_count
 from framework.workflow import step
 
+# Inspect the live tree for a multi-child STACKED container and report the state of
+# its title-bar decoration (the column of header tabs processStacked builds).
+_STACKED_DECORATION_PROBE = r"""
+(() => {
+  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+  const wm = ext && ext.extWm;
+  if (!wm) return JSON.stringify({err: 'no-wm'});
+  let con = null;
+  try {
+    con = wm.tree.getNodeByLayout('STACKED').find((c) => c.childNodes.length >= 2);
+  } catch (e) { return JSON.stringify({err: 'search:' + e}); }
+  if (!con) return JSON.stringify({err: 'no-stacked-con'});
+  const d = con.decoration;
+  return JSON.stringify({
+    childCount: con.childNodes.length,
+    hasDecoration: !!d,
+    decoVisible: d ? d.visible : null,
+    decoVertical: d ? d.vertical : null,
+    decoChildCount: d && d.get_children ? d.get_children().length : null,
+    decoHeight: d ? d.height : null,
+  });
+})()
+"""
+
 
 def _layout_node_child_count(shell_proxy, layout):
     """Child count of the first container with the given layout (STACKED/TABBED), else -1.
@@ -46,12 +70,12 @@ def _layout_node_child_count(shell_proxy, layout):
 
 @pytest.fixture(autouse=True)
 def _enable_stacked_tabbed_modes(restore_settings):
-    """Enable stacked + tabbed tiling for this module.
+    """Pin stacked + tabbed tiling ON for this module.
 
-    Both modes default OFF in the gschema, so LayoutStackedToggle /
-    LayoutTabbedToggle bail early and the toggles are silent no-ops otherwise.
-    restore_settings reverts after the test; the settle lets the GSetting reach
-    Forge before the first toggle (mirrors test_stacked_tabbed.py).
+    Both modes default ON in the gschema; setting them explicitly keeps the module
+    independent of any prior test that disabled them. restore_settings reverts after
+    the test; the settle lets the GSetting reach Forge before the first toggle
+    (mirrors test_stacked_tabbed.py).
     """
     restore_settings.set_stacked_tiling_mode_enabled(True)
     restore_settings.set_tabbed_tiling_mode_enabled(True)
@@ -158,6 +182,19 @@ class TestWorkflowStacked:
             assert _layout_node_child_count(shell_proxy, "STACKED") >= 2, (
                 "expected a multi-child STACKED container to drive sibling focus nav"
             )
+
+        with step(shell_proxy, "the STACKED container renders its vertical title-bar column"):
+            # processStacked must build a visible decoration holding one header tab per
+            # child, laid out vertically (the feature that makes stacked usable, not just
+            # overlapping label-less windows). forge.
+            probe = shell_proxy.eval(_STACKED_DECORATION_PROBE)
+            assert isinstance(probe, dict) and "err" not in probe, f"probe failed: {probe!r}"
+            assert probe["hasDecoration"] is True, probe
+            assert probe["decoVertical"] is True, probe
+            assert probe["decoVisible"] is True, probe
+            # One title bar per stacked child.
+            assert probe["decoChildCount"] == probe["childCount"], probe
+            assert probe["decoHeight"] > 0, probe
 
         with step(shell_proxy, "focus moves between STACKED siblings, layout stays STACKED"):
             if dispatch_mode != "dbus":

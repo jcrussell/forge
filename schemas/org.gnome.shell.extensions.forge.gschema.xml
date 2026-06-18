@@ -119,12 +119,12 @@
         </key>
 
         <key type="b" name="stacked-tiling-mode-enabled">
-            <default>false</default>
+            <default>true</default>
             <summary>Stacked tiling mode on/off</summary>
         </key>
 
         <key type="b" name="tabbed-tiling-mode-enabled">
-            <default>false</default>
+            <default>true</default>
             <summary>Tabbed tiling mode on/off</summary>
         </key>
 

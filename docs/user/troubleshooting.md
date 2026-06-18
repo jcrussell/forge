@@ -19,9 +19,9 @@ It probably matches a rule. Check **Preferences → Windows** and
 
 ## Stacked / tabbed shortcuts do nothing
 
-Those modes are **off by default**. Enable `stacked-tiling-mode-enabled` /
-`tabbed-tiling-mode-enabled` in Preferences → Experimental first. See
-[layouts.md](layouts.md).
+Stacked and tabbed are **on by default**. If the shortcuts no-op, the modes were
+turned off — confirm `stacked-tiling-mode-enabled` / `tabbed-tiling-mode-enabled`
+are enabled in **Preferences → Tiling → Behavior**. See [layouts.md](layouts.md).
 
 ## Enabling debug logs
 

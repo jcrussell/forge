@@ -51,6 +51,15 @@ export class Widget extends withSignals() {
     return this._parent || null;
   }
 
+  // St.Widget theme-node accessor. Tests don't compute real CSS, so return a stub
+  // whose metrics are all zero (the decoration code reads border widths off it).
+  get_theme_node() {
+    return {
+      get_border_width: () => 0,
+      get_padding: () => 0,
+    };
+  }
+
   set_size(width, height) {
     this.width = width;
     this.height = height;
@@ -215,6 +224,8 @@ export class Icon extends Widget {
   }
 }
 
+export const Side = { TOP: 0, RIGHT: 1, BOTTOM: 2, LEFT: 3 };
+
 export default {
   Widget,
   Bin,
@@ -223,6 +234,7 @@ export default {
   Button,
   ThemeContext,
   Icon,
+  Side,
   __setScaleFactor,
   __resetScaleFactor,
 };

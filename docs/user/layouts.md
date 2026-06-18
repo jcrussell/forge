@@ -26,9 +26,9 @@ Instead of splitting space, a container can show one child at a time:
   expands (like a stack of title bars).
 - **Tabbed** (`Super+Shift+t`) — children shown as a tab strip; toggle the tab
   decoration with the tab-decoration shortcut.
-- These modes are **opt-in**: they require `stacked-tiling-mode-enabled` /
-  `tabbed-tiling-mode-enabled` (Experimental settings). With the mode disabled the
-  toggle does nothing.
+- Both modes are **on by default** (`stacked-tiling-mode-enabled` /
+  `tabbed-tiling-mode-enabled`, in Preferences → Tiling → Behavior). Turn a mode off
+  and its toggle shortcut does nothing.
 - `auto-exit-tabbed` (on by default) drops a container back to a split when only one
   tab remains.
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly

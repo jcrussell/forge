@@ -22,7 +22,7 @@ contributors for creating this excellent extension.
 - Some support for multi-display
 - Tiling support per workspace
 - Update hint color scheme from preferences
-- Stacked tiling layout
+- Stacked and tabbed tiling layouts, plus workspace monocle
 - Swap current window with the last active window
 - Auto Split or Quarter Tiling
 - Show/hide tab decoration via keybinding
@@ -34,7 +34,7 @@ This fork includes significant improvements over the upstream version:
 
 ### New Features
 
-- **Keybindings cheatsheet overlay** - Quick reference for all shortcuts (`Super + ?`)
+- **Keybindings cheatsheet overlay** - Quick reference for all shortcuts (`Super+Shift+/`)
 - **Portable config sync** - Export/import settings and keybindings for backup or sharing
 - **Arrow key navigation** - Arrow keys work alongside vim-style hjkl bindings
 - **Floating window rules UI** - Manage floating window rules directly in preferences
@@ -43,7 +43,7 @@ This fork includes significant improvements over the upstream version:
 - **More customization** - Border radius, tab margins, default layout, adjustable gap limits
 - **Monitor exclusion** - Option to exclude specific monitors from tiling
 
-### Bug Fixes (30+)
+### Bug Fixes
 
 - Window resize and focus navigation fixes
 - App-specific fixes for Chrome, Brave, Steam, Blender, ddterm, and others
@@ -54,9 +54,9 @@ This fork includes significant improvements over the upstream version:
 
 ### Code Quality
 
-- Comprehensive unit test suite (823 tests, ~62% coverage)
+- Comprehensive unit test suite (1,300+ tests, ~88% line coverage) plus a Dockerized E2E suite
 - Refactored architecture with extracted modules (command.js, workspace.js, monitor.js)
-- Experimental options disabled by default for stability
+- Riskier options stay behind clearly-marked experimental toggles
 
 ## Known Issues / Limitations
 
