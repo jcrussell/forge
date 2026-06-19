@@ -25,6 +25,11 @@ from framework.workflow import step
 # its title-bar decoration (the column of header tabs processStacked builds).
 _STACKED_DECORATION_PROBE = r"""
 (() => {
+  // Clutter is not injected into the Shell.Eval scope (Main/global are), so import
+  // it explicitly — sibling probes do the same. Needed to read the decoration's
+  // orientation: St.BoxLayout.vertical was removed on GNOME 50, so derive the
+  // vertical flag from orientation === Clutter.Orientation.VERTICAL instead.
+  const Clutter = imports.gi.Clutter;
   const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
@@ -38,7 +43,7 @@ _STACKED_DECORATION_PROBE = r"""
     childCount: con.childNodes.length,
     hasDecoration: !!d,
     decoVisible: d ? d.visible : null,
-    decoVertical: d ? d.vertical : null,
+    decoVertical: d ? (d.orientation === Clutter.Orientation.VERTICAL) : null,
     decoChildCount: d && d.get_children ? d.get_children().length : null,
     decoHeight: d ? d.height : null,
   });

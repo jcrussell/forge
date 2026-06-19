@@ -45,6 +45,17 @@ export function createMockDisplay(options = {}) {
       const geom = geometries[index] || geometries[0];
       return new Rectangle(geom);
     }),
+    // Mutter maps a rect to the monitor it most overlaps (center fallback). Used
+    // by move() to resolve the target monitor's work area for the off-screen
+    // clamp. Defaults to 0 when the rect sits outside every monitor.
+    get_monitor_index_for_rect: vi.fn((rect) => {
+      const cx = rect.x + rect.width / 2;
+      const cy = rect.y + rect.height / 2;
+      const idx = geometries.findIndex(
+        (g) => cx >= g.x && cx < g.x + g.width && cy >= g.y && cy < g.y + g.height
+      );
+      return idx === -1 ? 0 : idx;
+    }),
     get_monitor_scale: vi.fn(() => 1),
     get_monitor_neighbor_index: vi.fn(() => -1),
     get_tab_list: vi.fn(() => []),

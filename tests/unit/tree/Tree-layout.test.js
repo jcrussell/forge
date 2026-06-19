@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import St from "gi://St";
+import Clutter from "gi://Clutter";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture } from "../../mocks/helpers/index.js";
 
@@ -295,7 +296,7 @@ describe("Tree Layout Algorithms", () => {
       });
 
       // The decoration hosts the title-bar column vertically and is shown.
-      expect(container.decoration.vertical).toBe(true);
+      expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
       expect(container.decoration.visible).toBe(true);
       expect(container.decoration.height).toBe(totalBars);
     });
@@ -342,6 +343,26 @@ describe("Tree Layout Algorithms", () => {
         expect(bottom).toBeLessThanOrEqual(container.rect.y + container.rect.height);
       });
     });
+
+    // Bug #8: a degenerate (<=0) container height must not make cappedBars negative,
+    // which would push the child's y above the container origin.
+    it("should clamp cappedBars to 0 when the container height is zero", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 0 };
+
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      const sibling = new Node(NODE_TYPES.CON, new St.Bin());
+      container.childNodes = [child, sibling];
+
+      const params = { stackedHeight: 35, tiledChildren: [child, sibling] };
+
+      ctx.tree.processStacked(container, child, params, 0);
+
+      // cappedBars clamped to 0, so the child never floats above the container.
+      expect(child.rect.y).toBeGreaterThanOrEqual(container.rect.y);
+      expect(child.rect.height).toBeGreaterThanOrEqual(1);
+    });
   });
 
   describe("processTabbed", () => {
@@ -361,6 +382,22 @@ describe("Tree Layout Algorithms", () => {
       expect(child.rect.y).toBe(0);
       expect(child.rect.width).toBe(1000);
       expect(child.rect.height).toBe(800);
+    });
+
+    it("should lay the header tabs out as a horizontal row", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      const sibling = new Node(NODE_TYPES.CON, new St.Bin());
+      container.childNodes = [child, sibling];
+
+      const params = { stackedHeight: 35, tiledChildren: [child, sibling] };
+
+      ctx.tree.processTabbed(container, child, params, 0);
+
+      expect(container.decoration.orientation).toBe(Clutter.Orientation.HORIZONTAL);
     });
 
     it("should account for tab decoration height", () => {

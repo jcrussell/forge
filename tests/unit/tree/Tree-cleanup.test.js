@@ -163,6 +163,34 @@ describe("Tree Cleanup and Container Management", () => {
       expect(container.childNodes).toHaveLength(2);
     });
 
+    // Bug #3 (forge): a STACKED CON now owns node.decoration (an St.BoxLayout in
+    // global.window_group) and tab actors, exactly like TABBED. removeChild()
+    // only tore down the decoration when node.isTabbed(), so removing a STACKED
+    // container leaked the decoration / left a ghost header column. removeChild
+    // must destroy + null the decoration for STACKED containers too.
+    it("should destroy and null a removed STACKED container's decoration", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window1);
+      ctx.tree.createNode(container.nodeValue, NODE_TYPES.WINDOW, window2);
+
+      // A CON builds its decoration in the Node constructor.
+      const decoration = container.decoration;
+      expect(decoration).toBeTruthy();
+      const destroySpy = vi.spyOn(decoration, "destroy");
+
+      // Directly remove the STACKED container from its parent.
+      monitor.removeChild(container);
+
+      expect(destroySpy).toHaveBeenCalled();
+      expect(container.decoration).toBeNull();
+    });
+
     it("should not auto-exit tabbed when setting is disabled", () => {
       ctx.extWm.ext.settings.get_boolean.mockImplementation((key) => {
         if (key === "auto-exit-tabbed") return false;

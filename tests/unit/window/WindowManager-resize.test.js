@@ -374,7 +374,10 @@ describe("WindowManager - Resize Operations", () => {
 
       wm().resize(GrabOp.RESIZING_E, 50);
 
-      expect(moveSpy).toHaveBeenCalledWith(metaWindow, expect.any(Object));
+      // Bug #6: resize() passes skipOffscreenClamp so move() resizes only.
+      expect(moveSpy).toHaveBeenCalledWith(metaWindow, expect.any(Object), null, {
+        skipOffscreenClamp: true,
+      });
     });
 
     it("should preserve original rect properties not affected by direction", () => {
@@ -396,19 +399,43 @@ describe("WindowManager - Resize Operations", () => {
     });
   });
 
+  describe("resize() - Off-screen clamp (Bug #6)", () => {
+    it("should not reposition the window when growing the bottom edge past the work area", () => {
+      // Window sits low in the 1920x1080 work area. Growing its bottom edge down
+      // makes y+height overflow 1080, which used to trip the forge-aydd off-screen
+      // clamp in move() and shift the whole window UP. A resize must change size
+      // only, never reposition.
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 100, y: 900, width: 400, height: 150 }),
+        workspace: ctx.workspaces[0],
+      });
+
+      ctx.display.get_focus_window.mockReturnValue(metaWindow);
+
+      // Drive a real resize through move() (no spy), then inspect the committed frame.
+      wm().resize(GrabOp.RESIZING_S, 100);
+
+      const committed = metaWindow.get_frame_rect();
+      expect(committed.height).toBe(250); // 150 + 100, bottom edge grew
+      expect(committed.y).toBe(900); // y UNCHANGED — not shifted up by the clamp
+    });
+  });
+
   describe("resize() - All Directions Combined", () => {
     it("should correctly resize in all four cardinal directions", () => {
-      // Kept fully within the 1920x1080 work area so this exercises direction math
-      // alone, not the forge-aydd off-screen clamp in move().
-      const initialRect = new Rectangle({ x: 500, y: 200, width: 800, height: 600 });
+      // y=400 with height 600 means a +100 S resize pushes the bottom edge to
+      // y+height=1100, past the 1080 work-area bottom. Since resize() now skips
+      // the forge-aydd off-screen clamp (Bug #6), this still exercises direction
+      // math alone — the dragged edge grows without repositioning the window.
+      const initialRect = new Rectangle({ x: 500, y: 400, width: 800, height: 600 });
 
       const directions = [
         { grabOp: GrabOp.RESIZING_E, amount: 100, expectWidth: 900, expectX: 500 },
         { grabOp: GrabOp.RESIZING_W, amount: 100, expectWidth: 900, expectX: 400 },
         // forge-74em: N grows the top edge (y up, mirror of W); S grows the
         // bottom edge (y fixed, mirror of E).
-        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 100 },
-        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 200 },
+        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 300 },
+        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 400 },
       ];
 
       directions.forEach(({ grabOp, amount, expectWidth, expectX, expectHeight, expectY }) => {

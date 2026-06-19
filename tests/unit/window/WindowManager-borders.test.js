@@ -88,6 +88,36 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       expect(mockTab.remove_style_class_name).toHaveBeenCalledWith("window-tabbed-tab-active");
     });
+
+    // Bug #2 (forge): a STACKED container now uses the same tab-actor + active
+    // class infrastructure as TABBED, but hideWindowBorders only de-highlighted
+    // tabs whose parent isTabbed(). So focusing a sibling in a STACKED container
+    // never cleared the previously-focused window's active class (updateBorderLayout
+    // calls hide then show on every focus change). hideWindowBorders must clear the
+    // active class for STACKED parents too (isStackedOrTabbed).
+    it("should remove tab active class from stacked windows", () => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: ctx.workspaces[0],
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.STACKED;
+
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+
+      const mockTab = {
+        _destroyed: false,
+        get_parent: vi.fn(() => ({ add_child: vi.fn() })),
+        remove_style_class_name: vi.fn(),
+      };
+      nodeWindow.tab = mockTab;
+
+      wm().hideWindowBorders();
+
+      expect(mockTab.remove_style_class_name).toHaveBeenCalledWith("window-tabbed-tab-active");
+    });
   });
 
   describe("showWindowBorders", () => {
