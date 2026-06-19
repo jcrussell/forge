@@ -5,7 +5,6 @@ gschemas.compiled
 *.zip
 *.exe
 *.mo
-po/forge.pot
 .vscode
 node_modules
 lib/prefs/metadata.js

@@ -65,6 +65,9 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `lib/shared/config-sync.js` `ConfigSync` | Mirrors GSettings ⇄ `settings.json`/`keybindings.json`. |
 | `lib/shared/theme.js` + `lib/css/` | Stylesheet parsing/customization (see rendering.md). |
 
+User-facing strings are localized with gettext; the catalog (`po/`) and Weblate
+workflow are documented in [translations.md](translations.md).
+
 ## Command dispatch flow
 
 ```

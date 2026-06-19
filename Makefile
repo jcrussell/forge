@@ -11,7 +11,7 @@ HAS_XGETTEXT := $(shell command -v xgettext &>/dev/null && echo yes || echo no)
 HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
 .PHONY: all clean install schemas uninstall enable disable log debug check-deps \
-	dev prod build metadata potfile compilemsgs dist purge restart test test-x test-open \
+	dev prod build metadata compilemsgs update-pot update-po dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
 	e2e-test e2e-test-fast e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
@@ -75,27 +75,51 @@ debug:
 	sed -i 's/export const production = true/export const production = false/' temp/lib/shared/settings.js
 	#sed -i 's|1.*-alpha|4999|' temp/metadata.json
 
-potfile: ./po/forge.pot
-
-# Conditional potfile generation based on xgettext availability
+# Regenerate the translation template (po/forge.pot) from source. Run this
+# manually after adding/changing _("...") strings, then commit the .pot.
+# NOTE: this is intentionally NOT part of `build` — builds only compile catalogs
+# (see compilemsgs), so a normal build never rewrites tracked po/ files.
+# Phony (always regenerates): an mtime-gated file target would silently skip
+# when forge.pot happens to be newer than sources (e.g. after a checkout/pull),
+# which would defeat the on-demand workflow.
+# --add-location=file drops line numbers (kills source-shift churn) and
+# --sort-by-file + a sorted file list make output deterministic across machines.
+# The POT-Creation-Date line is stripped so re-running with no string changes is
+# byte-identical (the timestamp would otherwise churn on every run).
 ifeq ($(HAS_XGETTEXT),yes)
-./po/forge.pot: metadata ./prefs.js ./extension.js ./lib/**/*.js
+update-pot:
 	mkdir -p po
-	xgettext --from-code=UTF-8 --output=po/forge.pot --package-name "Forge" ./prefs.js ./extension.js ./lib/**/*.js
+	xgettext --from-code=UTF-8 --add-location=file --sort-by-file \
+	  --package-name "Forge" --output=po/forge.pot \
+	  $$(find lib -name '*.js' | sort) ./prefs.js ./extension.js
+	sed -i '/^"POT-Creation-Date:/d' po/forge.pot
 else
-./po/forge.pot:
+update-pot:
 	@echo "WARNING: xgettext not found, skipping pot file generation"
 	@echo "Install gettext package for translation support"
 	@mkdir -p po
 	@touch ./po/forge.pot
 endif
 
-# Conditional compilation of messages based on msgfmt availability
-ifeq ($(HAS_MSGFMT),yes)
-compilemsgs: potfile $(MSGSRC:.po=.mo)
+# Merge the regenerated template into each .po (local/on-demand; Weblate's
+# msgmerge add-on does this in steady state). Strip POT-Creation-Date for
+# determinism, matching update-pot.
+ifeq ($(HAS_XGETTEXT),yes)
+update-po: update-pot
 	for msg in $(MSGSRC); do \
-		msgmerge -U $$msg ./po/forge.pot; \
+		msgmerge -U --add-location=file $$msg ./po/forge.pot; \
+		sed -i '/^"POT-Creation-Date:/d' $$msg; \
 	done;
+else
+update-po:
+	@echo "WARNING: gettext tools not found, skipping translation update"
+	@echo "Install gettext package for translation support"
+endif
+
+# Conditional compilation of messages based on msgfmt availability.
+# Compile-only: turns committed .po files into .mo. Never mutates .po/.pot.
+ifeq ($(HAS_MSGFMT),yes)
+compilemsgs: $(MSGSRC:.po=.mo)
 else
 compilemsgs:
 	@echo "WARNING: msgfmt not found, skipping translation compilation"
@@ -397,6 +421,10 @@ help:
 	@echo "  install          Install built extension to ~/.local/share/gnome-shell/extensions/"
 	@echo "  uninstall        Remove installed extension"
 	@echo "  check-deps       Verify build dependencies are installed"
+	@echo ""
+	@echo "Translations (see docs/dev/translations.md):"
+	@echo "  update-pot       Regenerate po/forge.pot from source (run after adding strings)"
+	@echo "  update-po        Merge the template into each po/<lang>.po"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  format           Format code with Prettier (writes changes)"

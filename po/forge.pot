@@ -1,108 +1,104 @@
-# Forge Sample Translation
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Forge package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Forge\n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2021-09-18 16:25-0400\n"
-"Last-Translator: Juarez Rudsatz <juarezr@gmail.com>\n"
-"Language-Team: \n"
-"Language: pt_BR\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: lib/extension/indicator.js lib/prefs/settings.js
 msgid "Tiling"
-msgstr "Emparelhamento"
+msgstr ""
 
 #: lib/extension/indicator.js lib/prefs/settings.js
 msgid "Forge"
-msgstr "Forge"
+msgstr ""
 
 #: lib/extension/indicator.js
 msgid "Tiling Window Management"
-msgstr "Gerenciamento de Janelas Emparelhadas"
+msgstr ""
 
 #: lib/extension/indicator.js
 msgid "Gaps Hidden when Single"
-msgstr "Espaçamento Omitido quando Sozinho"
+msgstr ""
 
 #: lib/extension/indicator.js
-#, fuzzy
 msgid "Show Focus Hint Border"
-msgstr "Sinalizador de Foco Flutuante"
+msgstr ""
 
 #: lib/extension/indicator.js
 msgid "Move Pointer with the Focus"
-msgstr "Mover o Ponteiro com o Foco"
+msgstr ""
 
 #: lib/extension/indicator.js lib/extension/window.js
 msgid "Settings"
-msgstr "Configurações"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Tiled window"
-msgstr "Modo em Blocos"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Tabbed window"
-msgstr "Modo em Abas"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Stacked window"
-msgstr "Modo empilhado"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Floating window"
-msgstr "Janela flutuante"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Split direction hint"
-msgstr "Sinalizador de Separação de Direção"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Appearance"
-msgstr "Aparência"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Gaps"
-msgstr "Espaçamento"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Change the gap size between windows"
-msgstr "Mudar o espaçamento entre janelas"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Gap size"
-msgstr "Tamanho do espaço"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Gap size multiplier"
-msgstr "Multiplicador do Espaçamento"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Disable gaps for single window"
-msgstr "Desabilitar espaço com janela única"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Disables window gaps when only a single window is present"
-msgstr "Desabilitar espaçamento quando há uma única janela presente"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Maximize single window"
-msgstr "Desabilitar espaço com janela única"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Automatically maximize when only one window is present"
-msgstr "Desabilitar espaçamento quando há uma única janela presente"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Screen Edge Margins"
@@ -146,53 +142,47 @@ msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Style"
-msgstr "Estilo"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Change how the shell looks"
-msgstr "Mudar como a aparência do shell"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Preview hint"
-msgstr "Habilitar Dicas"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Shows where the window will be tiled when you let go of it"
-msgstr "Mostrar em que bloco a janela será disposta"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Border around focused window"
-msgstr "Exibir a borda de divisão na janela com foco"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Display a colored border around the focused window"
-msgstr "Exibir uma borda colorida ao redor da janela com foco"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Disable focus border when single"
-msgstr "Desabilitar espaço com janela única"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Hides focus border when only a single window is present"
-msgstr "Desabilitar espaçamento quando há uma única janela presente"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Window split hint border"
-msgstr "Sinalizador de Foco Flutuante"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Show split direction border on focused window"
-msgstr "Exibir a borda de divisão na janela com foco"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Border radius"
-msgstr "Tamanho de Borda"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Corner radius of the focus borders (0 for square corners)"
@@ -207,14 +197,12 @@ msgid "Spacing between tabs in tabbed tiling mode (pixels)"
 msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Forge in quick settings"
-msgstr "Exibir configurações rápidas"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Toggles the Forge tile in quick settings"
-msgstr "Habilitar a exibição do Forge nas configurações rápidas"
+msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Show tray icon"
@@ -226,32 +214,27 @@ msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Color"
-msgstr "Cor"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Changes the focused window's border and preview hint colors"
-msgstr "Exibir a borda de divisão na janela com foco"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Border size"
-msgstr "Tamanho de Borda"
+msgstr ""
 
 #: lib/prefs/appearance.js
-#, fuzzy
 msgid "Border color"
-msgstr "Cor da Borda"
+msgstr ""
 
 #: lib/prefs/floating.js
-#, fuzzy
 msgid "Windows"
-msgstr "Janelas"
+msgstr ""
 
 #: lib/prefs/floating.js
-#, fuzzy
 msgid "Window Class"
-msgstr "Janelas"
+msgstr ""
 
 #: lib/prefs/floating.js
 msgid "Window Title (optional)"
@@ -262,9 +245,8 @@ msgid "Add"
 msgstr ""
 
 #: lib/prefs/floating.js
-#, fuzzy
 msgid "Add Floating Window"
-msgstr "Janelas Flutuantes"
+msgstr ""
 
 #: lib/prefs/floating.js
 msgid ""
@@ -273,17 +255,16 @@ msgid ""
 msgstr ""
 
 #: lib/prefs/floating.js
-#, fuzzy
 msgid "Search windows..."
-msgstr "Modo empilhado"
+msgstr ""
 
 #: lib/prefs/floating.js
 msgid "Floating Windows"
-msgstr "Janelas Flutuantes"
+msgstr ""
 
 #: lib/prefs/floating.js
 msgid "Windows that will not be tiled"
-msgstr "Janelas que não serão rearranjadas"
+msgstr ""
 
 #: lib/prefs/floating.js
 msgid "Title-only rule"
@@ -291,47 +272,41 @@ msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Keyboard"
-msgstr "Teclado"
+msgstr ""
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid "Drag-and-drop modifier key"
-msgstr "Opções de Teclas Modificadoras de Arrastar/Soltar"
+msgstr ""
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid ""
 "Change the modifier key for tiling windows via drag-and-drop. Select 'None' "
 "to always tile"
 msgstr ""
-"Altere o modificador para janelas <b>emparelhadas</b> através do mouse e "
-"arrastar/soltar"
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid "Modifier key"
-msgstr "Teclas Modificadoras"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Super"
-msgstr "Super"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Ctrl"
-msgstr "Ctrl"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Alt"
-msgstr "Alt"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "None"
-msgstr "Nenhum"
+msgstr ""
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid "Shortcuts"
-msgstr "Atalho"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid ""
@@ -341,18 +316,16 @@ msgid ""
 msgstr ""
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid "Bulk Actions"
-msgstr "Ação"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Disable all shortcuts or restore default keybindings"
 msgstr ""
 
 #: lib/prefs/keyboard.js
-#, fuzzy
 msgid "Manage all shortcuts"
-msgstr "Atalhos de Container"
+msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Quickly disable all shortcuts or restore defaults"
@@ -409,9 +382,8 @@ msgid "Open"
 msgstr ""
 
 #: lib/prefs/portability.js
-#, fuzzy
 msgid "settings.json"
-msgstr "Configurações"
+msgstr ""
 
 #: lib/prefs/portability.js
 msgid "Checking..."
@@ -438,9 +410,8 @@ msgid "Current state of portable configuration files"
 msgstr ""
 
 #: lib/prefs/portability.js
-#, fuzzy
 msgid "Actions"
-msgstr "Ação"
+msgstr ""
 
 #: lib/prefs/portability.js
 msgid "Export or import your configuration"
@@ -471,9 +442,8 @@ msgid "Import"
 msgstr ""
 
 #: lib/prefs/portability.js
-#, fuzzy
 msgid "Auto-sync changes"
-msgstr "Aplicar Mudanças"
+msgstr ""
 
 #: lib/prefs/portability.js
 msgid "Automatically update config files when settings change in Preferences"
@@ -533,80 +503,67 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "About"
-msgstr "Sobre"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Behavior"
-msgstr "Comportamento"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Change how the tiling behaves"
 msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Focus on Hover"
-msgstr "Sinalizador de Foco Flutuante"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Window focus follows the pointer"
 msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Move pointer with focused window"
-msgstr "Mover o Ponteiro para Janela com Foco"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Moves the pointer when focusing or swapping via keyboard"
-msgstr "Mover o Ponteiro ao focar ou transpor janelas via teclado"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Quarter tiling"
-msgstr "Divisão Automática (Metade)"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Places new windows in a clock-wise fashion"
-msgstr "Rearranja janelas novas em modo horário"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Stacked tiling"
-msgstr "Modo empilhado"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Stacks windows on top of each other while still tiling them"
 msgstr ""
-"Modo de Emparelhamento Empilhado (Empilhar janelas um em cima da outra mesmo "
-"ainda sendo emparelhadas)"
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Tabbed tiling"
-msgstr "Modo em Abas"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Groups windows as tabs"
-msgstr "Modo de Emparelhamento em Abas (Agrupar janelas emparelhadas em abas)"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Auto exit tabbed tiling"
-msgstr "Modo em Abas"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Exit tabbed tiling mode when only a single tab remains"
-msgstr "Sair do modo de abas quando restar apenas uma janela"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Default layout for new windows"
-msgstr "Desabilitar espaço com janela única"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Layout used when creating new containers"
@@ -618,16 +575,15 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Tabbed"
-msgstr "Em Abas"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Stacked"
-msgstr "Empilhado"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Drag-and-drop behavior"
-msgstr "Arranjo de Arrastar/Soltar Padrão"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "What to do when dragging one window on top of another"
@@ -635,18 +591,15 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Swap"
-msgstr "Trocar"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Always on Top mode for floating windows"
-msgstr "Modo sempre no topo par janelas flutuantes"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Makes floating windows appear above tiled windows"
 msgstr ""
-"Modo Flutuante Sempre no Topo (Janelas flutuantes sempre acima de janelas "
-"emparelhadas)"
 
 #: lib/prefs/settings.js
 msgid "Non-tiling workspaces"
@@ -659,7 +612,7 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Example: 0,1,2"
-msgstr "Examplo: 0,1,2"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Non-tiling monitors"
@@ -671,9 +624,8 @@ msgid ""
 msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Example: 0,1"
-msgstr "Examplo: 0,1,2"
+msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Application Launcher"
@@ -688,28 +640,22 @@ msgid "Command (e.g., gnome-terminal)"
 msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Logger"
-msgstr "Nivel de Log"
+msgstr ""
 
 #: lib/prefs/settings.js
-#, fuzzy
 msgid "Log level"
-msgstr "Nivel de Log"
+msgstr ""
 
 #: lib/prefs/widgets.js
-#, fuzzy
 msgid ""
 "<b>CAUTION</b>: Enabling this setting can lead to bugs or cause the shell to "
 "crash"
 msgstr ""
-"CUIDADO: Estas configurações, quando ativadas, são problemáticas ou podem "
-"causar a queda da interface"
 
 #: lib/prefs/widgets.js
-#, fuzzy
 msgid "Clear shortcut"
-msgstr "Atalhos de Container"
+msgstr ""
 
 #: lib/prefs/widgets.js
 msgid "Reset to default"
@@ -717,7 +663,7 @@ msgstr ""
 
 #: lib/prefs/widgets.js
 msgid "Remove Item"
-msgstr "Remover Item"
+msgstr ""
 
 #: lib/prefs/widgets.js
 msgid "Saved"
@@ -726,177 +672,3 @@ msgstr ""
 #: lib/prefs/widgets.js
 msgid "Invalid input"
 msgstr ""
-
-#, fuzzy
-#~ msgid "Add Window"
-#~ msgstr "Adicionar Janela"
-
-#~ msgid "Reset"
-#~ msgstr "Restaurar"
-
-#~ msgid "Workspace"
-#~ msgstr "Área de Trabalho"
-
-#~ msgid "Update Workspace Settings"
-#~ msgstr "Atualizar Configurações de Área de Trabalho"
-
-#~ msgid ""
-#~ "Provide workspace indices to skip. E.g. 0,1. Empty text to disable. Enter "
-#~ "to accept"
-#~ msgstr ""
-#~ "Informe índices para ignorar. Ex: 0,1. Texto em branco para desabilitar. "
-#~ "Enter para aceitar"
-
-#~ msgid "Skip Workspace Tiling"
-#~ msgstr "Ignorar Emparelhamento de Área de Trabalho"
-
-#, fuzzy
-#~ msgid "Show border around focused window"
-#~ msgstr "Exibir a borda de divisão na janela com foco"
-
-#~ msgid "Legend"
-#~ msgstr "Legenda"
-
-#, fuzzy
-#~ msgid "Windows  key"
-#~ msgstr "tecla Windows"
-
-#~ msgid "Control key"
-#~ msgstr "tecla Control"
-
-#~ msgid ""
-#~ "Delete text to unset. Press Return key to accept. Focus out to ignore."
-#~ msgstr ""
-#~ "Apague o texto para desativar. Pressione a tecla Enter para aceitar. Mude "
-#~ "o foco para ignorar."
-
-#~ msgid "Resets"
-#~ msgstr "Restaurar"
-
-#~ msgid "to previous value when invalid"
-#~ msgstr "para o valor anterior quando inválido"
-
-#, fuzzy
-#~ msgid "Border color around tabbed window"
-#~ msgstr "Exibir a borda de divisão na janela com foco"
-
-#, fuzzy
-#~ msgid "Border color around stacked window"
-#~ msgstr "Exibir a borda de divisão na janela com foco"
-
-#, fuzzy
-#~ msgid "Border color around floating window"
-#~ msgstr "Exibir a borda de divisão na janela com foco"
-
-#, fuzzy
-#~ msgid "Change the border colors around focused window"
-#~ msgstr "Exibir a borda de divisão na janela com foco"
-
-#, fuzzy
-#~ msgid "Stacked focus hint and preview"
-#~ msgstr "Sinalizador de Foco Empilhado e Pré-Visualização"
-
-#, fuzzy
-#~ msgid "Tabbed focus hint and preview"
-#~ msgstr "Sinalizador de Foco em Abas e Pré-Visualização"
-
-#, fuzzy
-#~ msgid "Tiled focus hint and preview"
-#~ msgstr "Sinalizador de Foco Emparelhado e Pré-Visualização"
-
-#, fuzzy
-#~ msgid "Floated focus hint"
-#~ msgstr "Sinalizador de Foco Flutuante"
-
-#~ msgid "Syntax"
-#~ msgstr "Sintaxe"
-
-#~ msgid "Tile Modifier"
-#~ msgstr "Modificador de Emparelhamento"
-
-#~ msgid "Auto Split"
-#~ msgstr "Dividir automaticamente"
-
-#, fuzzy
-#~ msgid "Behaviour"
-#~ msgstr "Comportamento"
-
-#, fuzzy
-#~ msgid "Show tiling quick settings"
-#~ msgstr "Exibir configurações rápidas"
-
-#~ msgid "Gaps Size"
-#~ msgstr "Tamanho do Espaçamento"
-
-#, fuzzy
-#~ msgid ""
-#~ "\n"
-#~ "Select <i>None</i> to <u>always tile immediately</u> by default"
-#~ msgstr ""
-#~ "Selecione <i>Nenhum</i> para <u>sempre emparelhar imediatamente<u> por "
-#~ "padrão"
-
-#, fuzzy
-#~ msgid "Workspaces to skip"
-#~ msgstr "Área de Trabalho"
-
-#~ msgid "Float Mode Always On Top"
-#~ msgstr "Modo Flutuante sempre no topo"
-
-#~ msgid "Toggle Forge's high-level features"
-#~ msgstr "Habilitar as funcionalidade principais"
-
-#, fuzzy
-#~ msgid "Update Shortcuts"
-#~ msgstr "Outros Atalhos"
-
-#~ msgid "Preview Hint Toggle"
-#~ msgstr "Habilitar Ver Dica"
-
-#~ msgid "Development in Progress..."
-#~ msgstr "Desenvolvimento em andamento..."
-
-#~ msgid "Development"
-#~ msgstr "Desenvolvimento"
-
-#~ msgid "Experimental"
-#~ msgstr "Experimental"
-
-#~ msgid "Home"
-#~ msgstr "Início"
-
-#~ msgid "Palette Mode"
-#~ msgstr "Modo de Paleta"
-
-#~ msgid "Editor Mode"
-#~ msgstr "Modo de Edição"
-
-#~ msgid "Layout"
-#~ msgstr "Arranjo"
-
-#~ msgid "Window Shortcuts"
-#~ msgstr "Atalhos de Janela"
-
-#~ msgid "Workspace Shortcuts"
-#~ msgstr "Atalhos de Área de Trabalho"
-
-#~ msgid "Focus Shortcuts"
-#~ msgstr "Atalhos de Foco"
-
-#~ msgid "Update Keybindings"
-#~ msgstr "Atualizar Atalhos"
-
-#~ msgid "Notes"
-#~ msgstr "Nota"
-
-#~ msgid "Forge Panel Settings"
-#~ msgstr "Painel de Configuração do Forge"
-
-#~ msgid "Tile Mode"
-#~ msgstr "Modo de Emparelhamento"
-
-#~ msgid "Open Preferences"
-#~ msgstr "Abrir Preferências"
-
-#~ msgid "Gaps Size Increments"
-#~ msgstr "Incremento no Tamanho do Espaçamento"

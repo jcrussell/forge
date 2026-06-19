@@ -59,6 +59,14 @@ Start with [docs/dev/](docs/dev/): architecture (lifecycle, tree model, dispatch
 signal discipline), rendering (the placement pipeline), and compat (Mutter version
 shims). The user-facing behavior is documented in [docs/user/](docs/user/).
 
+## Translations
+
+User-facing strings are wrapped in `_("...")` and localized with gettext. When you
+add or change a string, run `make update-pot` and commit `po/forge.pot`. Catalogs
+(`po/<lang>.po`) are currently maintained manually via `make update-po`; crowd-sourced
+translation through Weblate is planned but not yet active (pending upstreaming).
+Full workflow: [docs/dev/translations.md](docs/dev/translations.md).
+
 ## Submitting changes
 
 1. Branch off `main`.

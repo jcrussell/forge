@@ -1,0 +1,11 @@
+# PLACEHOLDER — Weblate is not active yet (see docs/dev/translations.md).
+# Enabling it is blocked on this fork being upstreamed to forge-ext/forge.
+#
+# This is config for the `wlc` CLI (https://docs.weblate.org/en/latest/wlc.html).
+# When the project is registered on Hosted Weblate: uncomment the block below,
+# set `translation` to the real <project>/<component> slug, and supply the API
+# key via the WLC_KEY environment variable (never commit it).
+#
+# [weblate]
+# url = https://hosted.weblate.org/api/
+# translation = forge/forge
