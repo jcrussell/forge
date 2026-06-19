@@ -9,13 +9,13 @@ permissions:
   pull-requests: write
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
     paths-ignore:
       - .git*
       - .husky/**
       - "*.md"
   pull_request:
-    branches: ["main"]
+    branches: ["main", "dev"]
     types: [opened, reopened, synchronize, ready_for_review]
     paths-ignore:
       - .git*
