@@ -316,6 +316,32 @@ describe("Tree Layout Algorithms", () => {
       expect(child.rect.x).toBe(100);
       expect(child.rect.y).toBe(50 + stackHeight * 2);
     });
+
+    // forge-aydd: when the title-bar column (stackHeight * count) is taller than the
+    // container, the window content's y must not be pushed below the container bottom.
+    it("should keep the window content within the container when bars overflow", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 100 };
+
+      const children = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+      container.childNodes = children;
+
+      // 5 bars * 35 = 175 > container height 100 (overflow regime).
+      const params = { stackedHeight: 35, tiledChildren: children };
+
+      children.forEach((child, i) => {
+        ctx.tree.processStacked(container, child, params, i);
+        const bottom = child.rect.y + child.rect.height;
+        expect(bottom).toBeLessThanOrEqual(container.rect.y + container.rect.height);
+      });
+    });
   });
 
   describe("processTabbed", () => {
@@ -359,6 +385,22 @@ describe("Tree Layout Algorithms", () => {
       // X and width should match container
       expect(child.rect.x).toBe(0);
       expect(child.rect.width).toBe(1000);
+    });
+
+    // forge-aydd: a container shorter than the tab bar must not yield a negative height.
+    it("should never give a tab a negative height", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 20 };
+      container.childNodes = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      ctx.tree.processTabbed(container, child, { stackedHeight: 35 }, 0);
+
+      expect(child.rect.height).toBeGreaterThanOrEqual(1);
     });
 
     it("should show all tabs at same position (only one visible)", () => {

@@ -398,15 +398,17 @@ describe("WindowManager - Resize Operations", () => {
 
   describe("resize() - All Directions Combined", () => {
     it("should correctly resize in all four cardinal directions", () => {
-      const initialRect = new Rectangle({ x: 500, y: 400, width: 800, height: 600 });
+      // Kept fully within the 1920x1080 work area so this exercises direction math
+      // alone, not the forge-aydd off-screen clamp in move().
+      const initialRect = new Rectangle({ x: 500, y: 200, width: 800, height: 600 });
 
       const directions = [
         { grabOp: GrabOp.RESIZING_E, amount: 100, expectWidth: 900, expectX: 500 },
         { grabOp: GrabOp.RESIZING_W, amount: 100, expectWidth: 900, expectX: 400 },
         // forge-74em: N grows the top edge (y up, mirror of W); S grows the
         // bottom edge (y fixed, mirror of E).
-        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 300 },
-        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 400 },
+        { grabOp: GrabOp.RESIZING_N, amount: 100, expectHeight: 700, expectY: 100 },
+        { grabOp: GrabOp.RESIZING_S, amount: 100, expectHeight: 700, expectY: 200 },
       ];
 
       directions.forEach(({ grabOp, amount, expectWidth, expectX, expectHeight, expectY }) => {
