@@ -381,6 +381,56 @@ describe("Tree Cleanup and Container Management", () => {
     });
   });
 
+  describe("cleanTree - mutation return value + render re-apply (forge-tdap)", () => {
+    it("returns true when it flattens a nested single-child container", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      const container2 = ctx.tree.createNode(container1.nodeValue, NODE_TYPES.CON, new Bin());
+      ctx.tree.createNode(container2.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+
+      // Flatten-only mutation (no orphan/invalid removal) must still report it changed.
+      expect(ctx.tree.cleanTree()).toBe(true);
+    });
+
+    it("returns false when the tree needs no cleanup", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      const container1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      ctx.tree.createNode(container1.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+
+      // Settle any pre-existing structure, then a steady-state pass mutates nothing.
+      ctx.tree.cleanTree();
+      expect(ctx.tree.cleanTree()).toBe(false);
+    });
+
+    // render()'s control flow: re-layout exactly once iff cleanTree() reports a
+    // mutation. Stub the layout passes so this exercises the gate in isolation
+    // (a hand-built nested tree isn't fully renderable). apply() is non-recursive,
+    // so its call count equals the number of layout passes render() performed.
+    it("render() re-applies layout when cleanTree reports a mutation", () => {
+      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
+      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
+      vi.spyOn(ctx.tree, "cleanTree").mockReturnValue(true);
+
+      ctx.tree.render();
+
+      // Initial pass + one re-layout because cleanTree() reported a mutation
+      // (the flatten-only case previously skipped this, leaving stale renderRects).
+      expect(applySpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("render() applies layout once when cleanTree reports no mutation", () => {
+      vi.spyOn(ctx.tree, "processNode").mockImplementation(() => {});
+      const applySpy = vi.spyOn(ctx.tree, "apply").mockImplementation(() => {});
+      vi.spyOn(ctx.tree, "cleanTree").mockReturnValue(false);
+
+      ctx.tree.render();
+
+      expect(applySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("Container State After Window Destruction", () => {
     it("should maintain valid tree structure after window removal", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
