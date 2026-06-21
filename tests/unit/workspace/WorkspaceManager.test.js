@@ -42,6 +42,9 @@ describe("WorkspaceManager", () => {
           layout: null,
           actorBin: null,
           childNodes: [],
+          // addMonitor is mocked here, so a workspace node has no MONITOR
+          // children — match the real Node.getNodeByType shape with an empty set.
+          getNodeByType: () => [],
         };
         mockTree._nodes.set(nodeValue, node);
         return node;
