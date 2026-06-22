@@ -176,4 +176,41 @@ describe("Bug: Workspace index renumbering on add/remove", () => {
       expect(tree.findNode("mo0ws1")).toBeNull();
     });
   });
+
+  // forge-2jxz: the per-workspace window-added signal IDs are keyed by workspace
+  // index in _workspaceSignals and must follow the node renumber, or disable()
+  // can never disconnect them. This guards the (previously untested) signal-map
+  // rekey, including the atomic two-phase apply that keeps it order-independent.
+  describe("signal-map rekey on renumber", () => {
+    it("moves tracked signal IDs to the new index on removal, losing none", () => {
+      const signals = tree.workspaceManager._workspaceSignals;
+      const ws0 = [101];
+      const ws2 = [201, 202];
+      signals.set(0, ws0);
+      signals.set(2, ws2);
+
+      tree.removeWorkspace(1);
+      tree.workspaceManager.renumberWorkspacesAfterRemoval(1);
+
+      // ws0 stays put; old ws2's signals move to ws1; nothing left at index 2.
+      expect(signals.get(0)).toBe(ws0);
+      expect(signals.get(1)).toBe(ws2);
+      expect(signals.has(2)).toBe(false);
+    });
+
+    it("shifts tracked signal IDs up on addition without overwriting a live array", () => {
+      const signals = tree.workspaceManager._workspaceSignals;
+      const ws1 = [111];
+      const ws2 = [211];
+      signals.set(1, ws1);
+      signals.set(2, ws2);
+
+      tree.workspaceManager.renumberWorkspacesAfterAddition(1);
+
+      // old ws1->ws2, old ws2->ws3; both arrays preserved, ws1 slot freed.
+      expect(signals.get(2)).toBe(ws1);
+      expect(signals.get(3)).toBe(ws2);
+      expect(signals.has(1)).toBe(false);
+    });
+  });
 });
