@@ -10,6 +10,11 @@ import { createMockWindow, installGnomeGlobals } from "../mocks/helpers/index.js
  * skipped, and the `if (!_wsWindowAddSrcId)` guard then suppresses every
  * future window-added reconcile for the session — the same wedge class the
  * forge-cuv renderTree fix (dd77050) addressed with reset-in-finally.
+ *
+ * forge-wqlx later replaced the single captured window with a per-window queue
+ * drained under one timer, isolating each window so a finalized one no longer
+ * propagates out of the callback (it is logged and skipped) — the guard still
+ * resets, so this wedge stays fixed.
  */
 describe("forge-7c7o: window-added debounce survives a finalized window", () => {
   let ctx;
@@ -50,9 +55,10 @@ describe("forge-7c7o: window-added debounce survives a finalized window", () => 
     workspace.emit("window-added", workspace, deadWindow);
     expect(extWm._wsWindowAddSrcId).toBe(1);
 
-    // The debounce fires after the window was finalized: the callback throws,
-    // but the guard ID must still be reset or the path wedges forever.
-    expect(() => timeouts[0]()).toThrow(/deallocated/);
+    // The debounce fires after the window was finalized: the per-window guard
+    // swallows the throw (forge-wqlx) and the guard ID is still reset, so the
+    // path can never wedge.
+    expect(() => timeouts[0]()).not.toThrow();
     expect(extWm._wsWindowAddSrcId).toBe(0);
 
     // A later window-added must schedule a fresh debounce and reach the
