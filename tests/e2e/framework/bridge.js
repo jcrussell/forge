@@ -688,7 +688,11 @@
       const windows = ws.list_windows();
       const count = windows.length;
       windows.forEach((w) => {
-        w.delete(global.get_current_time());
+        // forge-191a: round-trip for a valid server timestamp. global.get_current_time()
+        // returns CurrentTime (0) when there is no event being processed — and inside a
+        // Shell.Eval there never is — so delete(0) made every meta_window_check_alive ping
+        // fail with "bad serial", escalating to a freed-window SIGSEGV under event load.
+        w.delete(global.display.get_current_time_roundtrip());
       });
       return count;
     },
@@ -698,7 +702,8 @@
       const ws = global.workspace_manager.get_active_workspace();
       const windows = ws.list_windows();
       if (windows.length === 0) return "0";
-      windows[0].delete(global.get_current_time());
+      // forge-191a: valid server timestamp (not CurrentTime/0); see closeAllWindows.
+      windows[0].delete(global.display.get_current_time_roundtrip());
       return String(windows.length - 1);
     },
 
@@ -709,7 +714,8 @@
       const w = global.display.get_focus_window();
       if (!w) return "no_focus";
       const id = String(w.get_id());
-      w.delete(global.get_current_time());
+      // forge-191a: valid server timestamp (not CurrentTime/0); see closeAllWindows.
+      w.delete(global.display.get_current_time_roundtrip());
       return id;
     },
 
