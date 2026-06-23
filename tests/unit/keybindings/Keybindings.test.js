@@ -7,7 +7,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
  *
  * Tests for allowDragDropTile() which determines whether a window drag should
  * trigger tiling based on the configured modifier key and current modifier state.
- * Uses Clutter modifier bitmask values: Super=64, Alt=8, Ctrl=4, grabbed=256.
+ * Uses Clutter modifier bitmask values: Super=64, Alt=8, Ctrl=4, Shift=2, grabbed=256.
  */
 describe("Keybindings", () => {
   let keybindings;
@@ -356,6 +356,32 @@ describe("Keybindings", () => {
       it("should always allow tiling regardless of state (state=256)", () => {
         mockExt.extWm.getPointer.mockReturnValue([0, 0, 256]);
         expect(keybindings.allowDragDropTile()).toBe(true);
+      });
+    });
+
+    describe("Shift modifier", () => {
+      beforeEach(() => {
+        mockExt.kbdSettings.get_string.mockReturnValue("Shift");
+      });
+
+      it("should allow tiling when Shift is held (state=2)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 2]);
+        expect(keybindings.allowDragDropTile()).toBe(true);
+      });
+
+      it("should allow tiling when Shift is held while grabbed (state=258)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 258]);
+        expect(keybindings.allowDragDropTile()).toBe(true);
+      });
+
+      it("should not allow tiling with no modifier (state=0)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 0]);
+        expect(keybindings.allowDragDropTile()).toBe(false);
+      });
+
+      it("should not allow tiling with the wrong modifier (state=64 Super)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 64]);
+        expect(keybindings.allowDragDropTile()).toBe(false);
       });
     });
 
