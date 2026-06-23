@@ -197,6 +197,30 @@ msgid "Spacing between tabs in tabbed tiling mode (pixels)"
 msgstr ""
 
 #: lib/prefs/appearance.js
+msgid "Tab bar height"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Height of each stacked/tabbed title bar (pixels)"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Tab bar position"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Place the stacked/tabbed title bar at the top or bottom"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Top"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid "Bottom"
+msgstr ""
+
+#: lib/prefs/appearance.js
 msgid "Forge in quick settings"
 msgstr ""
 
@@ -301,6 +325,10 @@ msgid "Alt"
 msgstr ""
 
 #: lib/prefs/keyboard.js
+msgid "Shift"
+msgstr ""
+
+#: lib/prefs/keyboard.js
 msgid "None"
 msgstr ""
 
@@ -345,6 +373,10 @@ msgstr ""
 
 #: lib/prefs/keyboard.js
 msgid "Shortcuts restored to defaults"
+msgstr ""
+
+#: lib/prefs/keyboard.js
+msgid "Shortcut also bound to:"
 msgstr ""
 
 #: lib/prefs/portability.js
@@ -538,6 +570,14 @@ msgid "Places new windows in a clock-wise fashion"
 msgstr ""
 
 #: lib/prefs/settings.js
+msgid "Disable GNOME edge-tiling"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Inhibit GNOME's built-in half/edge tiling while Forge is enabled"
+msgstr ""
+
+#: lib/prefs/settings.js
 msgid "Stacked tiling"
 msgstr ""
 
@@ -562,6 +602,15 @@ msgid "Exit tabbed tiling mode when only a single tab remains"
 msgstr ""
 
 #: lib/prefs/settings.js
+msgid "Auto re-orient on close"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid ""
+"Flip a split container's orientation to match its shape when a window closes"
+msgstr ""
+
+#: lib/prefs/settings.js
 msgid "Default layout for new windows"
 msgstr ""
 
@@ -579,6 +628,22 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "Stacked"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "New window placement"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Which monitor a new window initially homes to"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Pointer / active monitor"
+msgstr ""
+
+#: lib/prefs/settings.js
+msgid "Window's own monitor"
 msgstr ""
 
 #: lib/prefs/settings.js
