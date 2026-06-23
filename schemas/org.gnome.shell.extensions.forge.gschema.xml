@@ -180,6 +180,11 @@
             <default>true</default>
             <summary>Exit tabbed tiling mode when only a single tab remains</summary>
         </key>
+        <key type="b" name="auto-reorient-on-close">
+            <default>false</default>
+            <summary>Re-orient a split container by its aspect ratio when a child window closes</summary>
+            <description>When enabled, closing a window in a split container flips its orientation (horizontal/vertical) to match the container's current shape. This overrides a manually chosen split-vertical/split-horizontal orientation, so it is off by default.</description>
+        </key>
         <key type="b" name="auto-split-enabled">
             <default>false</default>
             <summary>Enable auto split or quarter-tiling based based on smaller side</summary>

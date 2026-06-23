@@ -45,6 +45,7 @@ export const DEFAULT_SETTINGS = {
   "workspace-skip-tile": "",
   "monitor-skip-tile": "",
   "showtab-decoration-enabled": true,
+  "auto-reorient-on-close": false,
 
   // Indicators
   "quick-settings-enabled": false,
