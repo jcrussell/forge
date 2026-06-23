@@ -25,7 +25,12 @@ import Gio from "gi://Gio";
 import { Logger } from "./lib/shared/logger.js";
 import { ConfigManager } from "./lib/shared/settings.js";
 import { ConfigSync } from "./lib/shared/config-sync.js";
-import { SETTINGS_OVERRIDES, shouldApplyOverride } from "./lib/shared/gnome-overrides.js";
+import {
+  SETTINGS_OVERRIDES,
+  shouldApplyOverride,
+  overridesGatedBy,
+  reconcileAction,
+} from "./lib/shared/gnome-overrides.js";
 
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
@@ -49,12 +54,6 @@ export default class ForgeExtension extends Extension {
     this._gnomeSettings = new Map();
     try {
       for (const desc of SETTINGS_OVERRIDES) {
-        // Constructing Gio.Settings for an absent schema — or reading/writing an
-        // absent key — raises a C-level g_error that TERMINATES gnome-shell; it
-        // is NOT a catchable JS exception, so the try/catch around this loop
-        // cannot save us. Probe the schema source (and the key) first and skip
-        // the override if either is missing (forge-rj4x). On a normal GNOME
-        // 45-50 desktop every schema/key here is present, so this is a no-op.
         // Skip overrides the user has opted out of (forge-9fo). A gated-off
         // override is neither applied nor saved, so disable() has nothing to
         // restore for it — handled before any Gio.Settings construction.
@@ -62,25 +61,20 @@ export default class ForgeExtension extends Extension {
           Logger.info(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' disabled in prefs`);
           continue;
         }
-        const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
-        if (!schema || !schema.has_key(desc.key)) {
-          Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
-          continue;
-        }
-        if (!this._gnomeSettings.has(desc.schemaId)) {
-          this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schema_id: desc.schemaId }));
-        }
-        const gsettings = this._gnomeSettings.get(desc.schemaId);
-        const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";
-        const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
-        const original = gsettings[getter](desc.key);
-        gsettings[setter](desc.key, desc.newValue);
-        this._savedSettings.push({ gsettings, key: desc.key, original, setter });
+        this._applyOverride(desc);
       }
       Logger.info("Disabled conflicting GNOME settings and keybindings");
     } catch (e) {
       Logger.warn(`Failed to disable GNOME conflicting features: ${e}`);
     }
+
+    // forge-abk: some overrides are gated on a runtime-toggleable Forge setting
+    // (edge-tiling on tiling-mode-enabled). Re-evaluate them when those settings
+    // change so e.g. toggling Forge tiling off restores GNOME's native
+    // edge-tiling, and toggling it back on re-applies the override.
+    this._overrideReconcileIds = ["tiling-mode-enabled", "disable-edge-tiling"].map((key) =>
+      this.settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
+    );
 
     this.configMgr = new ConfigManager(this);
 
@@ -107,6 +101,78 @@ export default class ForgeExtension extends Extension {
     Logger.info(`enable: finalized vars`);
   }
 
+  /**
+   * Apply one GNOME settings override: save its current value (for restore) and
+   * write the override value. Probes the schema/key first — constructing
+   * Gio.Settings for an absent schema, or reading/writing an absent key, raises
+   * a C-level g_error that TERMINATES gnome-shell and is NOT a catchable JS
+   * exception (forge-rj4x), so the probe is a crash guard, not optional. On a
+   * normal GNOME 45-50 desktop every schema/key is present, so this is a no-op
+   * guard. Re-captures `original` fresh on every call, so a runtime re-apply
+   * (forge-abk) records the user's latest GNOME value.
+   */
+  _applyOverride(desc) {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
+    if (!schema || !schema.has_key(desc.key)) {
+      Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
+      return;
+    }
+    if (!this._gnomeSettings.has(desc.schemaId)) {
+      this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schema_id: desc.schemaId }));
+    }
+    const gsettings = this._gnomeSettings.get(desc.schemaId);
+    const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";
+    const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
+    const original = gsettings[getter](desc.key);
+    gsettings[setter](desc.key, desc.newValue);
+    this._savedSettings.push({
+      schemaId: desc.schemaId,
+      gsettings,
+      key: desc.key,
+      original,
+      setter,
+    });
+  }
+
+  /**
+   * Restore one override to its saved original and drop it from _savedSettings
+   * (so a later re-apply re-captures the current value). The cached Gio.Settings
+   * in _gnomeSettings is kept for possible re-apply (forge-abk).
+   */
+  _restoreOverride(desc) {
+    const idx = this._savedSettings.findIndex(
+      (s) => s.schemaId === desc.schemaId && s.key === desc.key
+    );
+    if (idx < 0) return;
+    const saved = this._savedSettings[idx];
+    saved.gsettings[saved.setter](saved.key, saved.original);
+    this._savedSettings.splice(idx, 1);
+  }
+
+  _isOverrideSaved(desc) {
+    return this._savedSettings.some((s) => s.schemaId === desc.schemaId && s.key === desc.key);
+  }
+
+  /**
+   * forge-abk: when a gating Forge setting changes at runtime, apply or restore
+   * each override it gates. _applyOverride/_restoreOverride write GNOME (mutter)
+   * gsettings, never Forge settings, so this cannot re-enter via the change
+   * signal. Across a toggle-off → (user changes GNOME) → toggle-on cycle the
+   * user's latest GNOME value wins (re-captured on re-apply).
+   */
+  _reconcileOverridesFor(changedKey) {
+    if (!this._savedSettings || !this._gnomeSettings) return; // already disabled
+    try {
+      for (const desc of overridesGatedBy(changedKey)) {
+        const action = reconcileAction(desc, this.settings, this._isOverrideSaved(desc));
+        if (action === "apply") this._applyOverride(desc);
+        else if (action === "restore") this._restoreOverride(desc);
+      }
+    } catch (e) {
+      Logger.warn(`Failed to reconcile GNOME overrides for '${changedKey}': ${e}`);
+    }
+  }
+
   disable() {
     Logger.info("disable");
 
@@ -114,6 +180,15 @@ export default class ForgeExtension extends Extension {
     if (this._sessionId) {
       Main.sessionMode.disconnect(this._sessionId);
       this._sessionId = null;
+    }
+
+    // forge-abk: drop the runtime override-reconcile listeners BEFORE restoring,
+    // so a settings write during teardown can't re-enter the reconcile handler.
+    if (this._overrideReconcileIds) {
+      for (const id of this._overrideReconcileIds) {
+        this.settings.disconnect(id);
+      }
+      this._overrideReconcileIds = null;
     }
 
     // Restore GNOME settings and keybindings (#461, #288)
