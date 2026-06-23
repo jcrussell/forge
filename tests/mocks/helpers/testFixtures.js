@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
   "tabbed-tiling-mode-enabled": true,
   "default-window-layout": "split",
   "stacked-tab-bar-height": 35,
+  "tab-position": "top",
 
   // Borders
   "focus-border-toggle": false,

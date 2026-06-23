@@ -226,6 +226,15 @@
             <summary>Height of each stacked/tabbed title bar (pixels). Minimum 1; 0 would collide with the hidden-decoration path.</summary>
         </key>
 
+        <key type="s" name="tab-position">
+            <choices>
+                <choice value="top"/>
+                <choice value="bottom"/>
+            </choices>
+            <default>"top"</default>
+            <summary>Position of the stacked/tabbed title bar within its container (top or bottom).</summary>
+        </key>
+
         <key type="b" name="auto-unmaximize-for-tiling">
             <default>true</default>
             <summary>Automatically unmaximize windows when a new window is tiled alongside</summary>

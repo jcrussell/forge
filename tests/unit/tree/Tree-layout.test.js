@@ -483,6 +483,121 @@ describe("Tree Layout Algorithms", () => {
     });
   });
 
+  describe("tab-position: bottom", () => {
+    let bottomCtx;
+
+    beforeEach(() => {
+      bottomCtx = createTreeFixture({
+        settings: { "tab-position": "bottom" },
+        fullExtWm: true,
+      });
+      bottomCtx.extWm.calculateGaps = vi.fn(() => 10);
+    });
+
+    afterEach(() => {
+      bottomCtx.cleanup();
+    });
+
+    it("places stacked content at the container top with the bar column at the bottom", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+
+      const child1 = new Node(NODE_TYPES.CON, new St.Bin());
+      const child2 = new Node(NODE_TYPES.CON, new St.Bin());
+      const child3 = new Node(NODE_TYPES.CON, new St.Bin());
+      container.childNodes = [child1, child2, child3];
+
+      const stackHeight = 35;
+      const params = {
+        stackedHeight: stackHeight,
+        tiledChildren: [child1, child2, child3],
+      };
+      const totalBars = stackHeight * 3;
+
+      bottomCtx.tree.processStacked(container, child1, params, 0);
+      bottomCtx.tree.processStacked(container, child2, params, 1);
+      bottomCtx.tree.processStacked(container, child3, params, 2);
+
+      // Bottom: content sits at the container top, the bar column fills the bottom.
+      [child1, child2, child3].forEach((child) => {
+        expect(child.rect.x).toBe(0);
+        expect(child.rect.y).toBe(container.rect.y);
+        expect(child.rect.width).toBe(1000);
+        expect(child.rect.height).toBe(800 - totalBars);
+      });
+
+      // Decoration anchored near the bottom of the (gap-shrunk) render rect.
+      const renderRect = bottomCtx.tree.processGap(container);
+      expect(container.decoration.height).toBe(totalBars);
+      expect(container.decoration.y).toBe(renderRect.y + renderRect.height - totalBars);
+    });
+
+    it("places tabbed content at the container top with the tab strip at the bottom", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 800 };
+      container.childNodes = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      const stackedHeight = 35;
+      const params = { stackedHeight, tiledChildren: container.childNodes };
+
+      bottomCtx.tree.processTabbed(container, child, params, 0);
+
+      expect(child.rect.x).toBe(0);
+      expect(child.rect.y).toBe(container.rect.y);
+      expect(child.rect.width).toBe(1000);
+      expect(child.rect.height).toBe(800 - stackedHeight);
+
+      const renderRect = bottomCtx.tree.processGap(container);
+      expect(container.decoration.y).toBe(renderRect.y + renderRect.height - stackedHeight);
+    });
+
+    // forge-aydd clamp must still hold at the bottom: a tiny container yields height >= 1.
+    it("keeps content height >= 1 for a tiny container (stacked, bottom)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.STACKED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 100 };
+
+      const children = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+      container.childNodes = children;
+
+      const params = { stackedHeight: 35, tiledChildren: children };
+
+      children.forEach((child, i) => {
+        bottomCtx.tree.processStacked(container, child, params, i);
+        expect(child.rect.height).toBeGreaterThanOrEqual(1);
+        // Content still starts at the container top in the overflow regime.
+        expect(child.rect.y).toBe(container.rect.y);
+      });
+    });
+
+    it("keeps content height >= 1 for a tiny container (tabbed, bottom)", () => {
+      const container = new Node(NODE_TYPES.CON, new St.Bin());
+      container.layout = LAYOUT_TYPES.TABBED;
+      container.rect = { x: 0, y: 0, width: 1000, height: 20 };
+      container.childNodes = [
+        new Node(NODE_TYPES.CON, new St.Bin()),
+        new Node(NODE_TYPES.CON, new St.Bin()),
+      ];
+
+      const child = new Node(NODE_TYPES.CON, new St.Bin());
+      bottomCtx.tree.processTabbed(container, child, { stackedHeight: 35 }, 0);
+
+      expect(child.rect.height).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe("processGap", () => {
     it("should add gaps to all sides", () => {
       const node = new Node(NODE_TYPES.CON, new St.Bin());
