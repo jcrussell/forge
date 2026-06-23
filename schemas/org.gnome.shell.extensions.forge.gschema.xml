@@ -184,6 +184,10 @@
             <default>false</default>
             <summary>Enable auto split or quarter-tiling based based on smaller side</summary>
         </key>
+        <key type="b" name="disable-edge-tiling">
+            <default>true</default>
+            <summary>Disable GNOME's built-in edge/half-tiling while Forge is enabled</summary>
+        </key>
         <key type="s" name="new-window-placement">
             <choices>
                 <choice value="pointer"/>

@@ -25,6 +25,7 @@ import Gio from "gi://Gio";
 import { Logger } from "./lib/shared/logger.js";
 import { ConfigManager } from "./lib/shared/settings.js";
 import { ConfigSync } from "./lib/shared/config-sync.js";
+import { SETTINGS_OVERRIDES, shouldApplyOverride } from "./lib/shared/gnome-overrides.js";
 
 // Application imports
 import { Cheatsheet } from "./lib/extension/cheatsheet.js";
@@ -33,44 +34,8 @@ import { WindowManager } from "./lib/extension/window.js";
 import { FeatureIndicator, FeatureMenuToggle } from "./lib/extension/indicator.js";
 import { ExtensionThemeManager } from "./lib/extension/extension-theme-manager.js";
 
-// Descriptors for GNOME settings that Forge overrides while enabled.
-// Each entry saves the original value during enable() and restores it during disable().
-const SETTINGS_OVERRIDES = [
-  { schemaId: "org.gnome.mutter", key: "edge-tiling", type: "boolean", newValue: false },
-  { schemaId: "org.gnome.mutter", key: "auto-maximize", type: "boolean", newValue: false },
-  {
-    schemaId: "org.gnome.mutter.keybindings",
-    key: "toggle-tiled-left",
-    type: "strv",
-    newValue: [],
-  },
-  {
-    schemaId: "org.gnome.mutter.keybindings",
-    key: "toggle-tiled-right",
-    type: "strv",
-    newValue: [],
-  },
-  { schemaId: "org.gnome.desktop.wm.keybindings", key: "maximize", type: "strv", newValue: [] },
-  { schemaId: "org.gnome.desktop.wm.keybindings", key: "unmaximize", type: "strv", newValue: [] },
-  { schemaId: "org.gnome.desktop.wm.keybindings", key: "minimize", type: "strv", newValue: [] },
-  {
-    schemaId: "org.gnome.shell.keybindings",
-    key: "toggle-message-tray",
-    type: "strv",
-    newValue: [],
-  },
-  // forge-m37 (#249): free GNOME's native Super+L lock so it doesn't collide with
-  // Forge's vim window-focus-right (<Super>l). Forge provides locking via
-  // prefs-lock-screen (<Super>q). Restored on disable() like the others. The
-  // enable() loop now skips any override whose schema/key is absent (forge-rj4x),
-  // so this no longer depends on being ordered last for crash-safety.
-  {
-    schemaId: "org.gnome.settings-daemon.plugins.media-keys",
-    key: "screensaver",
-    type: "strv",
-    newValue: [],
-  },
-];
+// SETTINGS_OVERRIDES + shouldApplyOverride live in lib/shared/gnome-overrides.js
+// (GTK-free) so the gating policy is unit-testable.
 
 export default class ForgeExtension extends Extension {
   enable() {
@@ -90,6 +55,13 @@ export default class ForgeExtension extends Extension {
         // cannot save us. Probe the schema source (and the key) first and skip
         // the override if either is missing (forge-rj4x). On a normal GNOME
         // 45-50 desktop every schema/key here is present, so this is a no-op.
+        // Skip overrides the user has opted out of (forge-9fo). A gated-off
+        // override is neither applied nor saved, so disable() has nothing to
+        // restore for it — handled before any Gio.Settings construction.
+        if (!shouldApplyOverride(desc, this.settings)) {
+          Logger.info(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' disabled in prefs`);
+          continue;
+        }
         const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
         if (!schema || !schema.has_key(desc.key)) {
           Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
