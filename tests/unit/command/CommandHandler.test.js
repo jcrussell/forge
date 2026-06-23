@@ -79,6 +79,7 @@ describe("CommandHandler", () => {
       resize: vi.fn(),
       expand: vi.fn(),
       shrink: vi.fn(),
+      applyGoldenRatio: vi.fn(),
       moveCenter: vi.fn(),
       eventQueue: [],
     };
@@ -133,6 +134,14 @@ describe("CommandHandler", () => {
 
   afterEach(() => {
     ctx.cleanup();
+  });
+
+  describe("WindowGoldenRatio command", () => {
+    it("should delegate to wm.applyGoldenRatio", () => {
+      commandHandler.execute({ name: "WindowGoldenRatio" });
+
+      expect(mockWm.applyGoldenRatio).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("WindowResetSizes command", () => {

@@ -494,6 +494,11 @@
             <summary>Reset window sizes to equal distribution</summary>
         </key>
 
+        <key type="as" name="window-golden-ratio">
+            <default><![CDATA[[]]]></default>
+            <summary>Resize focused window to the golden ratio</summary>
+        </key>
+
         <key type="as" name="prefs-config-reload">
             <default><![CDATA[['<Shift><Super>r']]]></default>
             <summary>Reload configuration from files</summary>
