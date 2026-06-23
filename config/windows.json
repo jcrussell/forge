@@ -97,6 +97,10 @@
     {
       "wmClass": "brave-browser",
       "mode": "tile"
+    },
+    {
+      "wmTitle": "Picture-in-Picture",
+      "mode": "float"
     }
   ]
 }
