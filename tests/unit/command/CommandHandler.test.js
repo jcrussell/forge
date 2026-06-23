@@ -93,6 +93,8 @@ describe("CommandHandler", () => {
       resetSiblingPercent: vi.fn(),
       move: vi.fn(() => true),
       focus: vi.fn(() => nodeWindow),
+      focusSibling: vi.fn(() => nodeWindow),
+      swapSibling: vi.fn(() => nodeWindow),
       swap: vi.fn(),
       swapPairs: vi.fn(),
       split: vi.fn(),
@@ -538,6 +540,39 @@ describe("CommandHandler", () => {
       expect(() => {
         commandHandler.execute({ name: "UnknownCommand" });
       }).not.toThrow();
+    });
+  });
+
+  // forge-zrl: cyclic focus/swap dispatch.
+  describe("FocusNext/FocusPrev/SwapNext/SwapPrev commands", () => {
+    it("FocusNext cycles focus forward and updates stacked/tabbed focus", () => {
+      commandHandler.execute({ name: "FocusNext" });
+      expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
+      expect(mockWm.updateStackedFocus).toHaveBeenCalled();
+      expect(mockWm.updateTabbedFocus).toHaveBeenCalled();
+    });
+
+    it("FocusPrev cycles focus backward", () => {
+      commandHandler.execute({ name: "FocusPrev" });
+      expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
+    });
+
+    it("SwapNext swaps forward and re-renders when a swap happened", () => {
+      commandHandler.execute({ name: "SwapNext" });
+      expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
+      expect(mockWm.renderTree).toHaveBeenCalledWith("swap-sibling", true);
+      expect(mockWm.movePointerWith).toHaveBeenCalledWith(mockNodeWindow);
+    });
+
+    it("SwapPrev swaps backward", () => {
+      commandHandler.execute({ name: "SwapPrev" });
+      expect(mockTree.swapSibling).toHaveBeenCalledWith(mockNodeWindow, -1);
+    });
+
+    it("SwapNext does not re-render when no swap target exists", () => {
+      mockTree.swapSibling.mockReturnValue(null);
+      commandHandler.execute({ name: "SwapNext" });
+      expect(mockWm.renderTree).not.toHaveBeenCalled();
     });
   });
 });

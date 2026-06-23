@@ -783,4 +783,59 @@ describe("Tree Operations", () => {
       expect(next === container || next.parentNode === container).toBe(true);
     });
   });
+
+  // forge-zrl: cyclic, non-directional focus/swap among tiled siblings.
+  describe("cyclic focus/swap siblings", () => {
+    let monitor, n1, n2, n3;
+
+    beforeEach(() => {
+      ({ monitor } = getWorkspaceAndMonitor(ctx));
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      n1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      n2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      n3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+    });
+
+    it("focuses the next sibling", () => {
+      expect(ctx.tree.focusSibling(n1, 1)).toBe(n2);
+    });
+
+    it("wraps from the last sibling to the first when focusing next", () => {
+      expect(ctx.tree.focusSibling(n3, 1)).toBe(n1);
+    });
+
+    it("wraps from the first sibling to the last when focusing previous", () => {
+      expect(ctx.tree.focusSibling(n1, -1)).toBe(n3);
+    });
+
+    it("returns null when there is only one tiled sibling", () => {
+      const solo = createTreeFixture({ fullExtWm: true });
+      const { monitor: m } = getWorkspaceAndMonitor(solo);
+      const only = solo.tree.createNode(m.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      expect(solo.tree.focusSibling(only, 1)).toBeNull();
+      solo.cleanup();
+    });
+
+    it("skips floating siblings when cycling", () => {
+      n2.mode = WINDOW_MODES.FLOAT;
+      // From n1, next tiled sibling skips the floating n2 and lands on n3.
+      expect(ctx.tree.focusSibling(n1, 1)).toBe(n3);
+    });
+
+    it("swaps with the next sibling and returns the moved node", () => {
+      const before = monitor.childNodes.indexOf(n1);
+      expect(ctx.tree.swapSibling(n1, 1)).toBe(n1);
+      // n1 and n2 exchanged positions in the parent.
+      expect(monitor.childNodes.indexOf(n1)).toBe(before + 1);
+      expect(monitor.childNodes[before]).toBe(n2);
+    });
+
+    it("returns null from swapSibling when there is no valid target", () => {
+      const solo = createTreeFixture({ fullExtWm: true });
+      const { monitor: m } = getWorkspaceAndMonitor(solo);
+      const only = solo.tree.createNode(m.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      expect(solo.tree.swapSibling(only, 1)).toBeNull();
+      solo.cleanup();
+    });
+  });
 });

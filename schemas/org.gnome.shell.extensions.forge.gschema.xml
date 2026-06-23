@@ -403,6 +403,26 @@
             <summary>Swap the last active window with the current one</summary>
         </key>
 
+        <key type="as" name="window-focus-next">
+            <default><![CDATA[[]]]></default>
+            <summary>Focus the next tiled sibling window (cyclic)</summary>
+        </key>
+
+        <key type="as" name="window-focus-prev">
+            <default><![CDATA[[]]]></default>
+            <summary>Focus the previous tiled sibling window (cyclic)</summary>
+        </key>
+
+        <key type="as" name="window-swap-next">
+            <default><![CDATA[[]]]></default>
+            <summary>Swap with the next tiled sibling window (cyclic)</summary>
+        </key>
+
+        <key type="as" name="window-swap-prev">
+            <default><![CDATA[[]]]></default>
+            <summary>Swap with the previous tiled sibling window (cyclic)</summary>
+        </key>
+
         <key type="as" name="window-snap-one-third-right">
           <default><![CDATA[['<Ctrl><Alt>g']]]></default>
         </key>
