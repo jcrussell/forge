@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import St from "gi://St";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import St, { __setScaleFactor, __resetScaleFactor } from "gi://St";
 import Clutter from "gi://Clutter";
 import { Node, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import { createTreeFixture } from "../../mocks/helpers/index.js";
@@ -569,6 +569,31 @@ describe("Tree Layout Algorithms", () => {
       expect(child2.rect.width).toBe(480); // 1200 * 0.4
       expect(child1.rect.x).toBe(0);
       expect(child2.rect.x).toBe(720);
+    });
+  });
+
+  // forge-1a5: the stacked/tabbed title-bar height is read from a gsetting
+  // (DPI-scaled) instead of a hardcoded 35, and feeds params.stackedHeight in
+  // processNode.
+  describe("stackedBarHeight (forge-1a5)", () => {
+    afterEach(() => __resetScaleFactor());
+
+    it("defaults to the schema default (35) when unconfigured", () => {
+      // createTreeFixture seeds DEFAULT_SETTINGS (stacked-tab-bar-height: 35).
+      expect(ctx.tree.stackedBarHeight()).toBe(35);
+    });
+
+    it("reflects a configured height", () => {
+      const custom = createTreeFixture({ settings: { "stacked-tab-bar-height": 50 } });
+      expect(custom.tree.stackedBarHeight()).toBe(50);
+      custom.cleanup();
+    });
+
+    it("scales the configured height by the DPI factor", () => {
+      __setScaleFactor(2);
+      const custom = createTreeFixture({ settings: { "stacked-tab-bar-height": 40 } });
+      expect(custom.tree.stackedBarHeight()).toBe(80); // 40 * 2
+      custom.cleanup();
     });
   });
 });

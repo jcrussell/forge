@@ -220,6 +220,12 @@
             <summary>The margin between tabs in tabbed mode (pixels)</summary>
         </key>
 
+        <key type="u" name="stacked-tab-bar-height">
+            <range min="1" max="200"/>
+            <default>35</default>
+            <summary>Height of each stacked/tabbed title bar (pixels). Minimum 1; 0 would collide with the hidden-decoration path.</summary>
+        </key>
+
         <key type="b" name="auto-unmaximize-for-tiling">
             <default>true</default>
             <summary>Automatically unmaximize windows when a new window is tiled alongside</summary>
