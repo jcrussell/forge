@@ -17,7 +17,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 	e2e-test e2e-test-fast e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
 
-all: build install enable restart
+all: build
 
 dev: build debug install
 
