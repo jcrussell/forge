@@ -13,7 +13,7 @@ contributors for creating this excellent extension.
 
 ## Features
 
-- Works on GNOME 40+ (X11 and Wayland)
+- Works on GNOME 45+ (X11 and Wayland)
 - Tree-based tiling with vertical and horizontal split containers similar to i3-wm and sway-wm
 - Vim-like keybindings for navigation/swapping windows/moving windows in the containers
 - Drag and drop tiling
@@ -54,8 +54,8 @@ This fork includes significant improvements over the upstream version:
 
 ### Code Quality
 
-- Comprehensive unit test suite (1,300+ tests, ~88% line coverage) plus a Dockerized E2E suite
-- Refactored architecture with extracted modules (command.js, workspace.js, monitor.js)
+- Comprehensive unit test suite (1,400+ tests, ~88% line coverage) plus a Dockerized E2E suite
+- Refactored architecture with focused, extracted managers (see [architecture docs](docs/dev/architecture.md))
 - Riskier options stay behind clearly-marked experimental toggles
 
 ## Known Issues / Limitations
@@ -96,8 +96,8 @@ Full docs live in [`docs/`](docs/):
 
 ## Forge Override Paths
 
-- Window Overrides: `$HOME/.config/forge/config/windows.json`
-- Stylesheet Overrides: `$HOME/.config/forge/stylesheet/forge/stylesheet.css`
+- Window rules: `$HOME/.config/forge/config/windows.json` — see [window rules](docs/user/rules.md) and [portable config](docs/user/config.md)
+- Stylesheet: `$HOME/.config/forge/stylesheet/forge/stylesheet.css` — see [theming](docs/user/theming.md)
 
 ## GNOME Defaults
 
@@ -109,30 +109,7 @@ User is encouraged to bind the following:
 
 ## Local Development Setup
 
-- Install Node.js 20+
-- Install `gettext`
-- Run `npm install`
-- Commands:
-
-```bash
-# Compile and install to extension directory
-make dev
-
-# Or run below, and restart the shell manually
-make build && make debug && make install
-
-# X11 - build from source and restarts gnome-shell
-make test-x
-
-# Wayland - build from source and starts a nested wayland instance (no restart)
-make test
-
-# Run unit tests
-npm test
-
-# Formatting (husky pre-commit hooks enforce this)
-npm run format
-```
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for environment setup, build/test commands, and code style. Run `make help` for the full list of targets.
 
 ## Contributing
 

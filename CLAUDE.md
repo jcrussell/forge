@@ -4,46 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Forge is a GNOME Shell extension providing i3/sway-style tiling window management. It supports GNOME 40+ on both X11 and Wayland, featuring tree-based tiling with horizontal/vertical split containers, stacked/tabbed layouts, vim-like keybindings, drag-and-drop tiling, and multi-monitor support.
+Forge is a GNOME Shell extension providing i3/sway-style tiling window management. It supports GNOME 45+ on both X11 and Wayland, featuring tree-based tiling with horizontal/vertical split containers, stacked/tabbed layouts, vim-like keybindings, drag-and-drop tiling, and multi-monitor support.
 
 ## Build & Development Commands
 
-```bash
-# Install dependencies (Node.js 20+ and gettext required)
-npm install
+Run `make help` for the full target list; `npm install` first (needs Node.js 20+ and gettext).
 
-# Development build: compile, set debug mode, install to ~/.local/share/gnome-shell/extensions/
-make dev
-
-# Production build: compile, install, enable extension, restart shell
-make prod
-
-# Testing in nested Wayland session (no shell restart needed)
-make test
-
-# Testing on X11 (restarts gnome-shell)
-make test-x
-
-# Unit tests (mocked GNOME APIs via Vitest)
-npm test                    # Run all tests
-npm run test:watch          # Watch mode
-npm run test:coverage       # With coverage report
-
-# Code formatting
-npm run format              # Format code with Prettier
-npm run lint                # Check formatting
-
-# View extension logs
-make log
-```
-
-For Wayland nested testing, use `make test-open` to launch apps in the nested session.
+- **`make dev`** installs a debug build locally; **`make prod`** does a full install + enable + shell restart.
+- **`make test`** (nested Wayland, no restart) / **`make test-x`** (X11) for manual in-shell testing.
+- **`npm test`** runs the unit suite (mocked GNOME APIs); **`make unit-test-docker`** and **`make e2e-test`** are the canonical Docker environments.
+- **`npm run format`** / **`npm run lint`** — Prettier, enforced by the husky pre-commit hook.
 
 ## Architecture
 
 Forge models each workspace's windows as an i3/sway-style **tree** and reconciles it onto the screen. Entry points: `extension.js` (lifecycle) and `prefs.js` (GTK4/Adwaita preferences).
 
-Core modules (`lib/extension/`): **tree.js** (Node/Tree data model, node + layout types), **window.js** (WindowManager — signals, tiling, focus, grab, `renderTree`), **command.js** (CommandHandler — action dispatch), **workspace.js** / **monitor.js** (per-workspace/monitor node + signal managers), **keybindings.js** (vim-like shortcuts), **cheatsheet.js** (in-shell help overlay), **indicator.js** (quick settings), **utils.js**, **enum.js**. Shared (`lib/shared/`): **settings.js** (ConfigManager + `windows.json` overrides), **config-sync.js** (GSettings ⇄ portable JSON), **logger.js**, **theme.js** (+ `lib/css/`). GSettings schema: `schemas/org.gnome.shell.extensions.forge.gschema.xml`. Prefs UI (`lib/prefs/`) is GTK4/Adwaita, not unit-tested.
+The tiling logic lives in `lib/extension/` (tree model, window manager, command dispatch, focus/decoration, keybindings, monitors/workspaces); shared config/sync/theme code is in `lib/shared/`. The Prefs UI (`lib/prefs/`) is GTK4/Adwaita and not unit-tested.
 
 See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](docs/dev/architecture.md) (lifecycle, tree model, command dispatch, signal/cleanup discipline, config sources), [rendering.md](docs/dev/rendering.md) (render/placement pipeline, reload triggers, floating subsystem, theme engine), [compat.md](docs/dev/compat.md) (Mutter API drift + shim recipe).
 
@@ -78,7 +54,7 @@ See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](doc
 
 ## Branches
 
-- `main` - GNOME 40+ (current development)
+- `main` - GNOME 45+ (current development)
 - `legacy`/`gnome-3-36` - GNOME 3.36 support (feature-frozen)
 
 

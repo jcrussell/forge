@@ -52,10 +52,10 @@ Snap the focused window to a region without restructuring the tree (defaults use
 
 ## Float vs tile
 
-Any window can be pulled out of the tree to **float** (`Super+c`) or floated for its
-whole app class (`Super+Shift+c`). Some apps float automatically; you control this
-per-app with [window rules](rules.md). A floating window keeps its place in the tree
-and re-tiles when you toggle it back.
+Any window can be pulled out of the tree to **float**, or floated for its whole app
+class, via the [float toggles](keybindings.md#common-defaults). Some apps float
+automatically; you control this per-app with [window rules](rules.md). A floating
+window keeps its place in the tree and re-tiles when you toggle it back.
 
 ## Drag to tile
 

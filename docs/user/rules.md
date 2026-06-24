@@ -8,8 +8,8 @@ rules for common apps (JetBrains splashes, Conky, ddterm, GNOME setup dialogs, �
 
 - **Preferences → Windows** — "Add Floating Window": type the window class (and
   optionally a title); Forge saves the rule. This is the easy path.
-- **Toggle shortcuts** — `Super+c` floats just the focused window;
-  `Super+Shift+c` floats its whole app class. These write a rule for you.
+- **Toggle shortcuts** — the per-window and per-class float toggles (see
+  [keybindings](keybindings.md#common-defaults)) write a rule for you.
 
 You can also edit the file directly.
 

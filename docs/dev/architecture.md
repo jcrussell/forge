@@ -18,7 +18,7 @@ for Mutter API drift.
 
 - **`enable()`** (`extension.js`): loads the two GSettings schemas (main +
   `…forge.keybindings`); saves and overrides conflicting GNOME settings
-  (`SETTINGS_OVERRIDES`, `extension.js` — e.g. Mutter `edge-tiling`,
+  (`SETTINGS_OVERRIDES`, `lib/shared/gnome-overrides.js` — e.g. Mutter `edge-tiling`,
   `auto-maximize`, native maximize/tile keybindings; each original is restored on
   disable); then constructs, in order: `ConfigManager` → `ConfigSync` → theme →
   `WindowManager` → `Keybindings` → `Cheatsheet`; finally `extWm.enable()`.
@@ -56,6 +56,8 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
 | `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
+| `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
+| `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
 | `keybindings.js` `Keybindings` | Registers shell keybindings → `CommandHandler`; drag modifier mask. |
 | `workspace.js` `WorkspaceManager` | Workspace nodes + per-workspace signal lifecycle + renumbering. |
 | `monitor.js` `MonitorManager` | Monitor-per-workspace nodes; split orientation per monitor geometry. |
