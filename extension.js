@@ -227,11 +227,9 @@ export default class ForgeExtension extends Extension {
       this._addIndicator();
       this.keybindings?.enable();
     } else if (session.currentMode === "unlock-dialog") {
-      // To the reviewer and maintainer: this extension needs to persist the window data structure in memory so it has to keep running on lock screen.
-      // This is previous feature but was removed during GNOME 45 update due to the session-mode rule review.
-      // The argument is that users will keep re-arranging windows when it times out or locks up.
-      // Intent to serialize/deserialize to disk but that will take a longer time or probably a longer argument during review.
-      // To keep following, added to only disable keybindings() and re-enable them during user session.
+      // Keep running on lock screen so the window tree persists in memory; only
+      // disable keybindings here (re-enabled on user session). Shutting the whole
+      // extension down on lock was rejected under GNOME 45 session-mode review.
       // https://gjs.guide/extensions/review-guidelines/review-guidelines.html#session-modes
       Logger.info("lock-screen on session change");
       this.keybindings?.disable();

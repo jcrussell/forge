@@ -16,7 +16,6 @@
  *
  */
 
-// Gnome imports
 import Gdk from "gi://Gdk";
 import Gtk from "gi://Gtk";
 
