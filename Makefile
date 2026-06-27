@@ -76,7 +76,10 @@ debug:
 	#sed -i 's|1.*-alpha|4999|' temp/metadata.json
 
 # Regenerate the translation template (po/forge.pot) from source. Run this
-# manually after adding/changing _("...") strings, then commit the .pot.
+# manually after adding/changing _("...") strings or gschema <summary>/<description>
+# text, then commit the .pot. xgettext extracts the gschema XML via its built-in
+# GSettings rules, so schema summaries (the cheatsheet's description source) are
+# translatable through the same catalog.
 # NOTE: this is intentionally NOT part of `build` — builds only compile catalogs
 # (see compilemsgs), so a normal build never rewrites tracked po/ files.
 # Phony (always regenerates): an mtime-gated file target would silently skip
@@ -91,7 +94,8 @@ update-pot:
 	mkdir -p po
 	xgettext --from-code=UTF-8 --add-location=file --sort-by-file \
 	  --package-name "Forge" --output=po/forge.pot \
-	  $$(find lib -name '*.js' | sort) ./prefs.js ./extension.js
+	  $$(find lib -name '*.js' | sort) ./prefs.js ./extension.js \
+	  schemas/org.gnome.shell.extensions.forge.gschema.xml
 	sed -i '/^"POT-Creation-Date:/d' po/forge.pot
 else
 update-pot:

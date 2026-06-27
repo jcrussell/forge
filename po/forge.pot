@@ -16,6 +16,74 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: lib/extension/cheatsheet.js
+msgid "Focus"
+msgstr ""
+
+#: lib/extension/cheatsheet.js lib/prefs/settings.js
+msgid "Swap"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Move"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Resize"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Snap"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Window Toggle"
+msgstr ""
+
+#: lib/extension/cheatsheet.js lib/prefs/appearance.js
+msgid "Gaps"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Window Reset"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Window Size"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Pointer"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Split"
+msgstr ""
+
+#: lib/extension/cheatsheet.js lib/prefs/settings.js
+msgid "Stacked"
+msgstr ""
+
+#: lib/extension/cheatsheet.js lib/prefs/settings.js
+msgid "Tabbed"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Workspace"
+msgstr ""
+
+#: lib/extension/cheatsheet.js lib/prefs/appearance.js
+msgid "Appearance"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Preferences"
+msgstr ""
+
+#: lib/extension/cheatsheet.js
+msgid "Other"
+msgstr ""
+
 #: lib/extension/indicator.js lib/prefs/settings.js
 msgid "Tiling"
 msgstr ""
@@ -62,14 +130,6 @@ msgstr ""
 
 #: lib/prefs/appearance.js
 msgid "Split direction hint"
-msgstr ""
-
-#: lib/prefs/appearance.js
-msgid "Appearance"
-msgstr ""
-
-#: lib/prefs/appearance.js
-msgid "Gaps"
 msgstr ""
 
 #: lib/prefs/appearance.js
@@ -176,7 +236,7 @@ msgstr ""
 msgid "Window split hint border"
 msgstr ""
 
-#: lib/prefs/appearance.js
+#: lib/prefs/appearance.js schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Show split direction border on focused window"
 msgstr ""
 
@@ -597,7 +657,7 @@ msgstr ""
 msgid "Auto exit tabbed tiling"
 msgstr ""
 
-#: lib/prefs/settings.js
+#: lib/prefs/settings.js schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Exit tabbed tiling mode when only a single tab remains"
 msgstr ""
 
@@ -623,14 +683,6 @@ msgid "Tiled (default)"
 msgstr ""
 
 #: lib/prefs/settings.js
-msgid "Tabbed"
-msgstr ""
-
-#: lib/prefs/settings.js
-msgid "Stacked"
-msgstr ""
-
-#: lib/prefs/settings.js
 msgid "New window placement"
 msgstr ""
 
@@ -652,10 +704,6 @@ msgstr ""
 
 #: lib/prefs/settings.js
 msgid "What to do when dragging one window on top of another"
-msgstr ""
-
-#: lib/prefs/settings.js
-msgid "Swap"
 msgstr ""
 
 #: lib/prefs/settings.js
@@ -736,4 +784,433 @@ msgstr ""
 
 #: lib/prefs/widgets.js
 msgid "Invalid input"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Show window border on focused window"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The focused border's current thickness"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The focused border's current color"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The size of the gap between windows in the workarea"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The window resize increment/decrement in pixels"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The size increment of the gaps. size-increment * gap-size"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Extra margin at top of screen (for auto-hide panels)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Extra margin at bottom of screen (for auto-hide docks)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Extra margin at left of screen"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Extra margin at right of screen"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Hide gap when single window toggle"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Hide focus border when single window toggle"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Maximize window when it is the only one on workspace"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Layout modes: stacking, tiling"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Default layout for new containers: tiled, tabbed, stacked"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Tiling mode on/off"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Forge quick settings toggle"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Show tray icon in top bar"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Skips tiling on the provided workspace indices"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Skips tiling on the provided monitor indices"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Stacked tiling mode on/off"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Tabbed tiling mode on/off"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Provide log4j-like logging levels: 0 - OFF 1 - FATAL 2 - ERROR 3 - WARN 4 - "
+"INFO 5 - DEBUG 6 - TRACE 7 - ALL"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Enable logging"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Timestamp when css is last updated. Also triggers reload of St"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"The default center layout when dragging/dropping a window. The values are "
+"`tabbed` and `stacked`."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move the pointer when focusing or swapping via kbd"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus switches to the window under the pointer."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Floating windows toggle always-on-top"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Re-orient a split container by its aspect ratio when a child window closes"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"When enabled, closing a window in a split container flips its orientation "
+"(horizontal/vertical) to match the container's current shape. This overrides "
+"a manually chosen split-vertical/split-horizontal orientation, so it is off "
+"by default."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Enable auto split or quarter-tiling based based on smaller side"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Disable GNOME's built-in edge/half-tiling while Forge is enabled"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Initial monitor for a new window: 'pointer' (active/pointer monitor) or "
+"'window-actual' (the window's own monitor)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Whether to show preview hint DND"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Whether to show the tab decoration or not"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Timestamp to trigger window overrides reload"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The border radius of focus borders in pixels"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "The margin between tabs in tabbed mode (pixels)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Height of each stacked/tabbed title bar (pixels). Minimum 1; 0 would collide "
+"with the hidden-decoration path."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Position of the stacked/tabbed title bar within its container (top or "
+"bottom)."
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Automatically unmaximize windows when a new window is tiled alongside"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Only enable hover-to-focus when tiling mode is active"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Application to launch with hotkey"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Timestamp of last config file import (Unix epoch in seconds)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Timestamp of last config file export (Unix epoch in seconds)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Whether to automatically sync changes to config files"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle focus border"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Increase gap size"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Decrease gap size"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle split direction"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Split horizontal"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Split vertical"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle stacked layout"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle tabbed layout"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle tab decoration"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap window left"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap window down"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap window up"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap window right"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move window left"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move window down"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move window up"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move window right"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus window left"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus window down"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus window up"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus window right"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle float"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle always float"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle workspace tiling"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Open preferences"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle tiling mode"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid ""
+"Mod mask to allow window tiling via drag-drop. None means it will tile "
+"immediately. Options are Super, Ctrl, Shift, Alt, and None"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap with last active"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus next window (cyclic)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Focus previous window (cyclic)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap next window (cyclic)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Swap previous window (cyclic)"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Snap 1/3 right"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Snap 2/3 right"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Snap 1/3 left"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Snap 2/3 left"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Snap center"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Grow left edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Shrink left edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Grow bottom edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Shrink bottom edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Grow top edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Shrink top edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Grow right edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Shrink right edge"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Reset window sizes"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Golden ratio resize"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Reload configuration"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Move pointer to focus"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle monocle mode"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Expand window"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Shrink window"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Launch application"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Toggle this cheatsheet"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Lock screen"
+msgstr ""
+
+#: schemas/org.gnome.shell.extensions.forge.gschema.xml
+msgid "Export configuration"
 msgstr ""

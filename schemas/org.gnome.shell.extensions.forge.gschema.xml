@@ -276,32 +276,32 @@
         <!-- Keybinding Settings -->
         <key type="as" name="focus-border-toggle">
             <default><![CDATA[['<Super>x']]]></default>
-            <summary>Toggle the focused window's border</summary>
+            <summary>Toggle focus border</summary>
         </key>
 
         <key type="as" name="window-gap-size-increase">
             <default><![CDATA[['<Ctrl><Super>plus']]]></default>
-            <summary>Increase the size of gaps between windows/cons</summary>
+            <summary>Increase gap size</summary>
         </key>
 
         <key type="as" name="window-gap-size-decrease">
             <default><![CDATA[['<Ctrl><Super>minus']]]></default>
-            <summary>Decrease the size of gaps between windows/cons</summary>
+            <summary>Decrease gap size</summary>
         </key>
 
         <key type="as" name="con-split-layout-toggle">
             <default><![CDATA[['<Super>g']]]></default>
-            <summary>Toggle split layout: horizontal or vertical</summary>
+            <summary>Toggle split direction</summary>
         </key>
 
         <key type="as" name="con-split-horizontal">
             <default><![CDATA[['<Super>z']]]></default>
-            <summary>Split a container horizontally</summary>
+            <summary>Split horizontal</summary>
         </key>
 
         <key type="as" name="con-split-vertical">
             <default><![CDATA[['<Super>v']]]></default>
-            <summary>Split a container vertically</summary>
+            <summary>Split vertical</summary>
         </key>
 
         <key type="as" name="con-stacked-layout-toggle">
@@ -316,7 +316,7 @@
 
         <key type="as" name="con-tabbed-showtab-decoration-toggle">
             <default><![CDATA[['<Ctrl><Alt>y']]]></default>
-            <summary>Toggle showing the tab decoration layout</summary>
+            <summary>Toggle tab decoration</summary>
         </key>
 
         <key type="as" name="window-swap-left">
@@ -361,47 +361,48 @@
 
         <key type="as" name="window-focus-left">
             <default><![CDATA[['<Super>h', '<Super>Left']]]></default>
-            <summary>Move window left</summary>
+            <summary>Focus window left</summary>
         </key>
 
         <key type="as" name="window-focus-down">
             <default><![CDATA[['<Super>j', '<Super>Down']]]></default>
-            <summary>Move window down</summary>
+            <summary>Focus window down</summary>
         </key>
 
         <key type="as" name="window-focus-up">
             <default><![CDATA[['<Super>k', '<Super>Up']]]></default>
-            <summary>Move window up</summary>
+            <summary>Focus window up</summary>
         </key>
 
         <key type="as" name="window-focus-right">
             <default><![CDATA[['<Super>l', '<Super>Right']]]></default>
-            <summary>Move window right</summary>
+            <summary>Focus window right</summary>
         </key>
 
         <key type="as" name="window-toggle-float">
           <default><![CDATA[['<Super>c']]]></default>
-            <summary>Toggle window float</summary>
+            <summary>Toggle float</summary>
         </key>
 
         <key type="as" name="window-toggle-always-float">
             <default><![CDATA[['<Shift><Super>c']]]></default>
+            <summary>Toggle always float</summary>
 
         </key>
 
         <key type="as" name="workspace-active-tile-toggle">
             <default><![CDATA[['<Shift><Super>w']]]></default>
-            <summary>Toggle active workspace tiling</summary>
+            <summary>Toggle workspace tiling</summary>
         </key>
 
         <key type="as" name="prefs-open">
             <default><![CDATA[['<Super>Period']]]></default>
-            <summary>Open the extension's preferences</summary>
+            <summary>Open preferences</summary>
         </key>
 
         <key type="as" name="prefs-tiling-toggle">
             <default><![CDATA[['<Super>w']]]></default>
-                <summary>Toggle tiling mode on/off</summary>
+                <summary>Toggle tiling mode</summary>
         </key>
 
         <key type="s" name="mod-mask-mouse-tile">
@@ -414,114 +415,127 @@
 
         <key type="as" name="window-swap-last-active">
             <default><![CDATA[['<Super>Return']]]></default>
-            <summary>Swap the last active window with the current one</summary>
+            <summary>Swap with last active</summary>
         </key>
 
         <key type="as" name="window-focus-next">
             <default><![CDATA[[]]]></default>
-            <summary>Focus the next tiled sibling window (cyclic)</summary>
+            <summary>Focus next window (cyclic)</summary>
         </key>
 
         <key type="as" name="window-focus-prev">
             <default><![CDATA[[]]]></default>
-            <summary>Focus the previous tiled sibling window (cyclic)</summary>
+            <summary>Focus previous window (cyclic)</summary>
         </key>
 
         <key type="as" name="window-swap-next">
             <default><![CDATA[[]]]></default>
-            <summary>Swap with the next tiled sibling window (cyclic)</summary>
+            <summary>Swap next window (cyclic)</summary>
         </key>
 
         <key type="as" name="window-swap-prev">
             <default><![CDATA[[]]]></default>
-            <summary>Swap with the previous tiled sibling window (cyclic)</summary>
+            <summary>Swap previous window (cyclic)</summary>
         </key>
 
         <key type="as" name="window-snap-one-third-right">
           <default><![CDATA[['<Ctrl><Alt>g']]]></default>
+            <summary>Snap 1/3 right</summary>
         </key>
 
         <key type="as" name="window-snap-two-third-right">
           <default><![CDATA[['<Ctrl><Alt>t']]]></default>
+            <summary>Snap 2/3 right</summary>
         </key>
 
         <key type="as" name="window-snap-one-third-left">
           <default><![CDATA[['<Ctrl><Alt>d']]]></default>
+            <summary>Snap 1/3 left</summary>
         </key>
 
         <key type="as" name="window-snap-two-third-left">
           <default><![CDATA[['<Ctrl><Alt>e']]]></default>
+            <summary>Snap 2/3 left</summary>
         </key>
 
         <key type="as" name="window-snap-center">
           <default><![CDATA[['<Ctrl><Alt>c']]]></default>
+            <summary>Snap center</summary>
         </key>
 
         <key type="as" name="window-resize-left-increase">
           <default><![CDATA[['<Ctrl><Super>y']]]></default>
+            <summary>Grow left edge</summary>
         </key>
 
         <key type="as" name="window-resize-left-decrease">
             <default><![CDATA[['<Ctrl><Shift><Super>o']]]></default>
+            <summary>Shrink left edge</summary>
         </key>
 
         <key type="as" name="window-resize-bottom-increase">
           <default><![CDATA[['<Ctrl><Super>u']]]></default>
+            <summary>Grow bottom edge</summary>
         </key>
 
         <key type="as" name="window-resize-bottom-decrease">
             <default><![CDATA[['<Ctrl><Shift><Super>i']]]></default>
+            <summary>Shrink bottom edge</summary>
         </key>
 
         <key type="as" name="window-resize-top-increase">
           <default><![CDATA[['<Ctrl><Super>i']]]></default>
+            <summary>Grow top edge</summary>
         </key>
 
         <key type="as" name="window-resize-top-decrease">
             <default><![CDATA[['<Ctrl><Shift><Super>u']]]></default>
+            <summary>Shrink top edge</summary>
         </key>
 
         <key type="as" name="window-resize-right-increase">
           <default><![CDATA[['<Ctrl><Super>o']]]></default>
+            <summary>Grow right edge</summary>
         </key>
 
         <key type="as" name="window-resize-right-decrease">
             <default><![CDATA[['<Ctrl><Shift><Super>y']]]></default>
+            <summary>Shrink right edge</summary>
         </key>
 
         <key type="as" name="window-reset-sizes">
             <default><![CDATA[['<Super>equal']]]></default>
-            <summary>Reset window sizes to equal distribution</summary>
+            <summary>Reset window sizes</summary>
         </key>
 
         <key type="as" name="window-golden-ratio">
             <default><![CDATA[[]]]></default>
-            <summary>Resize focused window to the golden ratio</summary>
+            <summary>Golden ratio resize</summary>
         </key>
 
         <key type="as" name="prefs-config-reload">
             <default><![CDATA[['<Shift><Super>r']]]></default>
-            <summary>Reload configuration from files</summary>
+            <summary>Reload configuration</summary>
         </key>
 
         <key type="as" name="window-pointer-to-focus">
             <default><![CDATA[[]]]></default>
-            <summary>Move pointer to the focused window</summary>
+            <summary>Move pointer to focus</summary>
         </key>
 
         <key type="as" name="workspace-monocle-toggle">
             <default><![CDATA[[]]]></default>
-            <summary>Toggle monocle mode (tab all windows on workspace)</summary>
+            <summary>Toggle monocle mode</summary>
         </key>
 
         <key type="as" name="window-expand">
             <default><![CDATA[['<Super>bracketright']]]></default>
-            <summary>Expand focused window in all directions</summary>
+            <summary>Expand window</summary>
         </key>
 
         <key type="as" name="window-shrink">
             <default><![CDATA[['<Super>bracketleft']]]></default>
-            <summary>Shrink focused window in all directions</summary>
+            <summary>Shrink window</summary>
         </key>
 
         <key type="as" name="prefs-app-launch">
@@ -531,17 +545,17 @@
 
         <key type="as" name="prefs-cheatsheet-toggle">
             <default><![CDATA[['<Shift><Super>slash']]]></default>
-            <summary>Toggle keybindings cheatsheet</summary>
+            <summary>Toggle this cheatsheet</summary>
         </key>
 
         <key type="as" name="prefs-lock-screen">
             <default><![CDATA[['<Super>q']]]></default>
-            <summary>Lock the screen</summary>
+            <summary>Lock screen</summary>
         </key>
 
         <key type="as" name="prefs-config-export">
             <default><![CDATA[[]]]></default>
-            <summary>Export current settings to portable config files</summary>
+            <summary>Export configuration</summary>
         </key>
     </schema>
 </schemalist>

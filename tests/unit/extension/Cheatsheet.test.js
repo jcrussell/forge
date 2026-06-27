@@ -49,6 +49,11 @@ describe("Cheatsheet", () => {
       kbdSettings: {
         list_keys: vi.fn(() => []),
         get_strv: vi.fn(() => []),
+        // Descriptions are read from the keybindings schema <summary>; mirror the
+        // real Gio.Settings.settings_schema -> get_key(name).get_summary() chain.
+        settings_schema: {
+          get_key: vi.fn((name) => ({ get_summary: () => `summary:${name}` })),
+        },
       },
     };
 
@@ -154,6 +159,37 @@ describe("Cheatsheet", () => {
       // Nothing cheatsheet-owned may remain parented in the uiGroup.
       expect(uiGroup.children).toHaveLength(0);
       expect(cheatsheet._backdrop).toBeNull();
+    });
+  });
+
+  describe("keybinding grouping (schema-sourced descriptions)", () => {
+    it("groups by prefix and takes descriptions from the schema summary", () => {
+      mockExt.kbdSettings.list_keys = vi.fn(() => [
+        "window-focus-left",
+        "window-snap-center",
+        "totally-made-up-key",
+      ]);
+      mockExt.kbdSettings.get_strv = vi.fn(() => ["<Super>x"]);
+      const summaries = {
+        "window-focus-left": "Focus window left",
+        "window-snap-center": "Snap center",
+        "totally-made-up-key": "", // no summary -> fall back to key-derived text
+      };
+      mockExt.kbdSettings.settings_schema.get_key = vi.fn((name) => ({
+        get_summary: () => summaries[name],
+      }));
+
+      const groups = new Map(cheatsheet._getGroupedKeybindings());
+
+      // Prefix "window-focus" -> "Focus" category; description from schema summary.
+      expect(groups.get("Focus")).toEqual([
+        { shortcut: "Super+x", description: "Focus window left" },
+      ]);
+      expect(groups.get("Snap")).toEqual([{ shortcut: "Super+x", description: "Snap center" }]);
+      // Unknown prefix -> "Other"; empty summary -> _keyToDescription fallback.
+      expect(groups.get("Other")).toEqual([
+        { shortcut: "Super+x", description: "Totally Made Up Key" },
+      ]);
     });
   });
 
