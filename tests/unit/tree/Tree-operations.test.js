@@ -347,6 +347,84 @@ describe("Tree Operations", () => {
       // Should not have swapped
       expect(node1.parentNode).toBe(parentBefore);
     });
+
+    // forge-u7q6: destructive-op guard branches.
+    it("is a structural no-op when swapping a node with itself", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      const childrenBefore = [...monitor.childNodes];
+      const indexBefore = node1.index;
+
+      // Same node as both args: the swap writes node1 back into its own slot,
+      // so the parent's child array must keep its identity/order (no duplicated
+      // or dropped reference) and node1 keeps its index.
+      ctx.tree.swapPairs(node1, node1, false);
+
+      expect(node1.index).toBe(indexBefore);
+      expect(node1.parentNode).toBe(monitor);
+      expect(monitor.childNodes).toEqual(childrenBefore);
+    });
+
+    it("skips the swap when the fromNode window is dead (isWindowAlive guard)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      // A finalized MetaWindow throws on any method call; isWindowAlive probes
+      // get_id(), so a throwing get_id() marks node1's window as dead.
+      window1.get_id = () => {
+        throw new Error("Object Meta.Window has been already deallocated");
+      };
+
+      const parent1Before = node1.parentNode;
+      const parent2Before = node2.parentNode;
+      ctx.extWm.move.mockClear();
+
+      ctx.tree.swapPairs(node1, node2, false);
+
+      // Guard returns before any structural change or move().
+      expect(node1.parentNode).toBe(parent1Before);
+      expect(node2.parentNode).toBe(parent2Before);
+      expect(ctx.extWm.move).not.toHaveBeenCalled();
+    });
+
+    it("skips the swap when the toNode window is dead (isWindowAlive guard)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const window1 = createMockWindow();
+      const window2 = createMockWindow();
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window1);
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window2);
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+
+      window2.get_id = () => {
+        throw new Error("Object Meta.Window has been already deallocated");
+      };
+
+      const parent1Before = node1.parentNode;
+      const parent2Before = node2.parentNode;
+      ctx.extWm.move.mockClear();
+
+      ctx.tree.swapPairs(node1, node2, false);
+
+      expect(node1.parentNode).toBe(parent1Before);
+      expect(node2.parentNode).toBe(parent2Before);
+      expect(ctx.extWm.move).not.toHaveBeenCalled();
+    });
   });
 
   describe("swap", () => {

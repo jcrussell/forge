@@ -459,4 +459,62 @@ describe("WindowManager - Resize Operations", () => {
       });
     });
   });
+
+  describe("resize() - Guard Branches (forge-6f5o)", () => {
+    it("no-ops when there is no focused window (null-focus early return)", () => {
+      // focusMetaWindow is null, so resize() must bail before touching move()
+      // or the grab machinery (window.js ~698).
+      ctx.display.get_focus_window.mockReturnValue(null);
+
+      const moveSpy = vi.spyOn(wm(), "move");
+      const beginSpy = vi.spyOn(wm(), "_handleGrabOpBegin");
+
+      wm().resize(GrabOp.RESIZING_E, 50);
+
+      expect(moveSpy).not.toHaveBeenCalled();
+      expect(beginSpy).not.toHaveBeenCalled();
+      expect(wm()._manualResizeEndId).toBeFalsy();
+    });
+
+    it("flushes a pending grab-end for a DIFFERENT window before resizing (forge-h6z9)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      // Bypass monitor/workspace plumbing not under test here.
+      wm().trackCurrentMonWs = () => {};
+
+      const winA = createMockWindow({
+        allows_resize: true,
+        rect: new Rectangle({ x: 0, y: 0, width: 300, height: 600 }),
+        workspace: ctx.workspaces[0],
+      });
+      const winB = createMockWindow({
+        allows_resize: true,
+        rect: new Rectangle({ x: 300, y: 0, width: 300, height: 600 }),
+        workspace: ctx.workspaces[0],
+      });
+      const nodeA = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winA);
+      const nodeB = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, winB);
+      nodeA.mode = WINDOW_MODES.TILE;
+      nodeB.mode = WINDOW_MODES.TILE;
+
+      // Arm the debounced grab-end for window A.
+      ctx.display.get_focus_window.mockReturnValue(winA);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+      expect(nodeA.grabMode).toBeTruthy();
+      expect(wm()._manualResizeEndWindow).toBe(winA);
+
+      const cleanupSpy = vi.spyOn(wm(), "_grabCleanup");
+
+      // Focus drifts to B; a resize within the debounce must flush A's grab first
+      // (window.js ~706-714) so A's node isn't stranded with grabMode/initRect.
+      ctx.display.get_focus_window.mockReturnValue(winB);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+
+      expect(cleanupSpy).toHaveBeenCalledWith(nodeA);
+      expect(nodeA.grabMode).toBeNull();
+      expect(nodeA.initRect).toBeNull();
+      // The pending end now belongs to B.
+      expect(wm()._manualResizeEndWindow).toBe(winB);
+    });
+  });
 });

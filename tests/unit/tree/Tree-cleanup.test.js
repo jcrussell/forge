@@ -65,6 +65,32 @@ describe("Tree Cleanup and Container Management", () => {
     });
   });
 
+  // forge-u7q6: removeNode's parent guard (!node || !node.parentNode) is the
+  // destructive-op short-circuit. A node with no parent can't be spliced out of
+  // one, so removeNode returns false instead of dereferencing a null parentNode
+  // mid-cleanup. The ROOT is the structural, non-removable case (it has no
+  // parent); an already-detached node and null exercise the same branch.
+  describe("removeNode - Detached / Structural Guard", () => {
+    it("returns false for the root node (no parent to remove from)", () => {
+      expect(ctx.tree.nodeType).toBe(NODE_TYPES.ROOT);
+      expect(ctx.tree.removeNode(ctx.tree)).toBe(false);
+    });
+
+    it("returns false for an already-detached node", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+
+      // First removal detaches it (removeChild nulls parentNode)...
+      expect(ctx.tree.removeNode(node)).toBe(true);
+      // ...a second removeNode on the same node hits the detached guard.
+      expect(ctx.tree.removeNode(node)).toBe(false);
+    });
+
+    it("returns false for null", () => {
+      expect(ctx.tree.removeNode(null)).toBe(false);
+    });
+  });
+
   describe("removeNode - Single Child Container Cleanup", () => {
     it("should remove container when last child is removed", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
