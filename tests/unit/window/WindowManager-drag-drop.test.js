@@ -63,6 +63,13 @@ describe("WindowManager - Drag and Drop Tiling", () => {
 
       // After drop, the parent should be HSPLIT
       expect(nodeWindow2.parentNode.layout).toBe(LAYOUT_TYPES.HSPLIT);
+      // A LEFT drop also dictates order: the dragged window lands BEFORE the
+      // target. Without this a RIGHT drop (same HSPLIT result) would pass too,
+      // mirroring the dedicated "...after target when dropping right" test.
+      const leftChildren = nodeWindow2.parentNode.childNodes.filter(
+        (c) => c.nodeType === NODE_TYPES.WINDOW
+      );
+      expect(leftChildren.indexOf(nodeWindow2)).toBeLessThan(leftChildren.indexOf(nodeWindow1));
     });
 
     it("should create horizontal split container when dropping left in vertical layout", () => {

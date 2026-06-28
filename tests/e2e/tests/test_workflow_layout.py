@@ -14,7 +14,7 @@ disambiguate two identical classes).
 """
 
 from framework.constants import Tolerance
-from framework.wait import wait_for_layout, wait_for_stable, wait_for_window_count
+from framework.wait import wait_for, wait_for_layout, wait_for_stable, wait_for_window_count
 from framework.workflow import invoke_resize, step
 
 
@@ -85,8 +85,32 @@ class TestWorkflowLayout:
             )
             window_helper.assert_windows_fill_workspace()
 
-        with step(shell_proxy, "swap the panes back and forth -> count stays 2"):
-            input_sim.swap_left()
+        with step(shell_proxy, "swap focused pane across and back -> it returns to its column"):
+            # Pin focus to the leftmost pane (edge focus is stay-not-wrap), then
+            # swap it right and back. The old assert checked only count, so a Swap
+            # that silently no-oped still passed; track that the focused window
+            # actually CHANGES column and returns. isFocused is the identity anchor
+            # because both panes share a wmClass (forge-gwo: same reason the focus
+            # steps avoid wmClass-truthiness). Swap keeps focus on the moved window.
+            def focused_col():
+                cols = window_helper.get_windows_sorted_by_position("x")
+                for i, w in enumerate(cols):
+                    if w.get("isFocused"):
+                        return i
+                return -1
+
+            input_sim.focus_left()
+            wait_for(focused_col, predicate=lambda i: i == 0, message="focus did not settle on left pane")
             input_sim.swap_right()
-            wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+            wait_for(
+                focused_col,
+                predicate=lambda i: i == 1,
+                message="swap_right did not move the focused pane to the right column",
+            )
+            input_sim.swap_left()
+            wait_for(
+                focused_col,
+                predicate=lambda i: i == 0,
+                message="swap_left did not return the focused pane to the left column",
+            )
             assert len(shell_proxy.get_windows()) == 2, "swap must preserve window count"

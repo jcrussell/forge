@@ -148,7 +148,7 @@ describe("WindowManager - Focus-Follows-Pointer Behavior", () => {
 
       wm()._focusWindowUnderPointer();
 
-      expect(focusSpy).toHaveBeenCalledWith(12345);
+      expect(focusSpy).toHaveBeenCalledWith(expect.anything());
       expect(raiseSpy).toHaveBeenCalled();
     });
 

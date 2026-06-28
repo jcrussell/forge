@@ -96,8 +96,10 @@ describe("Tree Operations", () => {
 
       const next = ctx.tree.next(node, MotionDirection.RIGHT);
 
-      // Should return null or the parent, depending on tree structure
-      expect(next).toBeDefined();
+      // A lone window at the end of an HSPLIT has no rightward neighbor; next()
+      // returns the -1 end-of-list sentinel (toBeDefined() also passed for null
+      // or any node, so it could never fail — assert the real contract).
+      expect(next).toBe(-1);
     });
 
     it("should navigate across different orientations", () => {

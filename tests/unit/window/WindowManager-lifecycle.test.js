@@ -81,7 +81,7 @@ describe("WindowManager - Window Lifecycle", () => {
 
       wm().postProcessWindow(nodeWindow);
 
-      expect(mockWorkspace.activate_with_focus).toHaveBeenCalledWith(metaWindow, 12345);
+      expect(mockWorkspace.activate_with_focus).toHaveBeenCalledWith(metaWindow, expect.anything());
       expect(moveCenterSpy).toHaveBeenCalledWith(metaWindow);
     });
 

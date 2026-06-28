@@ -608,6 +608,13 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
 
       // Should call split to detach from stacked
       expect(splitSpy).toHaveBeenCalled();
+      // A LEFT drop prepends: the dragged window is detached into a new CON
+      // that lands BEFORE target in the monitor (split-called alone passed for
+      // an append too — assert the ordering the test name promises).
+      const leftMonitor = target.parentNode;
+      expect(leftMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
+        leftMonitor.childNodes.indexOf(target)
+      );
     });
 
     it("should append window when dropping RIGHT on stacked monitor", () => {
@@ -640,6 +647,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       expect(splitSpy).toHaveBeenCalled();
+      // A RIGHT drop appends: the detached dragged CON lands AFTER target.
+      const rightMonitor = target.parentNode;
+      expect(rightMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
+        rightMonitor.childNodes.indexOf(target)
+      );
     });
 
     it("should prepend window when dropping TOP on tabbed monitor", () => {
@@ -672,6 +684,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       expect(splitSpy).toHaveBeenCalled();
+      // A TOP drop prepends: the detached dragged CON lands BEFORE target.
+      const topMonitor = target.parentNode;
+      expect(topMonitor.childNodes.indexOf(dragged.parentNode)).toBeLessThan(
+        topMonitor.childNodes.indexOf(target)
+      );
     });
 
     it("should append window when dropping BOTTOM on tabbed monitor", () => {
@@ -704,6 +721,11 @@ describe("WindowManager - moveWindowToPointer Comprehensive", () => {
       wm().moveWindowToPointer(dragged, false);
 
       expect(splitSpy).toHaveBeenCalled();
+      // A BOTTOM drop appends: the detached dragged CON lands AFTER target.
+      const bottomMonitor = target.parentNode;
+      expect(bottomMonitor.childNodes.indexOf(dragged.parentNode)).toBeGreaterThan(
+        bottomMonitor.childNodes.indexOf(target)
+      );
     });
   });
 

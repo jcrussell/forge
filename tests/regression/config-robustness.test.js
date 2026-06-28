@@ -115,10 +115,13 @@ describe("Config robustness: corrupted windows.json", () => {
       configurable: true,
     });
 
-    // BOM may cause JSON.parse to fail depending on implementation
+    // BOM may make JSON.parse throw; #515 guarantees windowProps still yields a
+    // usable shape either way. Asserting only "null or object" could never fail
+    // (the getter always returns an object) — pin the real contract: an overrides
+    // array. Whether the BOM is stripped-and-parsed or falls back, overrides is [].
     const props = configManager.windowProps;
-    // Should not throw - either parses or returns null
-    expect(props === null || typeof props === "object").toBe(true);
+    expect(Array.isArray(props.overrides)).toBe(true);
+    expect(props.overrides).toEqual([]);
   });
 });
 

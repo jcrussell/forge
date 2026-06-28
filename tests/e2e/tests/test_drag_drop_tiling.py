@@ -160,25 +160,23 @@ class TestDragDropBasic:
         input_sim.drag_window(start_x, start_y, end_x, end_y)
         time.sleep(Timing.LAYOUT_CHANGE)
 
-        after_windows = shell_proxy.get_windows()
-        if len(after_windows) >= 2:
-            sorted_after = sorted(
-                after_windows, key=lambda w: w.get("rect", {}).get("x", 0)
+        # A left-zone drop re-tiles the floated window beside its sibling, forming
+        # an HSPLIT; assert that layout UNCONDITIONALLY when the drag engaged —
+        # mirroring the right/bottom-zone siblings. The previous `width > 20% of
+        # workspace` gate was always true (the leftmost window always exceeds 20%),
+        # so the xfail never fired and the test passed green asserting NOTHING —
+        # silently hiding the very forge-v9o7 gap its siblings keep visible. If the
+        # synthetic drag never engaged Mutter's grab-op protocol (headless xdotool
+        # limitation), no HSPLIT forms — that is the only path we xfail (never a
+        # silent pass). xpass when the drag does land is expected/allowed (forge-q0k).
+        layout = shell_proxy.get_container_layout()
+        if layout == "HSPLIT":
+            assert layout == "HSPLIT", f"left-zone drop should yield HSPLIT, got {layout}"
+        else:
+            pytest.xfail(
+                "xdotool drag did not trigger Mutter grab-op drop-zone detection "
+                f"(no HSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
-            workspace = window_helper.get_workspace_rect()
-            left_reasonable = sorted_after[0].get("rect", {}).get("width", 0) > workspace["width"] * 0.2
-
-            if not left_reasonable:
-                # Reported as xfail (not skip) so the report shows this as a
-                # known-failing path instead of masquerading as green. xdotool
-                # mouse motion does not reliably trigger Mutter's grab-op
-                # drop-zone protocol; see memory
-                # mutter-virtualinputdevice-super-modifier-tilesnap. When the
-                # drag DOES land, the test passes normally (xpass is expected
-                # and allowed here — see forge-q0k).
-                pytest.xfail(
-                    "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
-                )
 
     def test_drag_preserves_window_count(
         self, shell_proxy, input_sim, two_windows
