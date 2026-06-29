@@ -556,6 +556,12 @@
         // wrapping the same Meta.Window.
         const visited = new Set();
         const seenWinIds = new Set();
+        // Depth/size metrics (forge-cnrc): the fuzzer was found to explore wide-but-FLAT trees;
+        // these expose the ACHIEVED shape so a run can show whether it actually builds depth.
+        let maxDepth = 0;
+        let nodes = 0;
+        let cons = 0;
+        let maxSplitFanout = 0; // max children under any HSPLIT/VSPLIT
         const stack = [{ node: r, parent: null, depth: 0, path: "root" }];
         while (stack.length > 0) {
           const item = stack.pop();
@@ -568,6 +574,13 @@
             continue;
           }
           visited.add(n);
+          nodes++;
+          if (item.depth > maxDepth) maxDepth = item.depth;
+          if (n.nodeType === "CON") cons++;
+          if (n.layout === "HSPLIT" || n.layout === "VSPLIT") {
+            const fan = (n.childNodes || []).length;
+            if (fan > maxSplitFanout) maxSplitFanout = fan;
+          }
           // m4: generous backstop against a pathologically deep (but acyclic) tree; no longer
           // described as a cycle, and high enough that real trees are always fully walked.
           if (item.depth > 256) {
@@ -675,7 +688,11 @@
             });
           }
         }
-        return JSON.stringify({ valid: violations.length === 0, violations });
+        return JSON.stringify({
+          valid: violations.length === 0,
+          violations,
+          stats: { maxDepth, nodes, cons, maxSplitFanout },
+        });
       } catch (e) {
         return JSON.stringify({
           valid: false,

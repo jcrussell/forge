@@ -867,6 +867,21 @@ class ShellProxy:
         )
         return self.eval(js) == "ok"
 
+    def set_auto_split(self, enabled: bool) -> bool:
+        """Set Forge's `auto-split-enabled` GSetting (schema default False).
+
+        Fuzzer band selector: ON makes each new window SPLIT the focused one (deep nested trees),
+        OFF appends flat siblings. Mirrors set_window_gap. Returns True on success.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_boolean('auto-split-enabled', %s);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
+        )
+        return self.eval(js) == "ok"
+
     def activate_workspace(self, ws_index: int) -> dict:
         """Switch the active workspace to ws_index (creating it if needed).
 

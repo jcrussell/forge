@@ -151,7 +151,9 @@ class FuzzFailure(Exception):
 
 
 class FuzzEngine:
-    def __init__(self, shell_proxy, launch_fn, results_dir, log_path=DEFAULT_SHELL_LOG, gap=0, tol=8):
+    def __init__(
+        self, shell_proxy, launch_fn, results_dir, log_path=DEFAULT_SHELL_LOG, gap=0, tol=8, auto_split=None
+    ):
         """
         Args:
             shell_proxy: connected ShellProxy.
@@ -159,13 +161,17 @@ class FuzzEngine:
                 dict (reuse conftest._launch_window). Spawns are ~10s each.
             results_dir: directory for repro artifacts (e2e-results/fuzz).
             gap/tol: geometry overlap slack passed to the bridge oracle (px).
+            auto_split: None = leave Forge's auto-split-enabled as-is; True/False = pin it for the
+                whole run (the ON band auto-nests new windows into deep trees, OFF is flat) — forge-cnrc.
         """
         self.shell = shell_proxy
         self.launch_fn = launch_fn
         self.results_dir = Path(results_dir)
         self.gap = gap
         self.tol = tol
+        self.auto_split = auto_split
         self.log = LogScanner(log_path)
+        self._session_stats = {}  # peak {maxDepth,nodes,cons,maxSplitFanout} for the current session
 
     # --- low-level ----------------------------------------------------------------------------
 
@@ -237,6 +243,8 @@ class FuzzEngine:
             res = self.shell.fuzz_check_invariants(gap=self.gap, tol=self.tol, render=False)
         except ShellProxyError as e:
             return ("oracle-eval-failed", str(e))
+        if isinstance(res, dict):
+            self._record_stats(res.get("stats"))
         if isinstance(res, dict) and not res.get("valid", True):
             violations = res.get("violations") or [{"rule": "unknown", "detail": "no detail"}]
             v = violations[0]
@@ -267,6 +275,22 @@ class FuzzEngine:
         self._settle()
         return self._check()
 
+    def _record_stats(self, stats):
+        """Fold one oracle stats sample into the session peak (maxDepth/nodes/cons/fanout)."""
+        if not isinstance(stats, dict):
+            return
+        for k in ("maxDepth", "nodes", "cons", "maxSplitFanout"):
+            v = stats.get(k)
+            if isinstance(v, (int, float)) and v > self._session_stats.get(k, 0):
+                self._session_stats[k] = v
+
+    def session_stats_str(self):
+        """One-line peak-shape summary for the session (depth instrumentation, forge-cnrc)."""
+        s = self._session_stats
+        return "maxDepth=%d nodes=%d cons=%d fanout=%d" % (
+            s.get("maxDepth", 0), s.get("nodes", 0), s.get("cons", 0), s.get("maxSplitFanout", 0)
+        )
+
     # --- high-level ---------------------------------------------------------------------------
 
     def run_session(self, seed, n_steps, initial_windows=2, on_step=None):
@@ -280,6 +304,7 @@ class FuzzEngine:
         from . import actions
 
         rng = random.Random(seed)
+        self._session_stats = {}  # fresh peak-shape metrics per session (depth instrumentation)
         # Start every seeded session from an empty, ws0 baseline (M1) — switch_ws/GapSize/
         # float chaos from a prior session would otherwise bleed in. Reset BEFORE arming the
         # log scanner so teardown noise isn't mis-read as a finding.
@@ -446,6 +471,13 @@ class FuzzEngine:
             self.shell.set_tiling_mode(True)
         except Exception:  # noqa: BLE001
             pass
+        if self.auto_split is not None:
+            try:
+                # Pin auto-split for the whole band (ON auto-nests new windows into deep trees,
+                # OFF appends flat) so the run consistently exercises one nesting mode (forge-cnrc).
+                self.shell.set_auto_split(bool(self.auto_split))
+            except Exception:  # noqa: BLE001
+                pass
         self._settle()
 
     def persist(self, failure, suffix=""):

@@ -41,8 +41,14 @@ def _env_int(name, default):
 @pytest.fixture
 def fuzz_engine(shell_proxy, launch_window):
     """Engine wired to the real shell. launch_window (conftest) reuses _launch_window
-    and rides clean_workspace for setup/teardown, so the working set starts empty."""
-    return FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR)
+    and rides clean_workspace for setup/teardown, so the working set starts empty.
+
+    FORGE_FUZZ_AUTOSPLIT selects the nesting band: unset = leave Forge's auto-split as-is,
+    "1" = ON (new windows auto-nest -> deep trees), "0" = OFF (flat) — forge-cnrc depth review.
+    """
+    asplit = os.environ.get("FORGE_FUZZ_AUTOSPLIT")
+    auto_split = None if asplit is None else asplit.strip() == "1"
+    return FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=auto_split)
 
 
 @pytest.mark.fuzz
@@ -57,7 +63,7 @@ def test_fuzz_session(fuzz_engine):
     sessions = _env_int("FORGE_FUZZ_SESSIONS", 1)
     steps = _env_int("FORGE_FUZZ_STEPS", 30)
     base_seed = _env_int("FORGE_FUZZ_SEED", 1)
-    initial_windows = _env_int("FORGE_FUZZ_WINDOWS", 2)
+    initial_windows = _env_int("FORGE_FUZZ_WINDOWS", 4)
     do_shrink = _env_int("FORGE_FUZZ_SHRINK", 1) == 1
     shrink_k = _env_int("FORGE_FUZZ_SHRINK_K", 3)
     continue_mode = _env_int("FORGE_FUZZ_CONTINUE", 0) == 1
@@ -68,15 +74,18 @@ def test_fuzz_session(fuzz_engine):
         seed = base_seed + i
         print("\n[fuzz] session %d/%d seed=%d steps=%d" % (i + 1, sessions, seed, steps))
         failure = fuzz_engine.run_session(seed, steps, initial_windows=initial_windows)
+        # Peak achieved tree shape this session (depth instrumentation) — the proof a run is
+        # actually building deep/nested trees rather than a shallow fan (forge-cnrc).
+        stats = fuzz_engine.session_stats_str()
         if failure is None:
-            print("[fuzz] session seed=%d: clean" % seed)
+            print("[fuzz] session seed=%d: clean (%s)" % (seed, stats))
             continue
 
         # Found a violation. Persist the raw repro immediately (before any shrink work
         # that could itself wedge the shell), then try to minimise.
         raw_path = fuzz_engine.persist(failure)
-        print("[fuzz] FAILURE seed=%d rule=%s @step %d\n  %s\n  raw repro: %s" % (
-            seed, failure.rule, failure.step_index, failure.detail, raw_path))
+        print("[fuzz] FAILURE seed=%d rule=%s @step %d (%s)\n  %s\n  raw repro: %s" % (
+            seed, failure.rule, failure.step_index, stats, failure.detail, raw_path))
 
         min_steps = failure.steps
         orig_len = len(failure.steps)

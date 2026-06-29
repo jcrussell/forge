@@ -131,7 +131,15 @@ make e2e-fuzz FORGE_FUZZ_SEED=12345             # reproduce a specific session
 # repro and fail once at the end with a summary (good for unattended sweeps).
 make e2e-fuzz FORGE_FUZZ_CONTINUE=1 FORGE_FUZZ_SHRINK=0 \
               FORGE_FUZZ_SESSIONS=10 FORGE_FUZZ_STEPS=1000
+# Tree DEPTH (forge-cnrc): new windows append FLAT by default, so to exercise DEEP nested
+# trees run an auto-split band (each new window splits the focused one). Run both modes:
+make e2e-fuzz FORGE_FUZZ_AUTOSPLIT=1     # ON  — deep nested trees
+make e2e-fuzz FORGE_FUZZ_AUTOSPLIT=0     # OFF — flat fan (the historical default)
 ```
+
+Each session prints its peak achieved shape — `maxDepth nodes cons fanout` — so you can see
+whether a run actually built deep trees (the ON band should show clearly higher `maxDepth`).
+`FORGE_FUZZ_WINDOWS` (default 4) sets the initial window count.
 
 It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh adds
 `-m "not fuzz"` by default).

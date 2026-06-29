@@ -36,7 +36,7 @@ DEFAULT_FLOAT_LAYOUT = {"mode": "float", "x": "center", "y": "center", "width": 
 # Cap on concurrent windows: spawning is ~10s each (and can hit the Mutter 50
 # GApplication 25s register race, conftest.py), so keep the working set small and the
 # spawn weight low.
-MAX_WINDOWS = 6
+MAX_WINDOWS = 8
 MIN_WINDOWS = 1
 MAX_WORKSPACES = 3
 
@@ -48,26 +48,28 @@ def _action(name, weight, build):
 # Each builder takes the RNG and returns the step's params dict. also_activate is set
 # per-action below (resize must genuinely focus its target — forge-2n0).
 TILING_ACTIONS = [
-    _action("Focus", 6, lambda r: {"direction": r.choice(DIRECTIONS)}),
+    # Weights rebalanced toward STRUCTURE (forge-cnrc depth review): Split raised, pure-geometry/
+    # focus no-ops trimmed, so more steps deepen/mutate the tree instead of nudging geometry.
+    _action("Focus", 3, lambda r: {"direction": r.choice(DIRECTIONS)}),
     _action("Move", 5, lambda r: {"direction": r.choice(DIRECTIONS)}),
     _action("Swap", 5, lambda r: {"direction": r.choice(DIRECTIONS)}),
-    _action("FocusNext", 2, lambda r: {}),
-    _action("FocusPrev", 2, lambda r: {}),
+    _action("FocusNext", 1, lambda r: {}),
+    _action("FocusPrev", 1, lambda r: {}),
     _action("SwapNext", 2, lambda r: {}),
     _action("SwapPrev", 2, lambda r: {}),
     _action("WindowSwapLastActive", 2, lambda r: {}),
-    _action("Split", 4, lambda r: {"orientation": r.choice(["horizontal", "vertical"])}),
+    _action("Split", 8, lambda r: {"orientation": r.choice(["horizontal", "vertical"])}),
     _action("LayoutToggle", 4, lambda r: {}),
     _action("LayoutStackedToggle", 3, lambda r: {}),
     _action("LayoutTabbedToggle", 3, lambda r: {}),
-    _action("WindowResizeLeft", 2, lambda r: {"amount": r.choice([40, 80, 120])}),
-    _action("WindowResizeRight", 2, lambda r: {"amount": r.choice([40, 80, 120])}),
-    _action("WindowResizeTop", 2, lambda r: {"amount": r.choice([40, 80, 120])}),
-    _action("WindowResizeBottom", 2, lambda r: {"amount": r.choice([40, 80, 120])}),
+    _action("WindowResizeLeft", 1, lambda r: {"amount": r.choice([40, 80, 120])}),
+    _action("WindowResizeRight", 1, lambda r: {"amount": r.choice([40, 80, 120])}),
+    _action("WindowResizeTop", 1, lambda r: {"amount": r.choice([40, 80, 120])}),
+    _action("WindowResizeBottom", 1, lambda r: {"amount": r.choice([40, 80, 120])}),
     _action("WindowExpand", 2, lambda r: {"amount": r.choice([40, 80])}),
     _action("WindowShrink", 2, lambda r: {"amount": r.choice([40, 80])}),
     _action("WindowGoldenRatio", 1, lambda r: {}),
-    _action("WindowResetSizes", 2, lambda r: {}),
+    _action("WindowResetSizes", 1, lambda r: {}),
     _action(
         "SnapLayoutMove",
         3,
@@ -131,7 +133,9 @@ SWITCH_WS_WEIGHT = 2
 # window leave/rejoin the tile tree (minimize) or trigger fullscreen float-demotion. Both states
 # are oracle-safe (skipped in the overlap check). See bridge.fuzzWindowState.
 WINSTATE_OPS = ["minimize", "unminimize", "fullscreen", "unfullscreen", "maximize", "unmaximize"]
-WINSTATE_WEIGHT = 8
+# Trimmed from 8 (forge-cnrc depth review): minimize/fullscreen/maximize REMOVE windows from the
+# tiled tree, hollowing already-shallow trees — keep it exercised but less dominant.
+WINSTATE_WEIGHT = 4
 
 # Drag-drop tile class (forge-cnrc): drag one window onto a ZONE of another, exercising Forge's
 # drop/reparent logic (moveWindowToPointer) — the one feature real keybindings can't reach. Needs
