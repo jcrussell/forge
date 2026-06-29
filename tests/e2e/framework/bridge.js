@@ -482,6 +482,378 @@
       }
     },
 
+    // === Fuzzer support (forge-cnrc) ===========================================================
+    // The live fuzzer (tests/e2e/fuzz/) drives random action sequences and, after each one,
+    // needs (a) a POSITIVE settle and (b) a deep, SOUND invariant oracle.
+    //
+    // (a) fuzzRenderNow() forces tree.render() SYNCHRONOUSLY. command()/renderTree() only QUEUE
+    //     a GLib.idle_add render (window.js:1432-1457) and return before it fires, so a naive
+    //     read races the pre-cleanup tree (stale empty/single-child CONs, unflattened nodes).
+    //     render() is fully synchronous and single-threaded (tree.js:1838), and it runs
+    //     cleanTree() itself — so after this call the tree is in its settled, post-cleanup shape.
+    //
+    // (b) fuzzCheckInvariants() walks once and returns {valid, violations:[{rule,detail,path}]}.
+    //     ONLY rules that are TRUE invariants of a correct tree are checked — three plausible
+    //     rules were deliberately REJECTED after reading the code, do NOT re-add them:
+    //       * "child percents sum to 1.0" — FALSE. computeSizes (tree.js:2357) sizes each child
+    //         independently and never normalizes siblings to 1.0; floated children keep stale
+    //         nonzero percents. Correct trees routinely sum to neither 1.0 nor all-0.0.
+    //       * "no CON with 0 TILED children" — FALSE. cleanTree removes CONs with
+    //         childNodes.length===0 (tree.js:1879), NOT getTiledChildren()===0. A CON whose
+    //         windows are all floated/minimized legitimately has 0 tiled children and survives.
+    //       * "no single-WINDOW-child CON" — FALSE. cleanTree only flattens a CON whose lone
+    //         child is itself a CON (tree.js:1905). Closing HSPLIT[CON[W1,W2],W3]->W2 leaves a
+    //         valid CON[W1]. Only the single-CON-child case is the invariant.
+    fuzzRenderNow() {
+      try {
+        const ext = forgeExt();
+        if (!ext || !ext.extWm || !ext.extWm.tree) return "no-tree";
+        ext.extWm.tree.render("e2e-fuzz");
+        return "ok";
+      } catch (e) {
+        return "render-threw: " + e.message;
+      }
+    },
+
+    // opts: { gap?: number, tol?: number, render?: boolean }. gap = the configured window gap
+    // (px); tol = extra slack on overlap (px). When render !== false, force a synchronous render
+    // first so the oracle reads the settled tree (see fuzzRenderNow above).
+    fuzzCheckInvariants(opts) {
+      const o = opts || {};
+      const gap = typeof o.gap === "number" ? o.gap : 0;
+      const tol = typeof o.tol === "number" ? o.tol : 2;
+      const violations = [];
+      const add = (rule, detail, path) => violations.push({ rule, detail, path });
+      try {
+        if (o.render !== false) {
+          const ext = forgeExt();
+          if (ext && ext.extWm && ext.extWm.tree) {
+            try {
+              ext.extWm.tree.render("e2e-fuzz-check");
+            } catch (e) {
+              add("render-threw", e.message, "root");
+              return JSON.stringify({ valid: false, violations });
+            }
+          }
+        }
+        const r = root();
+        if (!r)
+          return JSON.stringify({
+            valid: false,
+            violations: [{ rule: "tree-unavailable", detail: "Tree not available", path: "root" }],
+          });
+
+        // String enums (createEnum maps each name to itself, enum.js): nodeType/layout/mode are
+        // the bare strings below — see NODE_TYPES/LAYOUT_TYPES (tree.js:37,45) and WINDOW_MODES
+        // (window.js:60).
+        const NODE_TYPES_OK = { ROOT: 1, MONITOR: 1, CON: 1, WINDOW: 1, WORKSPACE: 1 };
+        const LAYOUTS_OK = { STACKED: 1, TABBED: 1, ROOT: 1, HSPLIT: 1, VSPLIT: 1, PRESET: 1 };
+        const SPLITS = { HSPLIT: 1, VSPLIT: 1 };
+
+        // m4: a real cycle check (visited-identity Set) replaces the old depth>20 heuristic —
+        // base depth is already 3 and nested HSPLIT/VSPLIT never flatten, so depth alone was a
+        // false-positive on legitimately deep trees. m5: seenWinIds detects two WINDOW nodes
+        // wrapping the same Meta.Window.
+        const visited = new Set();
+        const seenWinIds = new Set();
+        const stack = [{ node: r, parent: null, depth: 0, path: "root" }];
+        while (stack.length > 0) {
+          const item = stack.pop();
+          const n = item.node;
+          if (!n) continue;
+          // m4: re-encountering a node IS the cycle — flag it and stop descending so the walk
+          // terminates, rather than guessing from depth.
+          if (visited.has(n)) {
+            add("cycle", "node re-encountered during walk (cycle)", item.path);
+            continue;
+          }
+          visited.add(n);
+          // m4: generous backstop against a pathologically deep (but acyclic) tree; no longer
+          // described as a cycle, and high enough that real trees are always fully walked.
+          if (item.depth > 256) {
+            add("depth-exceeded", "tree depth > 256", item.path);
+            continue;
+          }
+          if (n.parentNode !== item.parent)
+            add("parent-ref", "parentNode does not match walk parent", item.path);
+          if (!NODE_TYPES_OK[n.nodeType])
+            add("node-type-domain", "unknown nodeType " + n.nodeType, item.path);
+          if (n.layout != null && !LAYOUTS_OK[n.layout])
+            add("layout-domain", "unknown layout " + n.layout, item.path);
+
+          const children = n.childNodes || [];
+          if (n.nodeType === "CON") {
+            if (children.length === 0)
+              add("empty-con", "CON with 0 children survived render", item.path);
+            else if (children.length === 1 && children[0].nodeType === "CON")
+              add(
+                "con-single-con-child",
+                "CON wrapping a single CON should be flattened",
+                item.path
+              );
+          }
+          if (n.nodeType === "WINDOW") {
+            // m5: a WINDOW is a leaf by construction; any child means a corrupt insert.
+            if (children.length > 0)
+              add("window-not-leaf", "WINDOW node has " + children.length + " children", item.path);
+            const w = n.nodeValue;
+            let alive = false;
+            let wid = null;
+            try {
+              if (w && typeof w.get_id === "function") wid = w.get_id();
+              alive = !!(w && wid != null);
+            } catch (e) {
+              alive = false;
+              wid = null;
+            }
+            if (!alive)
+              add("dead-window-ref", "WINDOW node with dead/disposed Meta.Window", item.path);
+            // m5: two distinct WINDOW nodes sharing one Meta.Window id is a duplicated mapping.
+            else if (wid != null) {
+              if (seenWinIds.has(wid))
+                add("duplicate-window", "Meta.Window id " + wid + " mapped twice", item.path);
+              else seenWinIds.add(wid);
+            }
+          }
+
+          // Geometry: pairwise non-overlap of a split's direct tiled children. STACKED/TABBED are
+          // skipped by construction (children fully overlap there by design — that is correct).
+          if (SPLITS[n.layout]) {
+            // B2: ask the shell's OWN getTiledChildren (tree.js:1290) which children are in the
+            // layout. A CON whose windows are all floated is excluded there but keeps a STALE rect
+            // (removeNode zeroes only percent, never rect), so iterating raw childNodes would
+            // false-positive it against its expanded sibling. getTiledChildren already excludes
+            // float/grab/minimized and correctly INCLUDES DEFAULT-mode tiled windows.
+            let tiled;
+            try {
+              tiled = r.getTiledChildren(children);
+            } catch (e) {
+              tiled = [];
+            }
+            // From the tiled set additionally drop any node with a non-positive rect
+            // (transient/collapsed) and any fullscreen OR maximized WINDOW (its rect is the whole
+            // monitor by design — would overlap every sibling).
+            const eligible = tiled.map((c) => {
+              const rc = c.rect;
+              if (!rc || rc.width <= 0 || rc.height <= 0) return null;
+              if (c.nodeType === "WINDOW") {
+                try {
+                  const w = c.nodeValue;
+                  if (w && w.is_fullscreen && w.is_fullscreen()) return null;
+                  if (w && w.get_maximized && w.get_maximized()) return null;
+                } catch (e) {
+                  return null;
+                }
+              }
+              return rc;
+            });
+            for (let i = 0; i < tiled.length; i++) {
+              const a = eligible[i];
+              if (!a) continue;
+              for (let j = i + 1; j < tiled.length; j++) {
+                const b = eligible[j];
+                if (!b) continue;
+                const ox = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+                const oy = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+                if (ox > gap + tol && oy > gap + tol) {
+                  add(
+                    "tiled-overlap",
+                    "siblings overlap " + ox + "x" + oy + "px under " + n.layout,
+                    item.path + "[" + i + "," + j + "]"
+                  );
+                }
+              }
+            }
+          }
+
+          for (let i = 0; i < children.length; i++) {
+            stack.push({
+              node: children[i],
+              parent: n,
+              depth: item.depth + 1,
+              path: item.path + "/" + i + ":" + (children[i] ? children[i].nodeType : "null"),
+            });
+          }
+        }
+        return JSON.stringify({ valid: violations.length === 0, violations });
+      } catch (e) {
+        return JSON.stringify({
+          valid: false,
+          violations: [{ rule: "oracle-threw", detail: String(e), path: "root" }],
+        });
+      }
+    },
+
+    // M3: quiescence probe so the Python settle can wait for async finalize to drain. Move /
+    // SnapLayoutMove finalize through wm.queueEvent, which enqueues onto wm.eventQueue (a Queue,
+    // tree.js:758, with a .length getter) and drains via a GLib.timeout (window.js:271); a render
+    // is then a GLib.idle_add tracked by wm._renderTreeSrcId (window.js:1439). So:
+    //   queue         = eventQueue.length (pending queued events; 0 if the structure is missing)
+    //   pendingRender = !!_renderTreeSrcId (an idle render is scheduled but hasn't fired)
+    //   busy          = queue > 0 || pendingRender
+    // Never throws — returns {busy:false,...} on any error.
+    fuzzPendingWork() {
+      try {
+        const ext = forgeExt();
+        const wm = ext && ext.extWm;
+        let queue = 0;
+        if (wm && wm.eventQueue && typeof wm.eventQueue.length === "number") {
+          queue = wm.eventQueue.length;
+        }
+        const pendingRender = !!(wm && wm._renderTreeSrcId);
+        return JSON.stringify({ busy: queue > 0 || pendingRender, queue, pendingRender });
+      } catch (e) {
+        return JSON.stringify({ busy: false, queue: 0, pendingRender: false });
+      }
+    },
+
+    // Apply a Meta.Window STATE op to a positionally-selected window, for the fuzzer's
+    // window-state class (forge-cnrc). These are raw Mutter ops (NOT Forge commands) that
+    // exercise Forge's reaction paths: minimize/unminimize (leaves/rejoins the tile tree) and
+    // fullscreen (triggers _reconcileFullscreenFloatDemotion). Both states are oracle-safe
+    // (minimized + fullscreen windows are skipped in the overlap check). opts: {op, focus}.
+    fuzzWindowState(opts) {
+      try {
+        const o = opts || {};
+        const op = o.op;
+        const hint = o.focus || null;
+        const wins = global.workspace_manager.get_active_workspace().list_windows();
+        if (!wins.length) return JSON.stringify({ ok: false, reason: "no-windows" });
+        const pick = (cmp) => wins.reduce((b, x) => (cmp(x, b) ? x : b), wins[0]);
+        let w = wins[0];
+        if (hint === "leftmost") w = pick((x, b) => x.get_frame_rect().x < b.get_frame_rect().x);
+        else if (hint === "rightmost")
+          w = pick((x, b) => x.get_frame_rect().x > b.get_frame_rect().x);
+        else if (hint === "topmost")
+          w = pick((x, b) => x.get_frame_rect().y < b.get_frame_rect().y);
+        else if (hint === "bottommost")
+          w = pick((x, b) => x.get_frame_rect().y > b.get_frame_rect().y);
+        if (op === "minimize") w.minimize();
+        else if (op === "unminimize") w.unminimize();
+        else if (op === "fullscreen") {
+          if (!w.is_fullscreen()) w.make_fullscreen();
+        } else if (op === "unfullscreen") {
+          if (w.is_fullscreen()) w.unmake_fullscreen();
+        } else if (op === "maximize") w.maximize(Meta.MaximizeFlags.BOTH);
+        else if (op === "unmaximize") w.unmaximize(Meta.MaximizeFlags.BOTH);
+        else return JSON.stringify({ ok: false, reason: "unknown-op:" + op });
+        return JSON.stringify({ ok: true, op });
+      } catch (e) {
+        return JSON.stringify({ ok: false, error: e.message });
+      }
+    },
+
+    // Simulate a drag-and-drop tile: drag the SRC window and drop it onto a ZONE of the TGT
+    // window, exercising Forge's drop/reparent logic (moveWindowToPointer -> calculateDropRegions
+    // /detectDropZone/_executeDropOperation) — the only path real keybindings can't reach
+    // (forge-cnrc). opts: {src, tgt, zone}. Approach (robust + headless-deterministic): a real
+    // pointer drag is flaky headless, so instead we (1) focus SRC (the grab handlers act on the
+    // focused window), (2) _handleGrabOpBegin -> GRAB_TILE, (3) MONKEYPATCH wm.getPointer to
+    // return a point inside the chosen drop ZONE of TGT (all drop math routes through getPointer
+    // via getDragPointer), (4) call moveWindowToPointer directly (bypasses the held-modifier
+    // allowDragDropTile gate — we want the reparent logic, not the gate), (5) restore + end grab.
+    fuzzDrag(opts) {
+      const o = opts || {};
+      const wm = forgeExt() && forgeExt().extWm;
+      if (!wm) return JSON.stringify({ ok: false, reason: "no-wm" });
+      const origGetPointer = wm.getPointer;
+      let origFocus = null;
+      try {
+        const wins = global.workspace_manager.get_active_workspace().list_windows();
+        if (wins.length < 2) return JSON.stringify({ ok: false, reason: "need-2-windows" });
+        const pick = (hint) => {
+          if (hint === "leftmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().x < b.get_frame_rect().x ? x : b),
+              wins[0]
+            );
+          if (hint === "rightmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().x > b.get_frame_rect().x ? x : b),
+              wins[0]
+            );
+          if (hint === "topmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().y < b.get_frame_rect().y ? x : b),
+              wins[0]
+            );
+          if (hint === "bottommost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().y > b.get_frame_rect().y ? x : b),
+              wins[0]
+            );
+          return wins[0];
+        };
+        const src = pick(o.src);
+        let tgt = pick(o.tgt);
+        if (tgt === src) tgt = wins.find((x) => x !== src) || src;
+        if (tgt === src) return JSON.stringify({ ok: false, reason: "src==tgt" });
+
+        // Drop point inside TGT for the requested zone (regions are computed at 0.3 inset).
+        const tr = tgt.get_frame_rect();
+        const fx = { center: 0.5, left: 0.12, right: 0.88, top: 0.5, bottom: 0.5 };
+        const fy = { center: 0.5, left: 0.5, right: 0.5, top: 0.12, bottom: 0.88 };
+        const zone = o.zone in fx ? o.zone : "center";
+        const px = Math.round(tr.x + tr.width * fx[zone]);
+        const py = Math.round(tr.y + tr.height * fy[zone]);
+
+        const display = global.display;
+        const grabOp = Meta.GrabOp.MOVING_UNCONSTRAINED;
+        // Override focus to SRC for the whole grab (synchronous; src.focus() is async, so the
+        // grab handlers — which act on focusMetaWindow — could otherwise grab the wrong window).
+        // Mirrors invokeForgeAction's get_focus_window shim. Restored below / in catch.
+        origFocus = display.get_focus_window;
+        display.get_focus_window = function () {
+          return src;
+        };
+        wm._handleGrabOpBegin(display, src, grabOp); // SRC -> GRAB_TILE, _draggedNodeWindow = src
+        // Route the drop-ZONE math (calculateDropRegions/detectDropZone via getDragPointer) to the
+        // chosen point inside TGT.
+        wm.getPointer = function () {
+          return [px, py, 0];
+        };
+        const dragged = wm._draggedNodeWindow || wm.findNodeWindow(src);
+        // Drop target is deterministically TGT's node — we do NOT use _findNodeWindowAtPointer,
+        // whose sortedWindows/isWindowAlive/getNodeByValue chain is built for a live pointer drag
+        // and resolves null in this synthetic path. moveWindowToPointer just needs nodeWinAtPointer
+        // + a GRAB_TILE dragged node + the (overridden) drag pointer for zone detection.
+        wm.nodeWinAtPointer = wm.findNodeWindow(tgt);
+        // Capture BEFORE _handleGrabOpEnd, which nulls nodeWinAtPointer (window.js:2997).
+        const dropped = !!(dragged && wm.nodeWinAtPointer);
+        if (dropped) wm.moveWindowToPointer(dragged);
+        const dbg = { zone, draggedMode: dragged ? dragged.mode : null, tgtNode: dropped };
+        wm.getPointer = origGetPointer;
+        wm._handleGrabOpEnd(display, src, grabOp);
+        display.get_focus_window = origFocus;
+        return JSON.stringify({ ok: true, zone, dropped, dbg });
+      } catch (e) {
+        wm.getPointer = origGetPointer;
+        if (origFocus) global.display.get_focus_window = origFocus;
+        try {
+          wm._handleGrabOpEnd(global.display, null, Meta.GrabOp.MOVING_UNCONSTRAINED);
+        } catch (e2) {}
+        return JSON.stringify({ ok: false, error: e.message });
+      }
+    },
+
+    // Activate (switch to) a workspace by index, creating intermediate workspaces if needed, for
+    // the fuzzer's workspace-switch chaos. Distinct from moveWindowToWorkspace (which moves the
+    // focused window); this only changes the active workspace.
+    activateWorkspace(wsIndex) {
+      try {
+        const wm = global.workspace_manager;
+        const want = Math.max(0, wsIndex | 0);
+        while (wm.get_n_workspaces() <= want)
+          wm.append_new_workspace(false, global.get_current_time());
+        const ws = wm.get_workspace_by_index(want);
+        if (!ws) return JSON.stringify({ error: "workspace " + want + " unavailable" });
+        ws.activate(global.get_current_time());
+        return JSON.stringify({ ok: true, active: wm.get_active_workspace_index() });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    },
+
     // firstMatch by class + reduceTree descendant count — was get_container_children_count
     // (shell_proxy.py:1451). countDescendants(parent) = nodes in parent's subtree, excluding
     // parent itself; reduceTree counts parent + descendants, so subtract 1.

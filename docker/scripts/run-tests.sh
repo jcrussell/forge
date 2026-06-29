@@ -25,11 +25,15 @@ PYTEST_ARGS="${*:---verbose}"
 DISPATCH_MODE="${DISPATCH_MODE:-dbus}"
 
 # Optional pytest marker expression (e.g. PYTEST_MARKER=workflow to run only the
-# multi-step workflow lane). Passed as `-e PYTEST_MARKER=...` on the `docker exec`
-# (mirrors DISPATCH_MODE); empty means run the full suite. See `make e2e-test-fast`.
+# multi-step workflow lane, or PYTEST_MARKER=fuzz for the live fuzzer). Passed as
+# `-e PYTEST_MARKER=...` on the `docker exec` (mirrors DISPATCH_MODE). When unset the
+# default lane runs everything EXCEPT the opt-in fuzz lane — registering the `fuzz`
+# marker does NOT deselect it, so the exclusion must be explicit here (forge-cnrc).
 MARKER_ARGS=()
 if [ -n "${PYTEST_MARKER:-}" ]; then
     MARKER_ARGS=(-m "${PYTEST_MARKER}")
+else
+    MARKER_ARGS=(-m "not fuzz")
 fi
 
 # Ensure environment is set for subprocess launching

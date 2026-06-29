@@ -116,6 +116,80 @@ atomic-only, so the atomic lane must keep running by default.
 - Keep each workflow self-contained (end in a clean tiled state); use `restore_settings`
   for any GSetting change.
 
+## Fuzzing (forge-cnrc)
+
+The atomic and workflow lanes only exercise sequences a human wrote. The **fuzzer**
+(`tests/e2e/fuzz/`) instead generates *seeded random* action sequences against the real
+headless shell and, after every step, checks invariants that must hold for *any* correct
+tree. It explores the unanticipated interleavings hand-written tests miss.
+
+```bash
+make e2e-fuzz                                   # default: 1 session, 30 steps, seed 1
+make e2e-fuzz FORGE_FUZZ_SESSIONS=2 FORGE_FUZZ_STEPS=40
+make e2e-fuzz FORGE_FUZZ_SEED=12345             # reproduce a specific session
+# Campaign: many large sessions, don't abort on the first crash — collect every
+# repro and fail once at the end with a summary (good for unattended sweeps).
+make e2e-fuzz FORGE_FUZZ_CONTINUE=1 FORGE_FUZZ_SHRINK=0 \
+              FORGE_FUZZ_SESSIONS=10 FORGE_FUZZ_STEPS=1000
+```
+
+It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh adds
+`-m "not fuzz"` by default).
+
+**How it works**
+
+1. **Generate** — `fuzz/actions.py` emits fully-concrete, JSON-serializable steps from a
+   seeded `random.Random`. Tiling commands (focus/move/swap/split/layout/resize/snap/gap/
+   float) at high weight, **workspace/global toggles** (tile-whole-workspace, monocle, global
+   tiling-mode on/off),
+   **window-state** ops (minimize/unminimize, fullscreen/unfullscreen — raw Meta.Window state
+   that leaves/rejoins the tile tree), **misc command toggles** (show-tab-decoration, float-by-
+   class, config-reload), **drag-drop tile** (drag a window onto a zone of another — the only path
+   keybindings can't reach), and **lifecycle chaos** (spawn/close/workspace-switch) at low weight.
+   Actions carry a positional focus hint (`leftmost`/…) so a step targets the same window
+   on replay. Dispatch is D-Bus (`invoke_forge_action`), dodging the synthetic-key
+   tile-snap latch (forge-3xz).
+2. **Settle** — after each step the engine first waits for the shell's async work to
+   drain (`bridge.fuzzPendingWork`: the `wm.queueEvent` queue + any pending idle render —
+   Move/SnapLayoutMove finalize ~220ms later), then forces a **synchronous** `tree.render()`
+   (`bridge.fuzzRenderNow`). `command()` only *queues* an idle render, so a naive read
+   races the pre-`cleanTree` tree; draining + the forced render is the positive settle.
+3. **Oracle** (`bridge.fuzzCheckInvariants` + log scan) — liveness probe, then the
+   **sound** rule set, then a scan of the live `/tmp/gnome-shell.log` for new
+   `JS ERROR` / finalized-object lines. A re-readable structure/geometry hit is re-checked
+   once after an extra settle to drop transients; a log/dead-shell hit is **authoritative**
+   on first sight (the log offset has already advanced, so it cannot be re-read).
+4. **Repro + shrink** — a failure is saved to `e2e-results/fuzz/repro-<seed>.json`, then
+   ddmin-minimised (`fuzz/shrink.py`) to `…min.json`. Because the shell is **not
+   bit-deterministic** (launch races, Mutter re-focus on close), each shrink candidate is
+   replayed **K times** (`reproduces`); a chunk is dropped only if a **majority** of K still
+   reproduce, and the final minimal sequence is re-validated. Repros are therefore
+   **best-effort**, not guaranteed bit-reproducible.
+
+**Sound invariants checked** — parent-ref consistency, true cycle detection (visited-set,
+not a depth heuristic), nodeType + layout domain, no empty CON, no CON wrapping a single
+CON, WINDOW nodes are leaves, no two WINDOW nodes share a `Meta.Window`, and tiled-sibling
+non-overlap under HSPLIT/VSPLIT. The overlap set comes from the shell's own
+`getTiledChildren` (an all-floated CON keeps a stale rect and is correctly excluded);
+STACKED/TABBED are skipped (their children share a rect by design).
+
+**Deliberately NOT invariants** — do not re-add these; the code contradicts them:
+
+- *child percents sum to 1.0* — `computeSizes` sizes each child independently; floats keep
+  stale percents.
+- *no CON with 0 tiled children* — `cleanTree` keys on `childNodes.length`, so an
+  all-floated/minimized CON legitimately survives.
+- *no single-WINDOW-child CON* — `cleanTree` only flattens a CON whose lone child is a CON.
+
+**Promoting a fuzz bug to a regression test** — commit the minimal repro and point the
+replay test at it:
+
+```bash
+make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
+```
+
+`test_fuzz_replay` replays the saved step list and asserts the recorded rule reproduces.
+
 ## Adding a New GNOME Version
 
 1. Add the Fedora-to-GNOME mapping in `gnome-versions.json` (`fedora_to_gnome`)

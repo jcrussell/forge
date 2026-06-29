@@ -740,6 +740,144 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.verifyTreeIntegrity()")
 
+    # === Fuzzer support (forge-cnrc) ===
+    def fuzz_render_now(self) -> str:
+        """Force a synchronous tree.render() so reads see the settled, post-cleanTree tree.
+
+        command()/renderTree() only queue an idle render and return before it fires;
+        without this the oracle races the pre-cleanup tree. See bridge.fuzzRenderNow.
+        """
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.fuzzRenderNow()")
+
+    def fuzz_check_invariants(
+        self, gap: int = 0, tol: int = 2, render: bool = True
+    ) -> dict:
+        """Run the deep fuzzer oracle and return {'valid': bool, 'violations': [...]}.
+
+        Each violation is {'rule', 'detail', 'path'}. Only sound invariants are
+        checked (see bridge.fuzzCheckInvariants for the rules that were rejected and
+        why). Geometry overlap is gap-aware: pass the configured window gap so a
+        legitimate inter-window gap is not read as overlap.
+
+        Args:
+            gap: Configured window gap in px (overlap must exceed gap + tol to flag).
+            tol: Extra slack on overlap in px.
+            render: When True, force a synchronous render before checking.
+        """
+        self._ensure_bridge()
+        opts = json.dumps({"gap": int(gap), "tol": int(tol), "render": bool(render)})
+        return self.eval(
+            "globalThis._forgeTestBridge.fuzzCheckInvariants(%s)" % opts
+        )
+
+    def fuzz_pending_work(self) -> dict:
+        """Report the fuzzer's async-finalizer backpressure: {'busy', 'queue', 'pendingRender'}.
+
+        Mirrors fuzz_render_now/fuzz_check_invariants. The bridge contract guarantees this
+        never throws and always returns a dict, so the engine can POLL it to wait for the
+        Move/SnapLayoutMove (~220ms event-queue) and resize (grab-signal) finalizers to
+        drain before the oracle reads (M3). See bridge.fuzzPendingWork.
+        """
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.fuzzPendingWork()")
+
+    def fuzz_window_state(self, op: str, focus_window: str = None) -> dict:
+        """Apply a Meta.Window state op (minimize/unminimize/fullscreen/unfullscreen) to a
+        positionally-selected window, for the fuzzer's window-state class. See
+        bridge.fuzzWindowState. Returns {'ok': bool, ...}.
+        """
+        self._ensure_bridge()
+        opts = json.dumps({"op": op, "focus": focus_window})
+        return self.eval("globalThis._forgeTestBridge.fuzzWindowState(%s)" % opts)
+
+    def fuzz_drag(self, src: str = None, tgt: str = None, zone: str = "center") -> dict:
+        """Simulate a drag-drop tile: drag the SRC window onto ZONE of the TGT window,
+        exercising Forge's drop/reparent logic (the only path keybindings can't reach).
+        src/tgt are positional hints (leftmost/...). See bridge.fuzzDrag. Returns {'ok',...}.
+        """
+        self._ensure_bridge()
+        opts = json.dumps({"src": src, "tgt": tgt, "zone": zone})
+        return self.eval("globalThis._forgeTestBridge.fuzzDrag(%s)" % opts)
+
+    def set_window_gap(self, size: int) -> bool:
+        """Reset Forge's window gap (GSettings window-gap-size) to an absolute value.
+
+        Teardown helper for the fuzzer: the GapSize chaos action drifts the persisted gap,
+        which would skew the gap-aware overlap oracle in later sessions. Writes through the
+        live extension's settings object (bare `Main` is an Eval-global; imports.ui.main is
+        not loadable in the Eval scope) so the 'changed' handler re-renders. Returns True on
+        success, False if the extension/settings are unavailable.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_uint('window-gap-size', %d);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), int(size))
+        )
+        return self.eval(js) == "ok"
+
+    def set_workspace_skip_tile(self, value: str = "") -> bool:
+        """Reset Forge's `workspace-skip-tile` GSetting (which workspaces are floated).
+
+        Teardown helper for the fuzzer: WorkspaceActiveTileToggle persists which workspaces
+        are floated; left set, a later session/replay starts with a floated workspace and
+        diverges. Default "" un-floats all. Mirrors set_window_gap (writes through the live
+        extension's settings so the 'changed' handler re-renders). Returns True on success.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_string('workspace-skip-tile', %s);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), json.dumps(value))
+        )
+        return self.eval(js) == "ok"
+
+    def set_showtab_decoration(self, enabled: bool = True) -> bool:
+        """Reset Forge's `showtab-decoration-enabled` GSetting (schema default True).
+
+        Teardown helper: ShowTabDecorationToggle flips this; left off, later sessions run with
+        tab decorations suppressed, hiding the very decoration-lifecycle paths the fuzzer wants
+        to exercise. Mirrors set_window_gap. Returns True on success.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_boolean('showtab-decoration-enabled', %s);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
+        )
+        return self.eval(js) == "ok"
+
+    def set_tiling_mode(self, enabled: bool = True) -> bool:
+        """Reset Forge's `tiling-mode-enabled` GSetting (schema default True).
+
+        Teardown helper: TilingModeToggle flips this and float/unfloats ALL windows; left off,
+        later sessions run with tiling globally disabled (everything floats), hiding the tiling
+        paths the fuzzer targets. Mirrors set_window_gap. Returns True on success.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_boolean('tiling-mode-enabled', %s);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
+        )
+        return self.eval(js) == "ok"
+
+    def activate_workspace(self, ws_index: int) -> dict:
+        """Switch the active workspace to ws_index (creating it if needed).
+
+        Distinct from move_window_to_workspace (which relocates the focused window);
+        this only changes which workspace is active, for the fuzzer's chaos actions.
+        """
+        self._ensure_bridge()
+        return self.eval(
+            "globalThis._forgeTestBridge.activateWorkspace(%d)" % int(ws_index)
+        )
+
     # === Virtual Input Methods (Clutter) ===
     # These use Clutter's VirtualInputDevice API via Shell.Eval to simulate
     # keyboard and mouse input. Unlike xdotool, this works in both X11 and

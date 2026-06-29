@@ -14,7 +14,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 	dev prod build metadata compilemsgs update-pot update-po dist purge restart test test-x test-open \
 	format lint unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
-	e2e-test e2e-test-fast e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
+	e2e-test e2e-test-fast e2e-fuzz e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
 
 all: build
@@ -297,6 +297,19 @@ RECORD_ENV = $(if $(RECORD),-e FORGE_E2E_RECORD=1,)
 # the container (`pytest -m "not workflow"`), as documented in tests/e2e/README.md.
 MARKER_ENV = $(if $(PYTEST_MARKER),-e PYTEST_MARKER=$(PYTEST_MARKER),)
 
+# Live-fuzzer knobs (forge-cnrc), forwarded into the test-running docker exec only
+# when set, so non-fuzz lanes are byte-identical. See `make e2e-fuzz` and
+# tests/e2e/README.md ("Fuzzing").
+FUZZ_ENV = \
+	$(if $(FORGE_FUZZ_SEED),-e FORGE_FUZZ_SEED=$(FORGE_FUZZ_SEED),) \
+	$(if $(FORGE_FUZZ_SESSIONS),-e FORGE_FUZZ_SESSIONS=$(FORGE_FUZZ_SESSIONS),) \
+	$(if $(FORGE_FUZZ_STEPS),-e FORGE_FUZZ_STEPS=$(FORGE_FUZZ_STEPS),) \
+	$(if $(FORGE_FUZZ_WINDOWS),-e FORGE_FUZZ_WINDOWS=$(FORGE_FUZZ_WINDOWS),) \
+	$(if $(FORGE_FUZZ_SHRINK),-e FORGE_FUZZ_SHRINK=$(FORGE_FUZZ_SHRINK),) \
+	$(if $(FORGE_FUZZ_SHRINK_K),-e FORGE_FUZZ_SHRINK_K=$(FORGE_FUZZ_SHRINK_K),) \
+	$(if $(FORGE_FUZZ_CONTINUE),-e FORGE_FUZZ_CONTINUE=$(FORGE_FUZZ_CONTINUE),) \
+	$(if $(FORGE_FUZZ_REPLAY),-e FORGE_FUZZ_REPLAY=$(FORGE_FUZZ_REPLAY),)
+
 e2e-build: build
 	docker build -f docker/Dockerfile.e2e -t $(E2E_IMAGE) \
 		--build-arg FEDORA_VERSION=$(FEDORA_VERSION) \
@@ -324,13 +337,23 @@ e2e-test: e2e-build
 	docker exec $(if $(MULTIMONITOR),-e FORGE_E2E_VIRTUAL_MONITORS=2,) $(RECORD_ENV) $$POD /usr/local/bin/start-user-session.sh $(DISPLAY_NUM) && \
 	docker exec $$POD chown -R gnomeshell:gnomeshell /app/e2e-results && \
 	echo "Running E2E tests..." && \
-	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $(RECORD_ENV) $(MARKER_ENV) $$POD set-env.sh /app/scripts/run-tests.sh
+	docker exec --user gnomeshell -e DISPLAY=:$(DISPLAY_NUM) $(RECORD_ENV) $(MARKER_ENV) $(FUZZ_ENV) $$POD set-env.sh /app/scripts/run-tests.sh
 
 # Run only the multi-step workflow lane (forge-911) — the fast inner-loop pass.
 # The full suite still runs both lanes (workflows ordered first); this is for local
 # iteration. GNOME_VERSION is forwardable, e.g. make e2e-test-fast GNOME_VERSION=48.
 e2e-test-fast:
 	@$(MAKE) e2e-test PYTEST_MARKER=workflow
+
+# Run the live fuzzer lane (forge-cnrc): seeded random action sequences against a real
+# headless GNOME Shell, checking tree invariants + geometry + the shell log after every
+# step. Opt-in (excluded from the default suite). Tune via FORGE_FUZZ_* (see
+# tests/e2e/README.md), e.g.:
+#   make e2e-fuzz FORGE_FUZZ_SESSIONS=2 FORGE_FUZZ_STEPS=40
+#   make e2e-fuzz FORGE_FUZZ_SEED=12345            # reproduce a specific session
+#   make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
+e2e-fuzz:
+	@$(MAKE) e2e-test PYTEST_MARKER=fuzz
 
 # Run E2E tests with two virtual monitors (forge-a34.1, headless Wayland only).
 # Boots the session with a second 1920x1080 output so test_multi_monitor runs;
@@ -402,6 +425,7 @@ e2e-versions:
 	@echo "  make e2e-test GNOME_VERSION=50   # Run with GNOME 50 (rawhide)"
 	@echo "  make e2e-test FEDORA_VERSION=42  # Run with Fedora 42 (GNOME 48)"
 	@echo "  make e2e-test-all                # Run for all versions"
+	@echo "  make e2e-fuzz                    # Run the live fuzzer lane (forge-cnrc)"
 	@echo "  make e2e-debug                   # Interactive debugging"
 	@echo ""
 	@echo "Images are self-contained, built from Fedora base images."
