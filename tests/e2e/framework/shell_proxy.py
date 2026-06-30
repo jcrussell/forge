@@ -750,6 +750,15 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.fuzzRenderNow()")
 
+    def fuzz_reset_node_layouts(self) -> str:
+        """Revert STACKED/TABBED layout left on MONITOR/WORKSPACE nodes back to the natural
+        per-monitor split default, so a flat-workspace stacked/monocle toggle doesn't BLEED
+        into the next seed in a CONTINUE run. Returns the count reset. See
+        bridge.fuzzResetNodeLayouts.
+        """
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.fuzzResetNodeLayouts()")
+
     def fuzz_check_invariants(
         self, gap: int = 0, tol: int = 2, render: bool = True
     ) -> dict:

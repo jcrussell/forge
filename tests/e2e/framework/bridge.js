@@ -515,6 +515,40 @@
       }
     },
 
+    // Revert STACKED/TABBED layout that LayoutStackedToggle / WorkspaceMonocleToggle leave on a
+    // MONITOR or WORKSPACE node when the workspace is flat (no CON to absorb the toggle —
+    // command.js:327). That layout persists in the tree and BLEEDS into the next seed in a
+    // CONTINUE=1 run, breaking deterministic replay. Reset each such node back to its natural
+    // per-monitor split default (determineSplitLayoutForRect, used at monitor.js:66; null-safe,
+    // so it also handles a WORKSPACE node with no rect). CON nodes legitimately carry STACKED/
+    // TABBED and ROOT keeps its ROOT layout, so both are left alone.
+    fuzzResetNodeLayouts() {
+      try {
+        const ext = forgeExt();
+        const wm = ext && ext.extWm;
+        if (!wm || !wm.tree) return "no-tree";
+        let reset = 0;
+        reduceTree(
+          wm.tree,
+          (acc, n) => {
+            const t = n.nodeType;
+            if (
+              (t === "MONITOR" || t === "WORKSPACE") &&
+              (n.layout === "STACKED" || n.layout === "TABBED")
+            ) {
+              n.layout = wm.determineSplitLayoutForRect(n.rect);
+              reset += 1;
+            }
+            return { acc };
+          },
+          null
+        );
+        return String(reset);
+      } catch (e) {
+        return "reset-threw: " + e.message;
+      }
+    },
+
     // opts: { gap?: number, tol?: number, render?: boolean }. gap = the configured window gap
     // (px); tol = extra slack on overlap (px). When render !== false, force a synchronous render
     // first so the oracle reads the settled tree (see fuzzRenderNow above).
@@ -1460,7 +1494,11 @@
         const node = firstMatch(r, (n) => n.nodeValue === fw);
         if (!node || !node.parentNode) return JSON.stringify({ violations: [] }); // untracked yet
         const parent = node.parentNode;
-        if (parent.layout !== "STACKED") return JSON.stringify({ violations: [] });
+        // Only assert the stacked-container invariant on a real CON: a MONITOR/WORKSPACE node
+        // may legitimately carry a STACKED layout (flat trees with AUTOSPLIT off), and is out
+        // of scope here. nodeType is a string enum (cf. n.nodeType === "WINDOW" above).
+        if (parent.nodeType !== "CON" || parent.layout !== "STACKED")
+          return JSON.stringify({ violations: [] });
         let tiled;
         try {
           tiled = r.getTiledChildren(parent.childNodes);
