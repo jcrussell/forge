@@ -782,6 +782,41 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.fuzzPendingWork()")
 
+    def fuzz_focus_mismatch(self) -> dict:
+        """Return focus-correctness violations: {'violations': [{rule,detail,path}, ...]}.
+
+        Angle 3: after settle, Mutter's focused window must be the tree's active/visible child
+        of its STACKED parent (forge-d5mm class; the TABBED variant is intentionally not probed —
+        it false-positived on settle races). The probe is conservative — a transient
+        state (null focus, mid-close, untracked window) returns no violations. Never throws; any
+        non-dict result degrades to an empty list. See bridge.fuzzFocusMismatch.
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.fuzzFocusMismatch()")
+        if isinstance(result, dict):
+            return result
+        try:
+            return json.loads(result)
+        except (ValueError, TypeError):
+            return {"violations": []}
+
+    def fuzz_resource_counts(self) -> dict:
+        """Return a leak-metric snapshot: {'signals','timers','decorations','tabs','previewHints'}.
+
+        Angle 3 (logged metric, not a session-failing oracle): consolidates Forge's already-
+        tracked signal arrays, GLib timer ids, and per-node actors. 'signals' is bound-once and
+        should never grow — the engine non-growth-WARNS on it. Returns {'error': ...} when the
+        WindowManager is unavailable. See bridge.fuzzResourceCounts.
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.fuzzResourceCounts()")
+        if isinstance(result, dict):
+            return result
+        try:
+            return json.loads(result)
+        except (ValueError, TypeError):
+            return {"error": f"unparseable: {result!r}"}
+
     def fuzz_window_state(self, op: str, focus_window: str = None) -> dict:
         """Apply a Meta.Window state op (minimize/unminimize/fullscreen/unfullscreen) to a
         positionally-selected window, for the fuzzer's window-state class. See
@@ -799,6 +834,19 @@ class ShellProxy:
         self._ensure_bridge()
         opts = json.dumps({"src": src, "tgt": tgt, "zone": zone})
         return self.eval("globalThis._forgeTestBridge.fuzzDrag(%s)" % opts)
+
+    def fuzz_drag_path(
+        self, src: str = None, tgt: str = None, zone: str = "center", vias=None
+    ) -> dict:
+        """Drive the REAL grab LOOP across waypoints: drag SRC through `vias` window
+        centers to ZONE of TGT, so the preview-hint St.Bin lifecycle and live-preview
+        branch run across positions (not just the two endpoints fuzz_drag exercises).
+        src/tgt/vias are positional hints (leftmost/...). See bridge.fuzzDragPath.
+        Returns {'ok', ...}.
+        """
+        self._ensure_bridge()
+        opts = json.dumps({"src": src, "tgt": tgt, "zone": zone, "vias": vias or []})
+        return self.eval("globalThis._forgeTestBridge.fuzzDragPath(%s)" % opts)
 
     def set_window_gap(self, size: int) -> bool:
         """Reset Forge's window gap (GSettings window-gap-size) to an absolute value.

@@ -853,6 +853,147 @@
       }
     },
 
+    // Like fuzzDrag, but drives the REAL grab LOOP across multiple waypoints instead of just
+    // the two endpoints (forge-v9o7). fuzzDrag jumps straight to the drop math; this one walks
+    // src-center -> via-centers -> a zone of TGT, invoking _handleMoving at each point so the
+    // preview-hint St.Bin lifecycle, the debounce path, and the live-preview branch
+    // (moveWindowToPointer(...,true)) all run across positions. opts: {src, tgt, zone, vias:[hint,...]}.
+    //
+    // Monkeypatches, all restored in finally (mirrors fuzzDrag's gate-bypass philosophy):
+    //  - get_focus_window -> SRC (grab handlers act on focusMetaWindow; src.focus() is async).
+    //  - getPointer -> the current waypoint (patched AFTER begin so _grabStartPointer keeps the
+    //    real pointer and getDragPointer returns each waypoint).
+    //  - findNodeWindowAtPointer -> deterministic hit-test of the current waypoint against live
+    //    windows (the real sortedWindows chain resolves null in this synthetic path; see fuzzDrag).
+    //  - allowDragDropTile -> true, so the live-preview branch AND the real drop in
+    //    _handleGrabOpEnd actually fire headless (no modifier is held).
+    fuzzDragPath(opts) {
+      const o = opts || {};
+      const wm = forgeExt() && forgeExt().extWm;
+      if (!wm) return JSON.stringify({ ok: false, reason: "no-wm" });
+      const origGetPointer = wm.getPointer;
+      const origFindAtPointer = wm.findNodeWindowAtPointer;
+      const origAllow = wm.allowDragDropTile;
+      let origFocus = null;
+      let ended = false;
+      try {
+        const wins = global.workspace_manager.get_active_workspace().list_windows();
+        if (wins.length < 2) return JSON.stringify({ ok: false, reason: "need-2-windows" });
+        const pick = (hint) => {
+          if (hint === "leftmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().x < b.get_frame_rect().x ? x : b),
+              wins[0]
+            );
+          if (hint === "rightmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().x > b.get_frame_rect().x ? x : b),
+              wins[0]
+            );
+          if (hint === "topmost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().y < b.get_frame_rect().y ? x : b),
+              wins[0]
+            );
+          if (hint === "bottommost")
+            return wins.reduce(
+              (b, x) => (x.get_frame_rect().y > b.get_frame_rect().y ? x : b),
+              wins[0]
+            );
+          return wins[0];
+        };
+        const src = pick(o.src);
+        let tgt = pick(o.tgt);
+        if (tgt === src) tgt = wins.find((x) => x !== src) || src;
+        if (tgt === src) return JSON.stringify({ ok: false, reason: "src==tgt" });
+
+        // Build the waypoint trail: src center -> each via window's center -> the TGT drop zone.
+        const center = (w) => {
+          const r = w.get_frame_rect();
+          return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)];
+        };
+        const tr = tgt.get_frame_rect();
+        const fx = { center: 0.5, left: 0.12, right: 0.88, top: 0.5, bottom: 0.5 };
+        const fy = { center: 0.5, left: 0.5, right: 0.5, top: 0.12, bottom: 0.88 };
+        const zone = o.zone in fx ? o.zone : "center";
+        const waypoints = [center(src)];
+        for (const v of o.vias || []) {
+          const vw = pick(v);
+          if (vw !== src) waypoints.push(center(vw));
+        }
+        waypoints.push([
+          Math.round(tr.x + tr.width * fx[zone]),
+          Math.round(tr.y + tr.height * fy[zone]),
+        ]);
+
+        const display = global.display;
+        const grabOp = Meta.GrabOp.MOVING_UNCONSTRAINED;
+        origFocus = display.get_focus_window;
+        display.get_focus_window = function () {
+          return src;
+        };
+        wm._handleGrabOpBegin(display, src, grabOp); // SRC -> GRAB_TILE; _grabStartPointer = real pointer
+        const dragged = wm._draggedNodeWindow || wm.findNodeWindow(src);
+
+        // Patch AFTER begin so _grabStartPointer kept the real pointer.
+        let cur = [0, 0, 0];
+        wm.getPointer = function () {
+          return cur;
+        };
+        // Resolve the hover target at the CURRENT waypoint, hit-testing live windows (excl. SRC).
+        wm.findNodeWindowAtPointer = function () {
+          const px = cur[0];
+          const py = cur[1];
+          for (const w of wins) {
+            if (w === src) continue;
+            const r = w.get_frame_rect();
+            if (px >= r.x && px <= r.x + r.width && py >= r.y && py <= r.y + r.height)
+              return wm.findNodeWindow(w);
+          }
+          return null;
+        };
+        wm.allowDragDropTile = function () {
+          return true;
+        };
+
+        const trail = [];
+        for (const wp of waypoints) {
+          cur = [wp[0], wp[1], 0];
+          wm._handleMoving(dragged); // creates/uses previewHint + live-preview moveWindowToPointer
+          trail.push({
+            x: wp[0],
+            y: wp[1],
+            atPointer: !!wm.nodeWinAtPointer,
+            hint: !!(dragged && dragged.previewHint),
+          });
+          try {
+            wm.tree.render("e2e-fuzz-dragpath"); // synchronous render between moves (cf. fuzzRenderNow)
+          } catch (e) {}
+        }
+
+        // Real drop happens HERE: _handleGrabOpEnd sees allowDragDropTile()===true and calls
+        // moveWindowToPointer(focusNodeWindow) using the nodeWinAtPointer the last move resolved,
+        // then _grabCleanup destroys the preview hint.
+        wm._handleGrabOpEnd(display, src, grabOp);
+        ended = true;
+        return JSON.stringify({ ok: true, zone, waypoints: waypoints.length, trail });
+      } catch (e) {
+        return JSON.stringify({ ok: false, error: e.message });
+      } finally {
+        wm.getPointer = origGetPointer;
+        wm.findNodeWindowAtPointer = origFindAtPointer;
+        wm.allowDragDropTile = origAllow;
+        if (origFocus) global.display.get_focus_window = origFocus;
+        if (!ended) {
+          // Half-open grab (we threw before the normal end): defensively release it so no window
+          // is stranded in GRAB_TILE and no preview hint leaks. Mirror fuzzDrag's catch path.
+          try {
+            wm._handleGrabOpEnd(global.display, null, Meta.GrabOp.MOVING_UNCONSTRAINED);
+          } catch (e2) {}
+        }
+      }
+    },
+
     // Activate (switch to) a workspace by index, creating intermediate workspaces if needed, for
     // the fuzzer's workspace-switch chaos. Distinct from moveWindowToWorkspace (which moves the
     // focused window); this only changes the active workspace.
@@ -977,6 +1118,13 @@
       try {
         const w = global.display.get_focus_window();
         if (!w) return "NO_FOCUS";
+        // Mutter's move_to_monitor ABORTS the process on an out-of-range index (libmutter
+        // meta_monitor_manager_get_logical_monitor_from_number assertion, GNOME 49.6) — an
+        // uncatchable C-level abort, NOT a JS-catchable clamp. Reject out-of-range here so a
+        // fuzzer rehome (or a replayed repro carrying a stale index) hits this guard instead
+        // of crashing the shell. Valid indices behave exactly as before.
+        const n = global.display.get_n_monitors();
+        if (monitorIndex < 0 || monitorIndex >= n) return "OUT_OF_RANGE";
         w.move_to_monitor(monitorIndex);
         return "ok";
       } catch (e) {
@@ -1272,6 +1420,126 @@
           { count: 0, visible: 0 }
         );
         return JSON.stringify(state);
+      } catch (e) {
+        return JSON.stringify({ error: String(e) });
+      }
+    },
+
+    // Focus-correctness probe (Angle 3). The original spec (focusMetaWindow vs
+    // get_focus_window) was a tautology — focusMetaWindow IS get_focus_window (window.js:951).
+    // Instead: after the tree settles, Mutter's focused window must be the tree's "active/
+    // visible child" of its STACKED parent, i.e. the restack updateStackedFocus (focus.js:111)
+    // is supposed to perform on every focus — it appendChild()s the focused node to LAST and
+    // raises the stack in order. A divergence is the forge-d5mm class (click/alt-tab focus
+    // failing to re-stack a STACKED container).
+    //
+    // ONLY the STACKED case is asserted, deliberately: it is a PURELY STRUCTURAL tree fact
+    // (child order), unperturbed by Wayland stacking. A TABBED variant via Mutter's
+    // sort_windows_by_stacking was prototyped and FALSE-POSITIVED on clean runs (focus-raise
+    // races the settle, and transient _forgeTransientAbove make_above pins leave another window
+    // on top) — a noisy focus oracle is worse than none, so it was dropped.
+    //
+    // CONSERVATIVE: a transient/ambiguous state is NON-violating — null focus (between windows),
+    // a window mid-close, a focused window not yet in the tree (fresh spawn / dialog), or a
+    // parent with < 2 tiled children. We only ever assert a positive structural fact.
+    // Re-readable (flows through check_with_retry's transient guard).
+    // Returns {violations:[{rule,detail,path}]}.
+    fuzzFocusMismatch() {
+      try {
+        const r = root();
+        if (!r) return JSON.stringify({ violations: [] });
+        const fw = global.display.get_focus_window();
+        if (!fw) return JSON.stringify({ violations: [] }); // transient null focus
+        let alive = false;
+        try {
+          alive = typeof fw.get_id === "function" && fw.get_id() != null;
+        } catch (e) {
+          alive = false;
+        }
+        if (!alive) return JSON.stringify({ violations: [] }); // window mid-close
+        const node = firstMatch(r, (n) => n.nodeValue === fw);
+        if (!node || !node.parentNode) return JSON.stringify({ violations: [] }); // untracked yet
+        const parent = node.parentNode;
+        if (parent.layout !== "STACKED") return JSON.stringify({ violations: [] });
+        let tiled;
+        try {
+          tiled = r.getTiledChildren(parent.childNodes);
+        } catch (e) {
+          tiled = [];
+        }
+        // node must be a tiled child of this STACKED parent, and order only matters with >= 2.
+        if (tiled.indexOf(node) < 0 || tiled.length < 2) {
+          return JSON.stringify({ violations: [] });
+        }
+        const violations = [];
+        // updateStackedFocus appendChild()s the focused node to LAST and raises in order, so
+        // after settle the focused node must be the last (top-of-stack) tiled child.
+        if (tiled[tiled.length - 1] !== node) {
+          violations.push({
+            rule: "focus-mismatch",
+            detail: "focused window is not the top (last) child of its STACKED container",
+            path: "stacked",
+          });
+        }
+        return JSON.stringify({ violations });
+      } catch (e) {
+        // Never let the probe itself fail a session — a thrown probe is not a Forge bug.
+        return JSON.stringify({ violations: [] });
+      }
+    },
+
+    // Resource-leak METRIC (Angle 3, demoted to a logged metric — exact-baseline-after-disable
+    // is flaky from GJS GC timing). Consolidates the ALREADY-tracked collections scattered across
+    // WindowManager + the tree into one cheap snapshot the engine logs / non-growth-warns on:
+    //  - signals: total length of the bound-once global signal arrays (_displaySignals,
+    //    _windowManagerSignals, _workspaceManagerSignals, _settingsSignals, _overviewSignals).
+    //    These are bound once in _bindSignals and never grow — so growth here is a real leak.
+    //  - timers: count of LIVE tracked GLib source ids (the set _removeSignals clears). Transient
+    //    by nature (come and go), reported for visibility, NOT a non-growth target.
+    //  - decorations/tabs/previewHints: per-node actors counted by walking the tree (Node.tab /
+    //    Node.decoration / Node.previewHint, tree.js:85-86). Scale with tabbed/stacked containers
+    //    and windows, so reported but NOT a steady-state non-growth target.
+    fuzzResourceCounts() {
+      try {
+        const ext = forgeExt();
+        const wm = ext && ext.extWm;
+        if (!wm) return JSON.stringify({ error: "no-wm" });
+        const arrLen = (a) => (Array.isArray(a) ? a.length : 0);
+        const signals =
+          arrLen(wm._displaySignals) +
+          arrLen(wm._windowManagerSignals) +
+          arrLen(wm._workspaceManagerSignals) +
+          arrLen(wm._settingsSignals) +
+          arrLen(wm._overviewSignals);
+        const timerIds = [
+          "_renderTreeSrcId",
+          "_reloadTreeSrcId",
+          "_wsWindowAddSrcId",
+          "_windowHomeReconcileSrcId",
+          "_queueSourceId",
+          "_manualResizeEndId",
+          "_pointerFocusTimeoutId",
+          "_workspaceChangingTimeoutId",
+        ];
+        let timers = 0;
+        for (const id of timerIds) if (wm[id]) timers += 1;
+        let decorations = 0;
+        let tabs = 0;
+        let previewHints = 0;
+        const r = root();
+        if (r) {
+          reduceTree(
+            r,
+            (acc, n) => {
+              if (n.decoration) decorations += 1;
+              if (n.tab) tabs += 1;
+              if (n.previewHint) previewHints += 1;
+              return { acc };
+            },
+            null
+          );
+        }
+        return JSON.stringify({ signals, timers, decorations, tabs, previewHints });
       } catch (e) {
         return JSON.stringify({ error: String(e) });
       }

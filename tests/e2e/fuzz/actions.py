@@ -22,6 +22,8 @@ tile-snap latch (forge-3xz).
 
 from __future__ import annotations
 
+from framework.constants import APP_PALETTE, DEFAULT_TEST_APP
+
 # Geometry-based focus hints understood by bridge.invokeForgeAction. Using a
 # positional hint (rather than None -> "whatever the shell focused") is what makes a
 # replayed step target the same window across runs.
@@ -143,6 +145,24 @@ WINSTATE_WEIGHT = 4
 DRAG_ZONES = ["center", "left", "right", "top", "bottom"]
 DRAG_WEIGHT = 6
 
+# Drag-PATH class (forge-v9o7): same drop surface as DRAG, but walks the REAL grab loop through
+# 2-3 intermediate window centers (vias) before the TGT zone, exercising the preview-hint
+# lifecycle + live-preview branch _handleMoving runs that single-point fuzz_drag bypasses.
+DRAG_PATH_WEIGHT = 4
+
+# Re-home class (forge-v9o7, partial-multimon): move the focused window to the current monitor
+# (in-range) or one PAST the last monitor. NB: Mutter's move_to_monitor ABORTS the shell on an
+# out-of-range index (uncatchable libmutter assertion, GNOME 49.6), so the bridge wrapper
+# range-guards it (returns OUT_OF_RANGE) — out-of-range exercises that guard, in-range exercises
+# the real reparent. Single-monitor-reachable; true dual-display stays deferred (forge-leqs/62ja).
+REHOME_WEIGHT = 2
+
+
+# App palette as a weighted (name, weight) list for the spawn step (Angle 2). Drawn heavily
+# toward DEFAULT_TEST_APP (the fast/reliable tiled editor); the minority entry (zenity) is a
+# dialog/transient probe. Baked into the step as a tag so replay re-spawns the same app.
+_SPAWN_APPS = [(name, spec["weight"]) for name, spec in APP_PALETTE.items()]
+
 
 def _weighted_choice(rng, items, weight_key):
     total = sum(weight_key(i) for i in items)
@@ -155,7 +175,7 @@ def _weighted_choice(rng, items, weight_key):
     return items[-1]
 
 
-def generate_step(rng, window_count, workspace_count):
+def generate_step(rng, window_count, workspace_count, monitor_count=1):
     """Produce one concrete step, gating chaos on the current window/workspace state.
 
     window_count is the number of windows on the active workspace; chaos actions are
@@ -172,11 +192,17 @@ def generate_step(rng, window_count, workspace_count):
         menu.append(("winstate", WINSTATE_WEIGHT))
     if window_count >= 2:
         menu.append(("drag", DRAG_WEIGHT))
+    if window_count >= 2:
+        menu.append(("drag_path", DRAG_PATH_WEIGHT))
+    if window_count >= 1:
+        menu.append(("rehome", REHOME_WEIGHT))
 
     kind = _weighted_choice(rng, menu, lambda m: m[1])[0]
 
     if kind == "spawn":
-        return {"kind": "spawn"}
+        # Tag the spawn with a palette app so it exercises class/type diversity and replays
+        # the same app. Default-weighted toward the editor (see _SPAWN_APPS).
+        return {"kind": "spawn", "app": _weighted_choice(rng, _SPAWN_APPS, lambda a: a[1])[0]}
     if kind == "close":
         return {"kind": "close"}
     if kind == "switch_ws":
@@ -190,6 +216,21 @@ def generate_step(rng, window_count, workspace_count):
             "tgt": rng.choice(FOCUS_HINTS),
             "zone": rng.choice(DRAG_ZONES),
         }
+    if kind == "drag_path":
+        return {
+            "kind": "drag_path",
+            "src": rng.choice(FOCUS_HINTS),
+            "tgt": rng.choice(FOCUS_HINTS),
+            "zone": rng.choice(DRAG_ZONES),
+            # 2-3 intermediate waypoints drawn from the same positional hints; resolved to
+            # window centers JS-side, so the step stays JSON-serializable + replay-stable.
+            "vias": [rng.choice(FOCUS_HINTS) for _ in range(rng.randint(2, 3))],
+        }
+    if kind == "rehome":
+        # In-range (current/any monitor) or one-past-the-end (forces clamp/guard).
+        in_range = rng.randrange(max(1, monitor_count))
+        out_range = monitor_count + rng.randint(1, 3)
+        return {"kind": "rehome", "monitor": rng.choice([in_range, out_range])}
 
     a = _weighted_choice(rng, TILING_ACTIONS, lambda x: x["weight"])
     return {
@@ -204,6 +245,8 @@ def generate_step(rng, window_count, workspace_count):
 def describe(step):
     """One-line human label for a step (for logs / repro summaries)."""
     kind = step.get("kind")
+    if kind == "spawn":
+        return "spawn(%s)" % (step.get("app") or DEFAULT_TEST_APP)
     if kind == "action":
         params = step.get("params") or {}
         ps = ",".join("%s=%s" % (k, v) for k, v in params.items())
@@ -214,4 +257,13 @@ def describe(step):
         return "winstate:%s@%s" % (step.get("op"), step.get("focus"))
     if kind == "drag":
         return "drag(%s->%s:%s)" % (step.get("src"), step.get("tgt"), step.get("zone"))
+    if kind == "drag_path":
+        return "drag_path(%s->%s:%s via %s)" % (
+            step.get("src"),
+            step.get("tgt"),
+            step.get("zone"),
+            step.get("vias"),
+        )
+    if kind == "rehome":
+        return "rehome(mon=%s)" % step.get("monitor")
     return kind

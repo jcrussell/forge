@@ -78,7 +78,9 @@ def test_fuzz_session(fuzz_engine):
         # actually building deep/nested trees rather than a shallow fan (forge-cnrc).
         stats = fuzz_engine.session_stats_str()
         if failure is None:
-            print("[fuzz] session seed=%d: clean (%s)" % (seed, stats))
+            # Leak metric is a LOGGED line (Angle 3), never a session failure (see engine).
+            print("[fuzz] session seed=%d: clean (%s) [%s]" % (
+                seed, stats, fuzz_engine.resource_summary_str()))
             continue
 
         # Found a violation. Persist the raw repro immediately (before any shrink work
@@ -149,3 +151,63 @@ def test_fuzz_replay(fuzz_engine):
     assert hit is not None, "repro did not reproduce any violation"
     if expect_rule:
         assert hit[0] == expect_rule, "expected rule %s, got %s (%s)" % (expect_rule, hit[0], hit[1])
+
+
+def _live_window_classes(shell_proxy):
+    """Sorted multiset of live window wm-classes on the active workspace (diff comparable)."""
+    wins = shell_proxy.get_windows()
+    if not isinstance(wins, list):
+        return []
+    return sorted(w.get("wmClass") for w in wins if isinstance(w, dict))
+
+
+@pytest.mark.fuzz
+def test_fuzz_autosplit_differential(shell_proxy, launch_window):
+    """5b: the SAME step list under FORGE_FUZZ_AUTOSPLIT ON vs OFF must differ ONLY in the
+    documented way — tree DEPTH/nesting. Opt-in via FORGE_FUZZ_DIFF=1 so default runs are
+    unaffected.
+
+    LOW-false-positive RELATIVE property (NOT tree-shape equality — nesting differences are
+    EXPECTED and never flagged):
+      (a) neither mode crashes or trips the structural oracle, and
+      (b) both modes end with the SAME COUNT of live windows (spawns/closes are the same steps,
+          so the working set must stay in lock-step regardless of nesting).
+    The live wm-class multiset is compared too but only LOGGED: a `close` targets Mutter's
+    focused window, which the two modes can legitimately leave on different windows, so a class
+    mismatch is not a sound failure.
+    """
+    if _env_int("FORGE_FUZZ_DIFF", 0) != 1:
+        pytest.skip("FORGE_FUZZ_DIFF not set")
+
+    seed = _env_int("FORGE_FUZZ_SEED", 1)
+    steps = _env_int("FORGE_FUZZ_STEPS", 30)
+    initial_windows = _env_int("FORGE_FUZZ_WINDOWS", 4)
+    print("\n[fuzz] autosplit differential seed=%d steps=%d" % (seed, steps))
+
+    # Mode ON: generate + execute, capturing the exact executed step list for replay.
+    engine_on = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=True)
+    failure_on = engine_on.run_session(seed, steps, initial_windows=initial_windows)
+    step_list = list(engine_on.last_steps())
+    classes_on = _live_window_classes(shell_proxy)
+    print("[fuzz]   ON: failure=%s windows=%d (%s)" % (
+        None if failure_on is None else failure_on.rule, len(classes_on), engine_on.session_stats_str()))
+
+    # Mode OFF: REPLAY the identical step list (engine_off pins auto-split off via _reset).
+    engine_off = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=False)
+    hit_off = engine_off.replay(step_list, expect_rule=None)
+    classes_off = _live_window_classes(shell_proxy)
+    print("[fuzz]   OFF: violation=%s windows=%d (%s)" % (
+        hit_off, len(classes_off), engine_off.session_stats_str()))
+
+    if classes_on != classes_off:
+        # Documented-divergence-tolerant: log, don't fail (focus-dependent close, see docstring).
+        print("[fuzz]   note: live class multisets differ (ON=%s OFF=%s)" % (classes_on, classes_off))
+
+    # (a) both modes clean.
+    assert failure_on is None, "autosplit=ON tripped: %s" % (failure_on.rule if failure_on else None)
+    assert hit_off is None, "autosplit=OFF replay tripped: %s" % (hit_off,)
+    # (b) same live window count — the robust relative invariant.
+    assert len(classes_on) == len(classes_off), (
+        "live window COUNT diverged between autosplit modes: ON=%d OFF=%d" % (
+            len(classes_on), len(classes_off))
+    )

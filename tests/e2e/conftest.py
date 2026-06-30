@@ -20,6 +20,7 @@ from framework.constants import (
     RetryConfig,
     DEFAULT_TEST_APP,
     DEFAULT_TEST_APP_ARGS,
+    APP_PALETTE,
     FORGE_UUID,
 )
 from framework.shell_proxy import ShellProxy, ShellProxyError
@@ -534,7 +535,13 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
     activations.
     """
     if app_args is None:
-        app_args = DEFAULT_TEST_APP_ARGS if app == DEFAULT_TEST_APP else []
+        # Palette apps (fuzzer Angle 2) carry their own launch args — notably zenity needs a
+        # mode arg or it exits. Non-palette callers keep the historical editor/empty default.
+        spec = APP_PALETTE.get(app)
+        if spec is not None:
+            app_args = spec["args"]
+        else:
+            app_args = DEFAULT_TEST_APP_ARGS if app == DEFAULT_TEST_APP else []
 
     # Ensure environment variables are passed to the subprocess
     env = os.environ.copy()

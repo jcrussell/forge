@@ -74,3 +74,22 @@ FORGE_UUID = "forge@jmmaranan.com"
 # Use --new-window to ensure multiple instances can be launched
 DEFAULT_TEST_APP = "gnome-text-editor"
 DEFAULT_TEST_APP_ARGS = ["--new-window"]
+
+# App palette for the fuzzer's input-diversity angle (forge-v9o7 family / Angle 2). ONLY apps
+# reliably present in the e2e image may live here — docker/Dockerfile.e2e installs exactly two
+# GUI apps: gnome-text-editor and zenity (no calculator/terminal). gnome-text-editor is the
+# dominant default: it TILES and survives the Mutter-50 GApplication register race. zenity is a
+# GtkMessageDialog (`--info`), so Forge's _isDialogLike exclusion keeps it OUT of the tile tree
+# (proven in test_dialog_windows.py) — it contributes a DISTINCT wm_class plus a dialog/transient
+# + fixed-small-min-size probe (the tile-reject / late-wm_class / float-specificity paths) WITHOUT
+# ever entering the tiled-overlap oracle (an excluded window is never a tiled node, so it
+# cannot false-positive the geometry check). Each entry maps the app to its launch args and a
+# spawn weight. NO --timeout on zenity: the fuzzer owns the window's lifetime (its close step
+# deletes it), so an auto-dismissing dialog would desync replay. Weighting is heavily
+# editor-favoured: spawns cost ~10s and only the editor builds tree structure, so zenity stays an
+# occasional probe rather than the norm. A second TILED class is NOT available in the container,
+# so true tiled-class diversity is infra-limited (see report) — zenity is the reachable probe.
+APP_PALETTE = {
+    DEFAULT_TEST_APP: {"args": DEFAULT_TEST_APP_ARGS, "weight": 9},
+    "zenity": {"args": ["--info", "--text=forge-fuzz", "--no-wrap"], "weight": 1},
+}

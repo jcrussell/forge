@@ -24,7 +24,7 @@ import os
 import time
 from pathlib import Path
 
-from framework.constants import DEFAULT_TEST_APP, Timing
+from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, Timing
 from framework.shell_proxy import ShellProxyError
 from framework.wait import WaitTimeoutError
 
@@ -172,12 +172,25 @@ class FuzzEngine:
         self.auto_split = auto_split
         self.log = LogScanner(log_path)
         self._session_stats = {}  # peak {maxDepth,nodes,cons,maxSplitFanout} for the current session
+        self._monitor_count = None  # cached per session (headless monitor set is static)
+        self._last_steps = []  # last run_session's executed step list (reused by the diff test)
+        self._res_baseline = None  # resource counts after the initial settle (leak metric)
+        self._res_final = None  # resource counts at session end (leak metric)
 
     # --- low-level ----------------------------------------------------------------------------
 
     def _window_count(self):
         wins = self.shell.get_windows()
         return len(wins) if isinstance(wins, list) else 0
+
+    def _monitors(self):
+        """Monitor count, cached per session (headless monitor set is static)."""
+        if self._monitor_count is None:
+            try:
+                self._monitor_count = max(1, int(self.shell.get_monitor_count()))
+            except Exception:  # noqa: BLE001
+                self._monitor_count = 1
+        return self._monitor_count
 
     def _settle(self):
         """Wait for responsiveness, drain async finalizers, then force a synchronous render.
@@ -205,7 +218,9 @@ class FuzzEngine:
         """Apply one concrete step. Returns None; raises ShellProxyError on a hard failure."""
         kind = step.get("kind")
         if kind == "spawn":
-            self.launch_fn()
+            # Spawn the tagged palette app (Angle 2). Legacy/initial-window steps with no tag
+            # default to the fast tiled editor.
+            self.launch_fn(step.get("app") or DEFAULT_TEST_APP)
             return
         if kind == "close":
             self.shell.close_focused_window()
@@ -218,6 +233,14 @@ class FuzzEngine:
             return
         if kind == "drag":
             self.shell.fuzz_drag(step.get("src"), step.get("tgt"), step.get("zone"))
+            return
+        if kind == "drag_path":
+            self.shell.fuzz_drag_path(
+                step.get("src"), step.get("tgt"), step.get("zone"), step.get("vias")
+            )
+            return
+        if kind == "rehome":
+            self.shell.move_focused_window_to_monitor(int(step.get("monitor", 0)))
             return
         if kind == "action":
             action = {"name": step["name"], **(step.get("params") or {})}
@@ -250,6 +273,37 @@ class FuzzEngine:
             v = violations[0]
             extra = ("; +%d more" % (len(violations) - 1)) if len(violations) > 1 else ""
             return (v.get("rule", "unknown"), "%s [%s]%s" % (v.get("detail", ""), v.get("path", ""), extra))
+
+        # 2b. grab-preview-hint leak (forge-leqs/62ja, forge-v9o7): outside an active grab NO tree
+        # node may still hold a previewHint. fuzzDragPath drives the real grab loop, so a leak here
+        # is a stuck overlay / GRAB_TILE teardown miss. Re-readable: a transient mid-settle hint is
+        # absorbed by check_with_retry's settle+recheck. Defensive: any non-dict / error -> skip.
+        try:
+            ph = self.shell.get_preview_hint_state()
+        except ShellProxyError:
+            ph = None
+        if isinstance(ph, dict) and isinstance(ph.get("count"), int) and ph["count"] > 0:
+            return (
+                "grab-preview-leak",
+                "%d node(s) hold a previewHint outside a grab (visible=%s)"
+                % (ph["count"], ph.get("visible")),
+            )
+
+        # 2c. focus-correctness (Angle 3, forge-d5mm): after settle, Mutter's focused window must
+        # be the tree's active/visible child of its STACKED parent (TABBED not probed — too flaky).
+        # The probe is itself
+        # conservative (transient states return no violations); kept OUT of AUTHORITATIVE_RULES so
+        # a hit still gets check_with_retry's settle+recheck transient guard. Defensive: any
+        # non-dict / error -> skip.
+        try:
+            fm = self.shell.fuzz_focus_mismatch()
+        except ShellProxyError:
+            fm = None
+        if isinstance(fm, dict):
+            fviol = fm.get("violations") or []
+            if fviol:
+                v = fviol[0]
+                return (v.get("rule", "focus-mismatch"), "%s [%s]" % (v.get("detail", ""), v.get("path", "")))
 
         # 3. log scan — thrown exceptions on the live shell log since the last step.
         errs = self.log.new_errors()
@@ -291,6 +345,38 @@ class FuzzEngine:
             s.get("maxDepth", 0), s.get("nodes", 0), s.get("cons", 0), s.get("maxSplitFanout", 0)
         )
 
+    def last_steps(self):
+        """The most recent run_session's executed step list (reused by the autosplit diff test)."""
+        return self._last_steps
+
+    def _resource_counts(self):
+        """Cheap leak-metric sample, or None on any error (never perturb a run). Angle 3."""
+        try:
+            res = self.shell.fuzz_resource_counts()
+        except Exception:  # noqa: BLE001
+            return None
+        return res if isinstance(res, dict) and "error" not in res else None
+
+    def resource_summary_str(self):
+        """One-line leak-metric summary for the session (Angle 3, LOGGED — not a failure).
+
+        Reports the end-of-session counts and, when both samples exist, whether the bound-once
+        signal total GREW (the only count that should be invariant — a non-growth WARNING, never
+        a hard session failure: GJS GC timing makes a stricter assertion flaky).
+        """
+        f = self._res_final
+        if not f:
+            return "resources=unavailable"
+        base = self._res_baseline or {}
+        s = "resources signals=%s timers=%s decorations=%s tabs=%s previewHints=%s" % (
+            f.get("signals"), f.get("timers"), f.get("decorations"),
+            f.get("tabs"), f.get("previewHints"),
+        )
+        b_sig, f_sig = base.get("signals"), f.get("signals")
+        if isinstance(b_sig, int) and isinstance(f_sig, int) and f_sig > b_sig:
+            s += " WARNING signal-leak %d->%d" % (b_sig, f_sig)
+        return s
+
     # --- high-level ---------------------------------------------------------------------------
 
     def run_session(self, seed, n_steps, initial_windows=2, on_step=None):
@@ -305,12 +391,16 @@ class FuzzEngine:
 
         rng = random.Random(seed)
         self._session_stats = {}  # fresh peak-shape metrics per session (depth instrumentation)
+        self._monitor_count = None  # re-probe monitor count for this session
         # Start every seeded session from an empty, ws0 baseline (M1) — switch_ws/GapSize/
         # float chaos from a prior session would otherwise bleed in. Reset BEFORE arming the
         # log scanner so teardown noise isn't mis-read as a finding.
         self._reset_workspace()
         self.log.reset()
+        self._res_baseline = None  # leak-metric samples for this session (Angle 3)
+        self._res_final = None
         executed = []
+        self._last_steps = executed  # same list object, mutated in place; reused by the diff test
 
         # Seed the working set. Recorded as spawn steps for uniform replay. If the shell is
         # already dead here (e.g. a prior session crashed it in a CONTINUE run), surface that
@@ -323,9 +413,13 @@ class FuzzEngine:
             self._settle()
         except ShellProxyError as e:
             return FuzzFailure("shell-dead", str(e), executed, seed, len(executed) - 1)
+        # Leak-metric baseline AFTER the working set is up + settled (Angle 3, logged metric).
+        self._res_baseline = self._resource_counts()
 
         for i in range(n_steps):
-            step = actions.generate_step(rng, self._window_count(), actions.MAX_WORKSPACES)
+            step = actions.generate_step(
+                rng, self._window_count(), actions.MAX_WORKSPACES, self._monitors()
+            )
             executed.append(step)
             if on_step:
                 on_step(i, step)
@@ -353,6 +447,8 @@ class FuzzEngine:
                 return FuzzFailure("shell-dead", str(e), executed, seed, len(executed) - 1)
             if hit:
                 return FuzzFailure(hit[0], hit[1], executed, seed, len(executed) - 1)
+        # Clean session: sample the leak metric for the end-of-session summary (Angle 3).
+        self._res_final = self._resource_counts()
         return None
 
     def replay(self, steps, expect_rule=None, reset_first=True):
@@ -449,10 +545,14 @@ class FuzzEngine:
             self.shell.set_window_gap(self.gap)
         except Exception:  # noqa: BLE001
             pass
-        try:
-            self.shell.remove_class_float_override(DEFAULT_TEST_APP)
-        except Exception:  # noqa: BLE001
-            pass
+        for app in APP_PALETTE:
+            # Clear class-wide float overrides for EVERY palette class (Angle 2) — FloatClassToggle
+            # can now target any spawned class, so a session that floats one must not bleed the rule
+            # into the next. Best-effort, same caveat as before (per-instance wmId entries are inert).
+            try:
+                self.shell.remove_class_float_override(app)
+            except Exception:  # noqa: BLE001
+                pass
         try:
             # WorkspaceActiveTileToggle persists which workspaces are floated; clear it so the
             # next session starts fully tiled (forge-cnrc).
