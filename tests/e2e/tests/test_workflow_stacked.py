@@ -16,7 +16,6 @@ never positional geometry.
 import time
 
 import pytest
-
 from framework.constants import Timing
 from framework.wait import wait_for_layout, wait_for_window_count
 from framework.workflow import step
@@ -90,9 +89,7 @@ def _enable_stacked_tabbed_modes(restore_settings):
 class TestWorkflowStacked:
     """One three-window set, sequenced through stacked/tabbed layouts + focus nav."""
 
-    def test_stacked_tabbed_focus(
-        self, shell_proxy, input_sim, window_helper, three_windows
-    ):
+    def test_stacked_tabbed_focus(self, shell_proxy, input_sim, window_helper, three_windows):
         with step(shell_proxy, "three windows tiled"):
             wait_for_window_count(shell_proxy, 3)
 

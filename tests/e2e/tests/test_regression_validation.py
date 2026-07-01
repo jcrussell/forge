@@ -14,8 +14,7 @@ This serves as a proof of concept for:
 import time
 
 import pytest
-
-from framework.constants import Tolerance, Timing
+from framework.constants import Timing
 from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
 from framework.wait import wait_for_layout, wait_for_window_count
 
@@ -56,9 +55,7 @@ class TestBug125VerticalStackedTiling:
         assert len(windows_before) >= 3, f"Expected 3 windows, got {len(windows_before)}"
 
         # Calculate total width of windows before stacking
-        total_width_before = sum(
-            w.get("rect", {}).get("width", 0) for w in windows_before
-        )
+        total_width_before = sum(w.get("rect", {}).get("width", 0) for w in windows_before)
 
         # Toggle layout to stacked (Shift+Super+s is default keybinding).
         # toggle_stacked() self-settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
@@ -67,7 +64,7 @@ class TestBug125VerticalStackedTiling:
 
         # Get window positions after stacking
         windows_after = shell_proxy.get_windows()
-        assert len(windows_after) >= 3, f"Expected 3 windows after stacking"
+        assert len(windows_after) >= 3, "Expected 3 windows after stacking"
 
         # In stacked mode, all windows should have similar (larger) width
         # because they all occupy the full container space
@@ -128,9 +125,7 @@ class TestBug305Resize:
     - Non-adjacent siblings maintain their original size
     """
 
-    def test_two_window_resize_proportions(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_two_window_resize_proportions(self, shell_proxy, window_helper, two_windows):
         """Verify two windows split evenly and maintain valid proportions."""
         window1, window2 = two_windows
 
@@ -162,12 +157,8 @@ class TestBug305Resize:
         # All windows should have reasonable dimensions
         for window in windows:
             rect = window.get("rect", {})
-            assert rect.get("width", 0) > 50, (
-                f"Window width too small: {rect.get('width')}"
-            )
-            assert rect.get("height", 0) > 50, (
-                f"Window height too small: {rect.get('height')}"
-            )
+            assert rect.get("width", 0) > 50, f"Window width too small: {rect.get('width')}"
+            assert rect.get("height", 0) > 50, f"Window height too small: {rect.get('height')}"
 
     def test_windows_fill_workspace(self, shell_proxy, window_helper, three_windows):
         """Verify windows together fill most of the workspace."""
@@ -203,9 +194,7 @@ class TestBug057SplitConSiblings:
         restore_settings.set_tabbed_tiling_mode_enabled(True)
         time.sleep(Timing.SETTINGS_SETTLE)
 
-    def test_window_count_stable_after_layout_toggle(
-        self, shell_proxy, input_sim, three_windows
-    ):
+    def test_window_count_stable_after_layout_toggle(self, shell_proxy, input_sim, three_windows):
         """Verify toggling layout preserves window count."""
         window1, window2, window3 = three_windows
 
@@ -279,14 +268,17 @@ class TestLayoutModePreservation:
         # Calculate overlap
         x_overlap = max(
             0,
-            min(rect1.get("x", 0) + rect1.get("width", 0),
-                rect2.get("x", 0) + rect2.get("width", 0))
+            min(
+                rect1.get("x", 0) + rect1.get("width", 0), rect2.get("x", 0) + rect2.get("width", 0)
+            )
             - max(rect1.get("x", 0), rect2.get("x", 0)),
         )
         y_overlap = max(
             0,
-            min(rect1.get("y", 0) + rect1.get("height", 0),
-                rect2.get("y", 0) + rect2.get("height", 0))
+            min(
+                rect1.get("y", 0) + rect1.get("height", 0),
+                rect2.get("y", 0) + rect2.get("height", 0),
+            )
             - max(rect1.get("y", 0), rect2.get("y", 0)),
         )
         overlap_area = x_overlap * y_overlap
@@ -296,7 +288,7 @@ class TestLayoutModePreservation:
         if window_area > 0:
             overlap_ratio = overlap_area / window_area
             assert overlap_ratio < 0.1, (
-                f"Windows overlap too much for split layout: {overlap_ratio*100:.1f}%"
+                f"Windows overlap too much for split layout: {overlap_ratio * 100:.1f}%"
             )
 
     def test_toggle_changes_window_dimensions(self, shell_proxy, input_sim, two_windows):

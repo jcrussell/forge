@@ -5,8 +5,6 @@ Tests that closing windows causes remaining windows to expand
 and fill the freed space correctly.
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import (
     wait_for_layout_settled,
@@ -19,9 +17,7 @@ from framework.wait import (
 class TestWindowCloseRebalance:
     """Test that closing windows rebalances remaining windows."""
 
-    def test_close_one_of_two_fills_workspace(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_close_one_of_two_fills_workspace(self, shell_proxy, window_helper, two_windows):
         """Closing one of two tiled windows should make the remaining fill workspace."""
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
@@ -37,9 +33,7 @@ class TestWindowCloseRebalance:
             f"Remaining window width {rect['width']} should fill workspace {workspace['width']}"
         )
 
-    def test_close_one_of_three_rebalances(
-        self, shell_proxy, window_helper, three_windows
-    ):
+    def test_close_one_of_three_rebalances(self, shell_proxy, window_helper, three_windows):
         """Closing one of three windows should rebalance remaining two."""
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
@@ -49,9 +43,7 @@ class TestWindowCloseRebalance:
 
         window_helper.assert_windows_fill_workspace()
 
-    def test_sequential_close_to_one(
-        self, shell_proxy, window_helper, three_windows
-    ):
+    def test_sequential_close_to_one(self, shell_proxy, window_helper, three_windows):
         """Closing windows one by one should rebalance at each step."""
         workspace = window_helper.get_workspace_rect()
 
@@ -71,9 +63,7 @@ class TestWindowCloseRebalance:
         rect = windows[0].get("rect", {})
         assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE
 
-    def test_close_in_vsplit_rebalances(
-        self, shell_proxy, input_sim, window_helper, two_windows
-    ):
+    def test_close_in_vsplit_rebalances(self, shell_proxy, input_sim, window_helper, two_windows):
         """Closing a window in VSPLIT should make the remaining fill workspace."""
         input_sim.toggle_layout()  # Switch to VSPLIT
         # Wait for the relayout to settle by polling window positions (windows
@@ -106,9 +96,7 @@ class TestTreeIntegrityAfterClose:
         shell_proxy.wait_for_idle()
 
         result = shell_proxy.verify_tree_integrity()
-        assert result.get("valid", False), (
-            f"Tree invalid after first close: {result.get('errors')}"
-        )
+        assert result.get("valid", False), f"Tree invalid after first close: {result.get('errors')}"
 
         # Close another window
         shell_proxy.close_one_window()

@@ -19,10 +19,8 @@ via the default dbus lane.
 import signal
 
 import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_stable
-
 
 MONOCLE_ACTION = {"name": "WorkspaceMonocleToggle"}
 
@@ -80,9 +78,7 @@ def _x_spread(rects):
 
 
 class TestWorkspaceMonocle:
-    def test_monocle_collapses_windows_onto_one_area(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_monocle_collapses_windows_onto_one_area(self, shell_proxy, window_helper, two_windows):
         """Monocle should stack both windows on (≈) the same full-width rect."""
         wm_class = two_windows[0].get("wmClass")
         workspace = window_helper.get_workspace_rect()
@@ -104,9 +100,11 @@ class TestWorkspaceMonocle:
         # predicate waits for BOTH conditions to avoid reading a mid-render rect.
         rects = wait_for(
             lambda: _editor_rects(shell_proxy, wm_class),
-            predicate=lambda rs: len(rs) == 2
-            and _x_spread(rs) < Tolerance.POSITION
-            and all(r.get("width", 0) > workspace["width"] * 0.9 for r in rs),
+            predicate=lambda rs: (
+                len(rs) == 2
+                and _x_spread(rs) < Tolerance.POSITION
+                and all(r.get("width", 0) > workspace["width"] * 0.9 for r in rs)
+            ),
             message="monocle did not collapse windows onto one full-width area",
         )
         r1, r2 = _rect_tuple(rects[0]), _rect_tuple(rects[1])
@@ -139,16 +137,16 @@ class TestWorkspaceMonocle:
 
         rects = wait_for(
             lambda: _editor_rects(shell_proxy, wm_class),
-            predicate=lambda rs: len(rs) == 2
-            and _x_spread(rs) < Tolerance.POSITION
-            and all(r.get("width", 0) > workspace["width"] * 0.9 for r in rs),
+            predicate=lambda rs: (
+                len(rs) == 2
+                and _x_spread(rs) < Tolerance.POSITION
+                and all(r.get("width", 0) > workspace["width"] * 0.9 for r in rs)
+            ),
             message="monocle from a container did not collapse to one full-width area",
         )
         assert len(rects) == 2
 
-    def test_monocle_toggle_off_restores_split(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_monocle_toggle_off_restores_split(self, shell_proxy, window_helper, two_windows):
         """Toggling monocle off should restore a side-by-side split layout."""
         wm_class = two_windows[0].get("wmClass")
         workspace = window_helper.get_workspace_rect()
@@ -165,8 +163,7 @@ class TestWorkspaceMonocle:
         shell_proxy.invoke_forge_action(MONOCLE_ACTION)
         rects = wait_for(
             lambda: _editor_rects(shell_proxy, wm_class),
-            predicate=lambda rs: len(rs) == 2
-            and _x_spread(rs) > workspace["width"] * 0.25,
+            predicate=lambda rs: len(rs) == 2 and _x_spread(rs) > workspace["width"] * 0.25,
             message="monocle toggle-off did not restore a side-by-side split",
         )
         assert len(rects) == 2

@@ -13,31 +13,28 @@ from pathlib import Path
 from typing import Generator, Optional
 
 import pytest
-
 from framework.constants import (
-    Timing,
-    Timeout,
-    RetryConfig,
+    APP_PALETTE,
     DEFAULT_TEST_APP,
     DEFAULT_TEST_APP_ARGS,
-    APP_PALETTE,
     FORGE_UUID,
+    RetryConfig,
+    Timeout,
+    Timing,
 )
-from framework.shell_proxy import ShellProxy, ShellProxyError
-from framework.input_simulator import InputSimulator
-from framework.window_helper import WindowHelper
-from framework.screenshot import ScreenshotCapture
 from framework.gsettings import ForgeSettings
-from framework.wait import wait_for, WaitTimeoutError
-
+from framework.input_simulator import InputSimulator
+from framework.screenshot import ScreenshotCapture
+from framework.shell_proxy import ShellProxy
+from framework.wait import WaitTimeoutError, wait_for
+from framework.window_helper import WindowHelper
 
 # Test configuration
 # Honour FORGE_E2E_RESULTS_DIR so the docker runner can pin diagnostics to the
 # bind-mounted artifact dir; otherwise default to a stable path next to this
 # file so local runs do not depend on pytest's working directory.
 E2E_RESULTS_DIR = Path(
-    os.environ.get("FORGE_E2E_RESULTS_DIR")
-    or (Path(__file__).resolve().parent / "e2e-results")
+    os.environ.get("FORGE_E2E_RESULTS_DIR") or (Path(__file__).resolve().parent / "e2e-results")
 )
 SCREENSHOT_DIR = E2E_RESULTS_DIR / "screenshots"
 
@@ -166,9 +163,7 @@ def check_forge_ready(shell_proxy):
     try:
         result = shell_proxy.eval(js)
         if result != "ready":
-            warnings.warn(
-                f"Forge extension may not be ready at session start: {result}"
-            )
+            warnings.warn(f"Forge extension may not be ready at session start: {result}")
     except Exception as e:
         warnings.warn(f"Could not check Forge status: {e}")
 
@@ -302,12 +297,8 @@ def input_sim(display, shell_proxy, dispatch_mode) -> InputSimulator:
     """
     is_wayland = os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY")
     if is_wayland:
-        return InputSimulator(
-            display=display, shell_proxy=shell_proxy, dispatch_mode=dispatch_mode
-        )
-    return InputSimulator(
-        display=display, idle_proxy=shell_proxy, dispatch_mode=dispatch_mode
-    )
+        return InputSimulator(display=display, shell_proxy=shell_proxy, dispatch_mode=dispatch_mode)
+    return InputSimulator(display=display, idle_proxy=shell_proxy, dispatch_mode=dispatch_mode)
 
 
 @pytest.fixture(scope="session")

@@ -6,8 +6,6 @@ Tests floating window mode toggle with Super+c.
 
 import time
 
-import pytest
-
 from framework.constants import Timing, Tolerance
 from framework.wait import wait_for, wait_for_stable
 
@@ -28,13 +26,15 @@ class TestFloatToggle:
 
         # Toggle to floating via D-Bus (xdotool focus unreliable in Xvfb)
         shell_proxy.ensure_focus()
-        shell_proxy.invoke_forge_action({
-            "name": "FloatToggle",
-            "x": "center",
-            "y": "center",
-            "width": 0.65,
-            "height": 0.75,
-        })
+        shell_proxy.invoke_forge_action(
+            {
+                "name": "FloatToggle",
+                "x": "center",
+                "y": "center",
+                "width": 0.65,
+                "height": 0.75,
+            }
+        )
         # Poll until the float resize settles instead of a fixed sleep.
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
@@ -85,13 +85,15 @@ class TestFloatToggle:
         wm_class = test_window.get("wmClass")
 
         shell_proxy.ensure_focus()
-        shell_proxy.invoke_forge_action({
-            "name": "FloatToggle",
-            "x": "center",
-            "y": "center",
-            "width": 0.65,
-            "height": 0.75,
-        })
+        shell_proxy.invoke_forge_action(
+            {
+                "name": "FloatToggle",
+                "x": "center",
+                "y": "center",
+                "width": 0.65,
+                "height": 0.75,
+            }
+        )
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect = window_helper.get_window_rect(wm_class)
@@ -126,13 +128,15 @@ class TestFloatToggle:
         workspace = window_helper.get_workspace_rect()
 
         shell_proxy.ensure_focus()
-        shell_proxy.invoke_forge_action({
-            "name": "FloatToggle",
-            "x": "center",
-            "y": "center",
-            "width": 0.65,
-            "height": 0.75,
-        })
+        shell_proxy.invoke_forge_action(
+            {
+                "name": "FloatToggle",
+                "x": "center",
+                "y": "center",
+                "width": 0.65,
+                "height": 0.75,
+            }
+        )
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect_before = window_helper.get_window_rect(wm_class)
@@ -147,7 +151,7 @@ class TestFloatToggle:
         # override regardless of the arg; the following render then tiles the float.
         shell_proxy.eval(
             'const ext = Main.extensionManager.lookup("forge@jmmaranan.com").stateObj;'
-            'ext.extWm.reloadWindowOverrides(false);'
+            "ext.extWm.reloadWindowOverrides(false);"
             'ext.extWm.renderTree("e2e-8rm6", true); true;'
         )
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))

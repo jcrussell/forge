@@ -71,7 +71,10 @@ def ddmin(engine, steps, expect_rule, k=3, max_tests=120, max_seconds=1800, log=
             if not complement:
                 continue
             if reproduces(complement):
-                say("ddmin: dropped chunk %d/%d -> %d steps (test #%d)" % (idx + 1, len(chunks), len(complement), tests))
+                say(
+                    "ddmin: dropped chunk %d/%d -> %d steps (test #%d)"
+                    % (idx + 1, len(chunks), len(complement), tests)
+                )
                 seq = complement
                 n = max(n - 1, 2)
                 reduced = True

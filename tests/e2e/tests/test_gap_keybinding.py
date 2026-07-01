@@ -20,7 +20,6 @@ dbus lane.
 from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_stable
 
-
 INCREMENT_KEY = "window-gap-size-increment"
 BASE_GAP = 20  # matches test_settings_live.py; large enough for a measurable delta
 

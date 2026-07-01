@@ -35,9 +35,7 @@ def _set_edge_tiling(shell_proxy, value: bool) -> None:
 class TestEdgeTilingFollowsTilingMode:
     """forge-abk: edge-tiling override reconciles on the tiling-mode toggle."""
 
-    def test_toggle_restores_and_reapplies_edge_tiling(
-        self, shell_proxy, restore_settings
-    ):
+    def test_toggle_restores_and_reapplies_edge_tiling(self, shell_proxy, restore_settings):
         rs = restore_settings
         # Opt in to the edge-tiling override, and start with tiling OFF so Forge
         # is NOT currently overriding edge-tiling.

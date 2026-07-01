@@ -18,7 +18,6 @@ from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_stable, wait_for_window_count
 from framework.workflow import step
 
-
 INCREMENT_KEY = "window-gap-size-increment"
 BASE_GAP = 20  # matches test_gap_keybinding: large enough for a measurable delta
 
@@ -80,7 +79,9 @@ class TestWorkflowSnapGap:
             input_sim.workspace_prev()
             wait_for(shell_proxy.get_active_workspace_index, predicate=lambda i: i == start_ws)
             wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
-            rects_after = [w.get("rect", {}) for w in window_helper.get_windows_sorted_by_position("x")]
+            rects_after = [
+                w.get("rect", {}) for w in window_helper.get_windows_sorted_by_position("x")
+            ]
             assert len(rects_after) == len(rects_before), "window count changed across roundtrip"
             for before, after in zip(rects_before, rects_after):
                 assert abs(before.get("x", 0) - after.get("x", 0)) < Tolerance.POSITION
@@ -99,7 +100,9 @@ class TestWorkflowSnapGap:
             # The snapped (floated) window is the narrow one; identify by min width
             # rather than class (both windows share a wmClass).
             snapped = min(wins, key=lambda w: w.get("rect", {}).get("width", 0)).get("rect", {})
-            assert abs(snapped.get("width", 0) / workspace["width"] - 1 / 3) < Tolerance.SNAP_RATIO, (
+            assert (
+                abs(snapped.get("width", 0) / workspace["width"] - 1 / 3) < Tolerance.SNAP_RATIO
+            ), (
                 f"snapped width ratio {snapped.get('width', 0) / workspace['width']:.3f} should be ~0.333"
             )
             # The non-default base gap set above is still active, so snap insets the

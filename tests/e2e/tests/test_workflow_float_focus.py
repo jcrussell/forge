@@ -21,9 +21,7 @@ from framework.workflow import step
 class TestWorkflowFloatFocus:
     """One two-window set, sequenced through the float lifecycle + focus nav."""
 
-    def test_float_focus(
-        self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows
-    ):
+    def test_float_focus(self, shell_proxy, input_sim, window_helper, dispatch_mode, two_windows):
         workspace = window_helper.get_workspace_rect()
 
         with step(shell_proxy, "two windows tiled; focused window is not floating"):
@@ -35,22 +33,24 @@ class TestWorkflowFloatFocus:
 
         with step(shell_proxy, "float the focused window -> centers ~65%x75%, other fills"):
             shell_proxy.ensure_focus()
-            shell_proxy.invoke_forge_action({
-                "name": "FloatToggle",
-                "x": "center",
-                "y": "center",
-                "width": 0.65,
-                "height": 0.75,
-            })
+            shell_proxy.invoke_forge_action(
+                {
+                    "name": "FloatToggle",
+                    "x": "center",
+                    "y": "center",
+                    "width": 0.65,
+                    "height": 0.75,
+                }
+            )
             wait_for(shell_proxy.is_focused_window_floating, predicate=bool)
             wait_for_stable(lambda: shell_proxy.get_focused_window().get("rect"))
             fr = shell_proxy.get_focused_window().get("rect", {})
             assert abs(fr.get("width", 0) - int(workspace["width"] * 0.65)) < Tolerance.CENTERING, (
                 f"floated width {fr.get('width')} should be ~{int(workspace['width'] * 0.65)}"
             )
-            assert abs(fr.get("height", 0) - int(workspace["height"] * 0.75)) < Tolerance.CENTERING, (
-                f"floated height {fr.get('height')} should be ~{int(workspace['height'] * 0.75)}"
-            )
+            assert (
+                abs(fr.get("height", 0) - int(workspace["height"] * 0.75)) < Tolerance.CENTERING
+            ), f"floated height {fr.get('height')} should be ~{int(workspace['height'] * 0.75)}"
             assert any(
                 w.get("rect", {}).get("width", 0) > workspace["width"] * 0.8
                 for w in shell_proxy.get_windows()

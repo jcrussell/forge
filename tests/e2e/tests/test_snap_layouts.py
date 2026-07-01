@@ -6,7 +6,6 @@ Uses invoke_forge_action() to bypass unreliable xdotool focus in Xvfb.
 """
 
 import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for_stable
 
@@ -14,9 +13,7 @@ from framework.wait import wait_for_stable
 class TestSnapCenter:
     """Test snap-to-center behavior."""
 
-    def test_snap_center_centers_window(
-        self, shell_proxy, window_helper, test_window
-    ):
+    def test_snap_center_centers_window(self, shell_proxy, window_helper, test_window):
         """SnapLayoutMove Center should center the window in the workspace."""
         wm_class = test_window.get("wmClass")
 
@@ -27,9 +24,7 @@ class TestSnapCenter:
         )
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
-        shell_proxy.invoke_forge_action(
-            {"name": "SnapLayoutMove", "direction": "Center"}
-        )
+        shell_proxy.invoke_forge_action({"name": "SnapLayoutMove", "direction": "Center"})
         wait_for_stable(lambda: window_helper.get_window_rect(wm_class))
 
         rect = window_helper.get_window_rect(wm_class)
@@ -46,7 +41,7 @@ class TestSnapCenter:
         # Verify window is significantly smaller than workspace (not just tiled)
         assert rect[2] < workspace["width"] * 0.9, (
             f"Window width {rect[2]} should be significantly smaller than "
-            f"workspace {workspace['width']} (ratio: {rect[2]/workspace['width']:.3f})"
+            f"workspace {workspace['width']} (ratio: {rect[2] / workspace['width']:.3f})"
         )
 
 
@@ -120,9 +115,7 @@ class TestSnapThirds:
 class TestSnapTransitions:
     """Test transitioning between snap positions."""
 
-    def test_snap_left_then_right(
-        self, shell_proxy, window_helper, test_window
-    ):
+    def test_snap_left_then_right(self, shell_proxy, window_helper, test_window):
         """Snapping left then right should move the window."""
         wm_class = test_window.get("wmClass")
 

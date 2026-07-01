@@ -12,8 +12,7 @@ than masquerading as green; when the drag lands they pass normally.
 import time
 
 import pytest
-
-from framework.constants import Timing, Tolerance
+from framework.constants import Timing
 from framework.wait import wait_for_window_count
 
 
@@ -21,9 +20,7 @@ from framework.wait import wait_for_window_count
 class TestDragDropBasic:
     """Test basic drag-and-drop tiling operations."""
 
-    def test_drag_float_to_right_zone(
-        self, shell_proxy, input_sim, window_helper, two_windows
-    ):
+    def test_drag_float_to_right_zone(self, shell_proxy, input_sim, window_helper, two_windows):
         """Dragging a floated window to the right zone should tile it."""
         wait_for_window_count(shell_proxy, 2)
 
@@ -39,9 +36,7 @@ class TestDragDropBasic:
         assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
         # Find floating and tiled windows by size
-        sorted_by_width = sorted(
-            windows, key=lambda w: w.get("rect", {}).get("width", 0)
-        )
+        sorted_by_width = sorted(windows, key=lambda w: w.get("rect", {}).get("width", 0))
         floating = sorted_by_width[0]  # Smaller = floating
         tiled = sorted_by_width[-1]  # Larger = tiled
 
@@ -75,9 +70,7 @@ class TestDragDropBasic:
                 f"(no HSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
 
-    def test_drag_float_to_bottom_zone(
-        self, shell_proxy, input_sim, window_helper, two_windows
-    ):
+    def test_drag_float_to_bottom_zone(self, shell_proxy, input_sim, window_helper, two_windows):
         """Dragging a floated window to the bottom zone should create VSPLIT."""
         wait_for_window_count(shell_proxy, 2)
 
@@ -91,9 +84,7 @@ class TestDragDropBasic:
         # Assert (not skip) so it fails loudly instead of masquerading as green.
         assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
-        sorted_by_width = sorted(
-            windows, key=lambda w: w.get("rect", {}).get("width", 0)
-        )
+        sorted_by_width = sorted(windows, key=lambda w: w.get("rect", {}).get("width", 0))
         floating = sorted_by_width[0]
         tiled = sorted_by_width[-1]
 
@@ -126,9 +117,7 @@ class TestDragDropBasic:
                 f"(no VSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
 
-    def test_drag_float_to_left_zone(
-        self, shell_proxy, input_sim, window_helper, two_windows
-    ):
+    def test_drag_float_to_left_zone(self, shell_proxy, input_sim, window_helper, two_windows):
         """Dragging a floated window to the left zone should tile on left."""
         wait_for_window_count(shell_proxy, 2)
 
@@ -142,9 +131,7 @@ class TestDragDropBasic:
         # Assert (not skip) so it fails loudly instead of masquerading as green.
         assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
-        sorted_by_width = sorted(
-            windows, key=lambda w: w.get("rect", {}).get("width", 0)
-        )
+        sorted_by_width = sorted(windows, key=lambda w: w.get("rect", {}).get("width", 0))
         floating = sorted_by_width[0]
         tiled = sorted_by_width[-1]
 
@@ -178,9 +165,7 @@ class TestDragDropBasic:
                 f"(no HSPLIT formed, got {layout}; forge-v9o7: no real grab headless)"
             )
 
-    def test_drag_preserves_window_count(
-        self, shell_proxy, input_sim, two_windows
-    ):
+    def test_drag_preserves_window_count(self, shell_proxy, input_sim, two_windows):
         """Drag operations should not create or destroy windows."""
         wait_for_window_count(shell_proxy, 2)
         count_before = len(shell_proxy.get_windows())
@@ -195,9 +180,7 @@ class TestDragDropBasic:
         # Assert (not skip) so it fails loudly instead of masquerading as green.
         assert len(windows) >= 2, "expected two windows before drag (did one vanish?)"
 
-        sorted_by_width = sorted(
-            windows, key=lambda w: w.get("rect", {}).get("width", 0)
-        )
+        sorted_by_width = sorted(windows, key=lambda w: w.get("rect", {}).get("width", 0))
         floating = sorted_by_width[0]
         tiled = sorted_by_width[-1]
 
@@ -296,4 +279,6 @@ class TestDragPreviewCleanup:
         # didn't engage Mutter's grab-op protocol and the leak assert above was
         # vacuous for the in-drag path.
         if count_cons(shell_proxy.get_tree_structure()) >= cons_before:
-            pytest.xfail("xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)")
+            pytest.xfail(
+                "xdotool drag did not trigger Mutter grab-op drop-zone detection (forge-v9o7: no real grab headless)"
+            )

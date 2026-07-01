@@ -21,9 +21,7 @@ from framework.workflow import invoke_resize, step
 class TestWorkflowLayout:
     """One two-window set, sequenced through layout/resize/swap operations."""
 
-    def test_layout_resize_swap(
-        self, shell_proxy, input_sim, window_helper, two_windows
-    ):
+    def test_layout_resize_swap(self, shell_proxy, input_sim, window_helper, two_windows):
         with step(shell_proxy, "two windows tile 50/50 side by side"):
             wait_for_window_count(shell_proxy, 2)
             wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
@@ -100,7 +98,9 @@ class TestWorkflowLayout:
                 return -1
 
             input_sim.focus_left()
-            wait_for(focused_col, predicate=lambda i: i == 0, message="focus did not settle on left pane")
+            wait_for(
+                focused_col, predicate=lambda i: i == 0, message="focus did not settle on left pane"
+            )
             input_sim.swap_right()
             wait_for(
                 focused_col,

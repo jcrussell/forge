@@ -18,9 +18,7 @@ from framework.wait import wait_for, wait_for_window_count
 
 
 class TestMaximizeCompat:
-    def test_maximize_on_single_window(
-        self, shell_proxy, restore_settings, two_windows
-    ):
+    def test_maximize_on_single_window(self, shell_proxy, restore_settings, two_windows):
         """window-maximize-on-single: closing down to one window maximizes it.
 
         Exercises Compat.isNotMaximized + Compat.maximize (handleMaximizeOnSingle,

@@ -13,8 +13,6 @@ We then assert from the rendered frames that the constrained window grew past
 its equal share AND that the two windows do not overlap.
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for_window_count
 
@@ -22,9 +20,7 @@ from framework.wait import wait_for_window_count
 class TestMinSizeTiling:
     """End-to-end coverage for minimum-size-aware tiling."""
 
-    def test_minwidth_window_honored_without_overlap(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_minwidth_window_honored_without_overlap(self, shell_proxy, window_helper, two_windows):
         """A window with a min-width wider than its slice keeps its minimum and
         does not overlap its neighbour."""
         wait_for_window_count(shell_proxy, 2)
@@ -75,7 +71,5 @@ class TestMinSizeTiling:
                 f"windows overlap: left ends at {left_end}, right starts at {right['x']}"
             )
         finally:
-            shell_proxy.eval(
-                "globalThis._forgeTestBridge.resetWindowMinSize('%s')" % wm_class
-            )
+            shell_proxy.eval("globalThis._forgeTestBridge.resetWindowMinSize('%s')" % wm_class)
             shell_proxy.wait_for_idle()

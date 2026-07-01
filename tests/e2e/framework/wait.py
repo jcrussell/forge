@@ -6,7 +6,7 @@ Essential for handling async window operations in GNOME Shell.
 """
 
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Callable, Optional, TypeVar
 
 from .constants import Timeout, Timing, Tolerance
 
@@ -260,8 +260,7 @@ def wait_for_layout_settled(
         if not isinstance(windows, list) or len(windows) == 0:
             return None
         total_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
-            for w in windows
+            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0) for w in windows
         )
         ws_area = workspace_rect["width"] * workspace_rect["height"]
         if ws_area > 0 and total_area / ws_area >= fill_ratio:

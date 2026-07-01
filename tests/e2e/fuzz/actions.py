@@ -33,7 +33,13 @@ DIRECTIONS = ["Left", "Right", "Up", "Down"]
 
 # Mirror of DEFAULT_FLOAT_LAYOUT (input_simulator.py:28 / keybindings.js) so the float
 # toggle produces the same geometry as the real keybinding.
-DEFAULT_FLOAT_LAYOUT = {"mode": "float", "x": "center", "y": "center", "width": 0.65, "height": 0.75}
+DEFAULT_FLOAT_LAYOUT = {
+    "mode": "float",
+    "x": "center",
+    "y": "center",
+    "width": 0.65,
+    "height": 0.75,
+}
 
 # Cap on concurrent windows: spawning is ~10s each (and can hit the Mutter 50
 # GApplication 25s register race, conftest.py), so keep the working set small and the
@@ -75,7 +81,10 @@ TILING_ACTIONS = [
     _action(
         "SnapLayoutMove",
         3,
-        lambda r: {"direction": r.choice(["Left", "Right", "Center"]), "amount": r.choice([0.33, 0.5, 0.66])},
+        lambda r: {
+            "direction": r.choice(["Left", "Right", "Center"]),
+            "amount": r.choice([0.33, 0.5, 0.66]),
+        },
     ),
     _action("GapSize", 2, lambda r: {"amount": r.choice([2, 4, -2, -4])}),
     _action("FloatToggle", 3, lambda r: dict(DEFAULT_FLOAT_LAYOUT)),
@@ -208,7 +217,11 @@ def generate_step(rng, window_count, workspace_count, monitor_count=1):
     if kind == "switch_ws":
         return {"kind": "switch_ws", "index": rng.randint(0, MAX_WORKSPACES - 1)}
     if kind == "winstate":
-        return {"kind": "winstate", "op": rng.choice(WINSTATE_OPS), "focus": rng.choice(FOCUS_HINTS)}
+        return {
+            "kind": "winstate",
+            "op": rng.choice(WINSTATE_OPS),
+            "focus": rng.choice(FOCUS_HINTS),
+        }
     if kind == "drag":
         return {
             "kind": "drag",

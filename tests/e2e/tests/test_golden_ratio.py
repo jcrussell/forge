@@ -16,9 +16,7 @@ GOLDEN = 0.6180339887
 class TestGoldenRatio:
     """Golden-ratio one-shot resize."""
 
-    def test_focused_window_gets_golden_share(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_focused_window_gets_golden_share(self, shell_proxy, window_helper, two_windows):
         """The focused window should claim ~61.8% of a two-window row."""
         # Wait for the two windows to tile side by side before measuring.
         windows = window_helper.get_windows_sorted_by_position("x")

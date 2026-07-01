@@ -14,8 +14,6 @@ sizing keeps a clear spread.
 
 import time
 
-import pytest
-
 from framework.constants import Timing
 from framework.wait import wait_for_stable, wait_for_window_count
 from framework.workflow import invoke_resize

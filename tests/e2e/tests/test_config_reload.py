@@ -88,9 +88,7 @@ class TestConfigExport:
         # Capture prior state so the test leaves no portable config behind.
         saved = {}
         for path in (settings_json, keybindings_json):
-            saved[path] = (
-                open(path, encoding="utf-8").read() if os.path.exists(path) else None
-            )
+            saved[path] = open(path, encoding="utf-8").read() if os.path.exists(path) else None
         # Recording the flag via restore_settings ensures it's reset on teardown.
         restore_settings.set("config-file-sync-enabled", False)
 

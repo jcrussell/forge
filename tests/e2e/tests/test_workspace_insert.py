@@ -15,10 +15,8 @@ synchronous signal timing is exercised against the real extension.
 import time
 
 import pytest
-
 from framework.constants import Timing
 from framework.wait import wait_for, wait_for_stable, wait_for_window_count
-
 
 INSERT_WORKSPACE_JS = """
 (function() {
@@ -154,9 +152,7 @@ class TestWorkspaceInsertPreservesLayout:
             f"after={widths_after} (ratio {ratio_after:.2f})"
         )
 
-    def test_insert_workspace_preserves_nested_subsplit(
-        self, shell_proxy, launch_window
-    ):
+    def test_insert_workspace_preserves_nested_subsplit(self, shell_proxy, launch_window):
         # Build: A | (B / C)  -> a VSPLIT sub-container holding B and C beside A.
         launch_window()
         time.sleep(Timing.WINDOW_SETTLE)

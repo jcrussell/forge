@@ -22,9 +22,8 @@ import os
 from pathlib import Path
 
 import pytest
-
-from fuzz.engine import FuzzEngine
 from fuzz import shrink
+from fuzz.engine import FuzzEngine
 
 # tests/e2e (this file is tests/e2e/tests/test_fuzz.py).
 _E2E_ROOT = Path(__file__).resolve().parents[1]
@@ -79,15 +78,19 @@ def test_fuzz_session(fuzz_engine):
         stats = fuzz_engine.session_stats_str()
         if failure is None:
             # Leak metric is a LOGGED line (Angle 3), never a session failure (see engine).
-            print("[fuzz] session seed=%d: clean (%s) [%s]" % (
-                seed, stats, fuzz_engine.resource_summary_str()))
+            print(
+                "[fuzz] session seed=%d: clean (%s) [%s]"
+                % (seed, stats, fuzz_engine.resource_summary_str())
+            )
             continue
 
         # Found a violation. Persist the raw repro immediately (before any shrink work
         # that could itself wedge the shell), then try to minimise.
         raw_path = fuzz_engine.persist(failure)
-        print("[fuzz] FAILURE seed=%d rule=%s @step %d (%s)\n  %s\n  raw repro: %s" % (
-            seed, failure.rule, failure.step_index, stats, failure.detail, raw_path))
+        print(
+            "[fuzz] FAILURE seed=%d rule=%s @step %d (%s)\n  %s\n  raw repro: %s"
+            % (seed, failure.rule, failure.step_index, stats, failure.detail, raw_path)
+        )
 
         min_steps = failure.steps
         orig_len = len(failure.steps)
@@ -104,14 +107,17 @@ def test_fuzz_session(fuzz_engine):
             )
             failure.steps = min_steps
             min_path = fuzz_engine.persist(failure, suffix=".min")
-            print("[fuzz] shrank %d -> %d steps (%s); min repro: %s" % (
-                orig_len, len(min_steps), info, min_path))
+            print(
+                "[fuzz] shrank %d -> %d steps (%s); min repro: %s"
+                % (orig_len, len(min_steps), info, min_path)
+            )
 
         found.append((seed, failure.rule, failure.step_index, failure.detail))
 
         if not continue_mode:
             pytest.fail(
-                "Fuzz violation [%s] seed=%d (%d-step repro%s):\n%s\n\nDetail: %s" % (
+                "Fuzz violation [%s] seed=%d (%d-step repro%s):\n%s\n\nDetail: %s"
+                % (
                     failure.rule,
                     seed,
                     len(min_steps),
@@ -150,7 +156,11 @@ def test_fuzz_replay(fuzz_engine):
     hit = fuzz_engine.replay(steps, expect_rule=expect_rule)
     assert hit is not None, "repro did not reproduce any violation"
     if expect_rule:
-        assert hit[0] == expect_rule, "expected rule %s, got %s (%s)" % (expect_rule, hit[0], hit[1])
+        assert hit[0] == expect_rule, "expected rule %s, got %s (%s)" % (
+            expect_rule,
+            hit[0],
+            hit[1],
+        )
 
 
 def _live_window_classes(shell_proxy):
@@ -189,25 +199,37 @@ def test_fuzz_autosplit_differential(shell_proxy, launch_window):
     failure_on = engine_on.run_session(seed, steps, initial_windows=initial_windows)
     step_list = list(engine_on.last_steps())
     classes_on = _live_window_classes(shell_proxy)
-    print("[fuzz]   ON: failure=%s windows=%d (%s)" % (
-        None if failure_on is None else failure_on.rule, len(classes_on), engine_on.session_stats_str()))
+    print(
+        "[fuzz]   ON: failure=%s windows=%d (%s)"
+        % (
+            None if failure_on is None else failure_on.rule,
+            len(classes_on),
+            engine_on.session_stats_str(),
+        )
+    )
 
     # Mode OFF: REPLAY the identical step list (engine_off pins auto-split off via _reset).
     engine_off = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=False)
     hit_off = engine_off.replay(step_list, expect_rule=None)
     classes_off = _live_window_classes(shell_proxy)
-    print("[fuzz]   OFF: violation=%s windows=%d (%s)" % (
-        hit_off, len(classes_off), engine_off.session_stats_str()))
+    print(
+        "[fuzz]   OFF: violation=%s windows=%d (%s)"
+        % (hit_off, len(classes_off), engine_off.session_stats_str())
+    )
 
     if classes_on != classes_off:
         # Documented-divergence-tolerant: log, don't fail (focus-dependent close, see docstring).
-        print("[fuzz]   note: live class multisets differ (ON=%s OFF=%s)" % (classes_on, classes_off))
+        print(
+            "[fuzz]   note: live class multisets differ (ON=%s OFF=%s)" % (classes_on, classes_off)
+        )
 
     # (a) both modes clean.
-    assert failure_on is None, "autosplit=ON tripped: %s" % (failure_on.rule if failure_on else None)
+    assert failure_on is None, "autosplit=ON tripped: %s" % (
+        failure_on.rule if failure_on else None
+    )
     assert hit_off is None, "autosplit=OFF replay tripped: %s" % (hit_off,)
     # (b) same live window count — the robust relative invariant.
     assert len(classes_on) == len(classes_off), (
-        "live window COUNT diverged between autosplit modes: ON=%d OFF=%d" % (
-            len(classes_on), len(classes_off))
+        "live window COUNT diverged between autosplit modes: ON=%d OFF=%d"
+        % (len(classes_on), len(classes_off))
     )

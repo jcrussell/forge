@@ -4,8 +4,6 @@ Layout Toggle Tests for Forge.
 Tests layout toggling between horizontal and vertical splits.
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_layout
 
@@ -54,7 +52,9 @@ class TestLayoutToggle:
             f"toggle did not change the window arrangement (stayed separated along {axis_before})"
         )
 
-    def test_double_toggle_restores_layout(self, shell_proxy, input_sim, window_helper, two_windows):
+    def test_double_toggle_restores_layout(
+        self, shell_proxy, input_sim, window_helper, two_windows
+    ):
         """Toggling twice should restore original layout."""
         window1, window2 = two_windows
         wm_class1 = window1.get("wmClass")

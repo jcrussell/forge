@@ -5,8 +5,6 @@ Tests workspace navigation, per-workspace tiling toggle,
 and moving windows between workspaces.
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import (
     wait_for,
@@ -95,9 +93,7 @@ class TestWorkspaceTileToggle:
         wait_for(lambda: shell_proxy.is_workspace_tiling_skipped(ws_index), predicate=bool)
 
         is_skipped = shell_proxy.is_workspace_tiling_skipped(ws_index)
-        assert is_skipped, (
-            f"Workspace {ws_index} should be in skip-tile list"
-        )
+        assert is_skipped, f"Workspace {ws_index} should be in skip-tile list"
 
         # Toggle back to clean up
         shell_proxy.invoke_forge_action({"name": "WorkspaceActiveTileToggle"})
@@ -125,9 +121,7 @@ class TestWorkspaceTileToggle:
 class TestMoveWindowBetweenWorkspaces:
     """Test moving windows between workspaces."""
 
-    def test_move_to_next_workspace(
-        self, shell_proxy, window_helper, two_windows
-    ):
+    def test_move_to_next_workspace(self, shell_proxy, window_helper, two_windows):
         """Moving a window to next workspace should reduce count on current."""
         wait_for_window_count(shell_proxy, 2)
         count_before = len(shell_proxy.get_windows())

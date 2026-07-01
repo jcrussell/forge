@@ -7,7 +7,6 @@ in the default suite.
 """
 
 import pytest
-
 from framework.wait import wait_for
 
 # Second virtual monitor starts at x=1920 (monitors are 1920 wide, side by side).

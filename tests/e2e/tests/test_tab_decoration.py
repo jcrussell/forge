@@ -15,7 +15,6 @@ restore_settings, which reverts it automatically. Dispatch is the default dbus l
 
 from framework.wait import wait_for
 
-
 DECORATION_KEY = "showtab-decoration-enabled"
 TABBED_MODE_KEY = "tabbed-tiling-mode-enabled"
 DECORATION_ACTION = {"name": "ShowTabDecorationToggle"}

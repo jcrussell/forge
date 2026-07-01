@@ -7,8 +7,6 @@ Tests fundamental tiling behavior:
 - Three windows layout correctly
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for_window_count
 
@@ -104,11 +102,10 @@ class TestBasicTiling:
 
         windows = shell_proxy.get_windows()
         total_window_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
-            for w in windows
+            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0) for w in windows
         )
 
         fill_ratio = total_window_area / workspace_area
         assert fill_ratio > Tolerance.FILL_RATIO, (
-            f"Windows only fill {fill_ratio*100:.1f}% of workspace"
+            f"Windows only fill {fill_ratio * 100:.1f}% of workspace"
         )

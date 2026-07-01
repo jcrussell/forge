@@ -20,7 +20,6 @@ already advanced) or fail to re-eval a dead shell, losing the finding (B1).
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
@@ -152,7 +151,14 @@ class FuzzFailure(Exception):
 
 class FuzzEngine:
     def __init__(
-        self, shell_proxy, launch_fn, results_dir, log_path=DEFAULT_SHELL_LOG, gap=0, tol=8, auto_split=None
+        self,
+        shell_proxy,
+        launch_fn,
+        results_dir,
+        log_path=DEFAULT_SHELL_LOG,
+        gap=0,
+        tol=8,
+        auto_split=None,
     ):
         """
         Args:
@@ -272,7 +278,10 @@ class FuzzEngine:
             violations = res.get("violations") or [{"rule": "unknown", "detail": "no detail"}]
             v = violations[0]
             extra = ("; +%d more" % (len(violations) - 1)) if len(violations) > 1 else ""
-            return (v.get("rule", "unknown"), "%s [%s]%s" % (v.get("detail", ""), v.get("path", ""), extra))
+            return (
+                v.get("rule", "unknown"),
+                "%s [%s]%s" % (v.get("detail", ""), v.get("path", ""), extra),
+            )
 
         # 2b. grab-preview-hint leak (forge-leqs/62ja, forge-v9o7): outside an active grab NO tree
         # node may still hold a previewHint. fuzzDragPath drives the real grab loop, so a leak here
@@ -303,7 +312,10 @@ class FuzzEngine:
             fviol = fm.get("violations") or []
             if fviol:
                 v = fviol[0]
-                return (v.get("rule", "focus-mismatch"), "%s [%s]" % (v.get("detail", ""), v.get("path", "")))
+                return (
+                    v.get("rule", "focus-mismatch"),
+                    "%s [%s]" % (v.get("detail", ""), v.get("path", "")),
+                )
 
         # 3. log scan — thrown exceptions on the live shell log since the last step.
         errs = self.log.new_errors()
@@ -342,7 +354,10 @@ class FuzzEngine:
         """One-line peak-shape summary for the session (depth instrumentation, forge-cnrc)."""
         s = self._session_stats
         return "maxDepth=%d nodes=%d cons=%d fanout=%d" % (
-            s.get("maxDepth", 0), s.get("nodes", 0), s.get("cons", 0), s.get("maxSplitFanout", 0)
+            s.get("maxDepth", 0),
+            s.get("nodes", 0),
+            s.get("cons", 0),
+            s.get("maxSplitFanout", 0),
         )
 
     def last_steps(self):
@@ -369,8 +384,11 @@ class FuzzEngine:
             return "resources=unavailable"
         base = self._res_baseline or {}
         s = "resources signals=%s timers=%s decorations=%s tabs=%s previewHints=%s" % (
-            f.get("signals"), f.get("timers"), f.get("decorations"),
-            f.get("tabs"), f.get("previewHints"),
+            f.get("signals"),
+            f.get("timers"),
+            f.get("decorations"),
+            f.get("tabs"),
+            f.get("previewHints"),
         )
         b_sig, f_sig = base.get("signals"), f.get("signals")
         if isinstance(b_sig, int) and isinstance(f_sig, int) and f_sig > b_sig:

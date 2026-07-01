@@ -6,12 +6,12 @@ for testing different configurations.
 """
 
 import subprocess
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import gi
 
 gi.require_version("Gio", "2.0")
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib  # noqa: E402  (must follow gi.require_version)
 
 
 class GSettingsError(Exception):
@@ -272,9 +272,7 @@ class ForgeSettings:
         # Store original
         if action not in self._original_keybindings:
             try:
-                self._original_keybindings[action] = (
-                    self._keybinding_settings.get_value(action)
-                )
+                self._original_keybindings[action] = self._keybinding_settings.get_value(action)
             except GLib.Error:
                 pass
 

@@ -4,8 +4,6 @@ Window Swap Tests for Forge.
 Tests window swapping with Ctrl+Super+h/j/k/l keys.
 """
 
-import pytest
-
 from framework.constants import Tolerance
 from framework.wait import wait_for, wait_for_layout
 
@@ -50,8 +48,9 @@ class TestWindowSwap:
         # Same window (by id) must now sit further left — the swap moved it.
         after = wait_for(
             window_helper.get_focused_window,
-            predicate=lambda w: w.get("id") == before["id"]
-            and w["rect"]["x"] < before_x - Tolerance.POSITION,
+            predicate=lambda w: (
+                w.get("id") == before["id"] and w["rect"]["x"] < before_x - Tolerance.POSITION
+            ),
             message=f"swap_left did not move the focused window left (x stayed ~{before_x})",
         )
         assert after["rect"]["x"] < before_x
@@ -89,8 +88,9 @@ class TestWindowSwap:
 
         after = wait_for(
             window_helper.get_focused_window,
-            predicate=lambda w: w.get("id") == before["id"]
-            and w["rect"]["y"] < before_y - Tolerance.POSITION,
+            predicate=lambda w: (
+                w.get("id") == before["id"] and w["rect"]["y"] < before_y - Tolerance.POSITION
+            ),
             message=f"swap_up did not move the focused window up (y stayed ~{before_y})",
         )
         assert after["rect"]["y"] < before_y
@@ -132,8 +132,9 @@ class TestWindowMove:
 
         after = wait_for(
             window_helper.get_focused_window,
-            predicate=lambda w: w.get("id") == before["id"]
-            and w["rect"]["x"] < before_x - Tolerance.POSITION,
+            predicate=lambda w: (
+                w.get("id") == before["id"] and w["rect"]["x"] < before_x - Tolerance.POSITION
+            ),
             message=f"move_left did not relocate the focused window left (x stayed ~{before_x})",
         )
         assert after["rect"]["x"] < before_x

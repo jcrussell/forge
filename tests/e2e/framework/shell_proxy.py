@@ -8,7 +8,6 @@ Requires gnome-shell to be running with --unsafe-mode flag.
 """
 
 import json
-import subprocess
 import time
 from pathlib import Path
 from string import Template
@@ -17,7 +16,7 @@ from typing import Any, Optional
 import gi
 
 gi.require_version("Gio", "2.0")
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib  # noqa: E402  (must follow gi.require_version)
 
 
 class ShellProxyError(Exception):
@@ -542,9 +541,7 @@ class ShellProxy:
             % (action_json, focus_hint_js, also_activate_js)
         )
         if isinstance(result, str) and result.startswith("Error:"):
-            raise ShellProxyError(
-                f"invoke_forge_action({action.get('name', action)}): {result}"
-            )
+            raise ShellProxyError(f"invoke_forge_action({action.get('name', action)}): {result}")
         return result
 
     def move_window_to_workspace(self, ws_index: int) -> str:
@@ -560,9 +557,7 @@ class ShellProxy:
             Result string.
         """
         self._ensure_bridge()
-        return self.eval(
-            "globalThis._forgeTestBridge.moveWindowToWorkspace(%d)" % int(ws_index)
-        )
+        return self.eval("globalThis._forgeTestBridge.moveWindowToWorkspace(%d)" % int(ws_index))
 
     def get_window_count(self) -> int:
         """
@@ -641,9 +636,7 @@ class ShellProxy:
             siblingCount, and rect.
         """
         self._ensure_bridge()
-        return self.eval(
-            "globalThis._forgeTestBridge.getNodeForWindow(%s)" % json.dumps(wm_class)
-        )
+        return self.eval("globalThis._forgeTestBridge.getNodeForWindow(%s)" % json.dumps(wm_class))
 
     def get_parent_layout(self, wm_class: str) -> str:
         """
@@ -656,9 +649,7 @@ class ShellProxy:
             Layout type string: 'HSPLIT', 'VSPLIT', 'STACKED', 'TABBED', or 'ERROR'.
         """
         self._ensure_bridge()
-        return self.eval(
-            "globalThis._forgeTestBridge.getParentLayout(%s)" % json.dumps(wm_class)
-        )
+        return self.eval("globalThis._forgeTestBridge.getParentLayout(%s)" % json.dumps(wm_class))
 
     def get_sibling_count(self, wm_class: str) -> int:
         """
@@ -671,9 +662,7 @@ class ShellProxy:
             Number of siblings in the same parent container.
         """
         self._ensure_bridge()
-        result = self.eval(
-            "globalThis._forgeTestBridge.getSiblingCount(%s)" % json.dumps(wm_class)
-        )
+        result = self.eval("globalThis._forgeTestBridge.getSiblingCount(%s)" % json.dumps(wm_class))
         try:
             return int(result)
         except (ValueError, TypeError):
@@ -726,9 +715,7 @@ class ShellProxy:
             List of sibling info with nodeType, wmClass, and rect.
         """
         self._ensure_bridge()
-        return self.eval(
-            "globalThis._forgeTestBridge.getWindowSiblings(%s)" % json.dumps(wm_class)
-        )
+        return self.eval("globalThis._forgeTestBridge.getWindowSiblings(%s)" % json.dumps(wm_class))
 
     def verify_tree_integrity(self) -> dict:
         """
@@ -759,9 +746,7 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.fuzzResetNodeLayouts()")
 
-    def fuzz_check_invariants(
-        self, gap: int = 0, tol: int = 2, render: bool = True
-    ) -> dict:
+    def fuzz_check_invariants(self, gap: int = 0, tol: int = 2, render: bool = True) -> dict:
         """Run the deep fuzzer oracle and return {'valid': bool, 'violations': [...]}.
 
         Each violation is {'rule', 'detail', 'path'}. Only sound invariants are
@@ -776,9 +761,7 @@ class ShellProxy:
         """
         self._ensure_bridge()
         opts = json.dumps({"gap": int(gap), "tol": int(tol), "render": bool(render)})
-        return self.eval(
-            "globalThis._forgeTestBridge.fuzzCheckInvariants(%s)" % opts
-        )
+        return self.eval("globalThis._forgeTestBridge.fuzzCheckInvariants(%s)" % opts)
 
     def fuzz_pending_work(self) -> dict:
         """Report the fuzzer's async-finalizer backpressure: {'busy', 'queue', 'pendingRender'}.
@@ -946,9 +929,7 @@ class ShellProxy:
         this only changes which workspace is active, for the fuzzer's chaos actions.
         """
         self._ensure_bridge()
-        return self.eval(
-            "globalThis._forgeTestBridge.activateWorkspace(%d)" % int(ws_index)
-        )
+        return self.eval("globalThis._forgeTestBridge.activateWorkspace(%d)" % int(ws_index))
 
     # === Virtual Input Methods (Clutter) ===
     # These use Clutter's VirtualInputDevice API via Shell.Eval to simulate
@@ -1002,8 +983,7 @@ class ShellProxy:
 
         clutter_key = self._to_clutter_keyname(key)
         press_lines.append(
-            f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_key}, "
-            f"Clutter.KeyState.PRESSED); t += dt;"
+            f"vkbd.notify_keyval(t, Clutter.KEY_{clutter_key}, Clutter.KeyState.PRESSED); t += dt;"
         )
         release_lines.insert(
             0,

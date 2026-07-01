@@ -194,9 +194,7 @@ class InputSimulator:
                 check=True,
             )
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            raise InputSimulatorError(
-                "xdotool not found. Please install xdotool."
-            ) from e
+            raise InputSimulatorError("xdotool not found. Please install xdotool.") from e
 
     def _run_xdotool(self, *args: str) -> str:
         """

@@ -89,9 +89,7 @@ class ScreenshotCapture:
         if delay > 0:
             time.sleep(delay)
 
-        output_path = (
-            self._output_dir / filename if filename else self._generate_filename()
-        )
+        output_path = self._output_dir / filename if filename else self._generate_filename()
 
         # Try gnome-screenshot first (works well in GNOME Shell)
         try:
@@ -212,11 +210,7 @@ class ScreenshotCapture:
         Raises:
             ScreenshotError: If capture fails.
         """
-        output_path = (
-            self._output_dir / filename
-            if filename
-            else self._generate_filename("window")
-        )
+        output_path = self._output_dir / filename if filename else self._generate_filename("window")
 
         try:
             subprocess.run(

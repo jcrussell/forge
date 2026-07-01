@@ -7,7 +7,6 @@ Tests stacked (Shift+Super+s) and tabbed (Shift+Super+t) layouts.
 import time
 
 import pytest
-
 from framework.constants import Timing, Tolerance
 from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
 from framework.wait import wait_for, wait_for_layout
@@ -244,7 +243,7 @@ class TestLayoutTransitions:
             if expected == "SPLIT":
                 layout = wait_for(
                     shell_proxy.get_container_layout,
-                    predicate=lambda l: l in ("HSPLIT", "VSPLIT"),
+                    predicate=lambda layout: layout in ("HSPLIT", "VSPLIT"),
                     message=f"{transition.__name__} should yield a split layout",
                 )
                 assert layout in ("HSPLIT", "VSPLIT")

@@ -62,7 +62,10 @@ def test_cheatsheet_show_does_not_throw_and_closes_clean(shell_proxy):
     assert opened["state"]["visible"] is True, opened["state"]
     assert opened["state"]["panels"] >= 1, opened["state"]
 
-    closed = _run(shell_proxy, "let e=null; try { sheet.hide(); } catch (x) { e=''+x; } return JSON.stringify({hideErr:e});")
+    closed = _run(
+        shell_proxy,
+        "let e=null; try { sheet.hide(); } catch (x) { e=''+x; } return JSON.stringify({hideErr:e});",
+    )
     assert closed.get("hideErr") is None, closed
     time.sleep(FADE_SETTLE)
 

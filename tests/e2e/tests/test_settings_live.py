@@ -7,7 +7,6 @@ Tests that GSettings changes take effect immediately on the tiling layout.
 import time
 
 import pytest
-
 from framework.constants import Timing, Tolerance
 from framework.wait import wait_for, wait_for_layout, wait_for_stable
 
@@ -30,9 +29,7 @@ def _count_containers(node) -> int:
 class TestGapSizeSettings:
     """Test window gap size settings."""
 
-    def test_increase_gap_size(
-        self, shell_proxy, window_helper, restore_settings, two_windows
-    ):
+    def test_increase_gap_size(self, shell_proxy, window_helper, restore_settings, two_windows):
         """Increasing gap size should increase space between windows."""
         # Wait for the two-window tiling (and its gap) to settle before measuring.
         wait_for_stable(lambda: window_helper.measure_gap_between())
@@ -45,13 +42,9 @@ class TestGapSizeSettings:
             message="Gap did not grow after increasing gap size",
         )
 
-        assert gap_after > gap_before, (
-            f"Gap should increase: was {gap_before}, now {gap_after}"
-        )
+        assert gap_after > gap_before, f"Gap should increase: was {gap_before}, now {gap_after}"
 
-    def test_zero_gap_size(
-        self, shell_proxy, window_helper, restore_settings, two_windows
-    ):
+    def test_zero_gap_size(self, shell_proxy, window_helper, restore_settings, two_windows):
         """Setting gap to 0 should make windows nearly touch."""
         restore_settings.set_window_gap_size(0)
         gap = wait_for(
@@ -64,9 +57,7 @@ class TestGapSizeSettings:
             f"Windows should nearly touch with gap=0, actual gap: {gap}"
         )
 
-    def test_gap_hidden_on_single(
-        self, shell_proxy, window_helper, restore_settings, test_window
-    ):
+    def test_gap_hidden_on_single(self, shell_proxy, window_helper, restore_settings, test_window):
         """With gap-hidden-on-single, a single window should still fill workspace."""
         wm_class = test_window.get("wmClass")
         restore_settings.set_window_gap_size(20)
@@ -128,9 +119,7 @@ class TestTilingModeToggle:
             predicate=lambda enabled: not enabled,
             message="tiling-mode-enabled did not flip to False",
         )
-        assert not restore_settings.get("tiling-mode-enabled"), (
-            "tiling mode should be disabled"
-        )
+        assert not restore_settings.get("tiling-mode-enabled"), "tiling mode should be disabled"
 
         # Open a NEW window with tiling disabled; renderTree is skipped, so each
         # pre-existing window must still be present at its exact geometry. (windows
@@ -204,9 +193,7 @@ class TestStackedTabbedSettings:
 
         # Layout should not be the disabled mode
         layout = shell_proxy.get_container_layout()
-        assert layout != mode, (
-            f"Layout should not be {mode} when it's disabled, but got {layout}"
-        )
+        assert layout != mode, f"Layout should not be {mode} when it's disabled, but got {layout}"
 
 
 class TestDefaultWindowLayoutSetting:

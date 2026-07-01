@@ -80,9 +80,7 @@ class WindowHelper:
         focused = self.get_focused_window()
         window_id = focused.get("id")
         if window_id is None:
-            raise WindowAssertionError(
-                f"focused window reported no id: {focused!r}"
-            )
+            raise WindowAssertionError(f"focused window reported no id: {focused!r}")
         return window_id
 
     def assert_focus_moved(self, before_id: int) -> int:
@@ -98,9 +96,7 @@ class WindowHelper:
         """
         after_id = self.get_focused_id()
         if after_id == before_id:
-            raise WindowAssertionError(
-                f"focus did not move: still on window id {after_id}"
-            )
+            raise WindowAssertionError(f"focus did not move: still on window id {after_id}")
         return after_id
 
     def get_workspace_rect(self) -> dict:
@@ -416,9 +412,7 @@ class WindowHelper:
         if is_floating != should_be_floating:
             state = "floating" if should_be_floating else "tiled"
             actual = "tiled" if should_be_floating else "floating"
-            raise WindowAssertionError(
-                f"Window '{wm_class}' should be {state} but is {actual}"
-            )
+            raise WindowAssertionError(f"Window '{wm_class}' should be {state} but is {actual}")
 
     def assert_window_focused(self, wm_class: str) -> None:
         """
@@ -462,7 +456,9 @@ class WindowHelper:
         )
 
     @staticmethod
-    def calculate_overlap(rect1: Tuple[int, int, int, int], rect2: Tuple[int, int, int, int]) -> int:
+    def calculate_overlap(
+        rect1: Tuple[int, int, int, int], rect2: Tuple[int, int, int, int]
+    ) -> int:
         """
         Calculate overlapping pixel area between two rectangles.
 
@@ -520,9 +516,7 @@ class WindowHelper:
             return []
         return sorted(windows, key=lambda w: w.get("rect", {}).get(axis, 0))
 
-    def assert_windows_fill_workspace(
-        self, tolerance: float = Tolerance.FILL_RATIO
-    ) -> None:
+    def assert_windows_fill_workspace(self, tolerance: float = Tolerance.FILL_RATIO) -> None:
         """
         Assert that tiled windows together fill most of the workspace.
 
@@ -540,15 +534,14 @@ class WindowHelper:
             raise WindowAssertionError("No windows found")
 
         total_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0)
-            for w in windows
+            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0) for w in windows
         )
 
         fill_ratio = total_area / workspace_area if workspace_area > 0 else 0
         if fill_ratio < tolerance:
             raise WindowAssertionError(
-                f"Windows fill only {fill_ratio*100:.1f}% of workspace "
-                f"(minimum: {tolerance*100:.1f}%)"
+                f"Windows fill only {fill_ratio * 100:.1f}% of workspace "
+                f"(minimum: {tolerance * 100:.1f}%)"
             )
 
     def measure_gap_between(self) -> int:

@@ -24,9 +24,9 @@ class TestFloatStateRegression:
         # Toggle to floating.
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})
-        assert wait_for(
-            lambda: shell_proxy.is_window_floating(wm_class), predicate=bool
-        ), "window should report floating after FloatToggle"
+        assert wait_for(lambda: shell_proxy.is_window_floating(wm_class), predicate=bool), (
+            "window should report floating after FloatToggle"
+        )
 
         # Toggle back to tiled.
         shell_proxy.ensure_focus()

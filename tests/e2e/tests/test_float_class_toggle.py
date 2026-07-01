@@ -23,10 +23,8 @@ criteria permits in lieu of the Shift+Super+c keybinding.
 """
 
 import pytest
-
 from framework.input_simulator import DEFAULT_FLOAT_LAYOUT
 from framework.wait import wait_for
-
 
 CLASS_FLOAT_ACTION = {"name": "FloatClassToggle", **DEFAULT_FLOAT_LAYOUT}
 

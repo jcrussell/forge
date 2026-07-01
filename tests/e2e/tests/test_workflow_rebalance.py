@@ -25,9 +25,7 @@ from framework.workflow import step
 class TestWorkflowRebalance:
     """One 3-window set, closed down and re-opened, checking rebalance + integrity."""
 
-    def test_open_close_rebalance(
-        self, shell_proxy, window_helper, three_windows, launch_window
-    ):
+    def test_open_close_rebalance(self, shell_proxy, window_helper, three_windows, launch_window):
         workspace = window_helper.get_workspace_rect()
 
         with step(shell_proxy, "three windows tile and fill the workspace"):

@@ -4,9 +4,6 @@ Focus Navigation Tests for Forge.
 Tests vim-style focus navigation with Super+h/j/k/l keys.
 """
 
-import pytest
-
-from framework.constants import Timing
 from framework.wait import wait_for, wait_for_layout, wait_for_window_count
 
 
@@ -95,7 +92,9 @@ class TestFocusNavigation:
         shell_proxy.wait_for_idle()
         assert shell_proxy.get_container_layout() == "VSPLIT"
         before = window_helper.get_focused_id()
-        assert before == pinned["id"], f"pin did not take: focused {before}, expected {pinned['id']}"
+        assert before == pinned["id"], (
+            f"pin did not take: focused {before}, expected {pinned['id']}"
+        )
 
         input_sim.focus_up()  # toward the previous sibling -> must move
         top_id = window_helper.assert_focus_moved(before)
