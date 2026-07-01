@@ -231,6 +231,23 @@ make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
 - **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
 - **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
 
+## Formatting & Linting
+
+The Python here is formatted and linted with [ruff](https://docs.astral.sh/ruff/)
+(config in `ruff.toml` at the repo root; line length 100 to match the JS
+convention). Install it with the rest of the deps (`pip install -r
+tests/e2e/requirements.txt`), then:
+
+```bash
+ruff format tests/e2e   # apply formatting
+ruff check tests/e2e    # lint (add --fix to auto-fix)
+```
+
+Both run automatically: the husky pre-commit hook formats + lints staged
+`tests/e2e/**/*.py`, and the `python-lint` CI job gates every push/PR. (Because
+the hook shells out to `ruff`, committing Python changes requires ruff on your
+`PATH` — install it as above. Contributors touching only JS are unaffected.)
+
 ## Known Issues / Deferred
 
 - **Keybinding-dispatch lane is not fully green (deferred — forge-er8).** Input is

@@ -80,3 +80,25 @@ jobs:
 
       - name: Test Packaging
         run: make dist
+
+  python-lint:
+    # Format + lint the e2e Python suite with ruff (see ruff.toml). Kept separate
+    # from the Node matrix above so it runs once, not per node_version.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Check formatting (ruff format)
+        run: ruff format --check tests/e2e
+
+      - name: Lint (ruff check)
+        run: ruff check tests/e2e

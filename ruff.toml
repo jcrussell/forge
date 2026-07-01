@@ -1,0 +1,11 @@
+# Ruff config for Forge's Python (the e2e test suite under tests/e2e/).
+# Ruff is the formatter + linter (replaces black/flake8); fast, single tool.
+# Run: `ruff format tests/e2e` and `ruff check tests/e2e` (also in pre-commit + CI).
+
+line-length = 100 # match the JS 100-char convention (see .prettierrc / package.json)
+target-version = "py311" # safe floor across the Fedora 39-44 (GNOME 45-50) container matrix
+
+[lint]
+# Ruff's default rule set (pyflakes F + a curated pycodestyle subset) plus import
+# sorting (I). Deliberately conservative — expand only when a real need appears.
+select = ["E4", "E7", "E9", "F", "I"]
