@@ -258,6 +258,8 @@ describe("ConfigSync", () => {
   });
 
   describe("auto-export skips out-of-band writes (forge-nn0m)", () => {
+    // The debounced auto path is _autoExport() (forge-rt10), not exportAll();
+    // spy on it to assert whether a background export ran.
     function captureDebounce() {
       let cb = null;
       vi.spyOn(GLib, "timeout_add").mockImplementation((priority, delay, fn) => {
@@ -276,7 +278,7 @@ describe("ConfigSync", () => {
     it("skips the debounced export when a config file was written out of band", () => {
       // Establish our baseline with one (user-initiated) export.
       configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "exportAll");
+      const exportSpy = vi.spyOn(configSync, "_autoExport");
 
       // Another writer (prefs Export or a hand edit) touches settings.json after
       // our export — its mtime now differs from our last-written baseline.
@@ -292,7 +294,7 @@ describe("ConfigSync", () => {
 
     it("still exports when the files are unchanged since our last write", () => {
       configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "exportAll");
+      const exportSpy = vi.spyOn(configSync, "_autoExport");
 
       // No out-of-band write — the guard must not disable normal auto-export.
       const fire = captureDebounce();
@@ -304,7 +306,7 @@ describe("ConfigSync", () => {
 
     it("skips a keybindings.json out-of-band write too", () => {
       configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "exportAll");
+      const exportSpy = vi.spyOn(configSync, "_autoExport");
 
       configMgr._mtimes.keybindings += 100;
 
@@ -325,7 +327,7 @@ describe("ConfigSync", () => {
       fire();
 
       // A later genuine change, with no further out-of-band write, must export.
-      const exportSpy = vi.spyOn(configSync, "exportAll");
+      const exportSpy = vi.spyOn(configSync, "_autoExport");
       fire = captureDebounce();
       settings._emit("changed", "window-gap-size");
       fire();
