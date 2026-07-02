@@ -19,6 +19,7 @@ is just the pytest harness so the default `testpaths = tests` collection picks i
 
 import json
 import os
+import warnings
 from pathlib import Path
 
 import pytest
@@ -47,7 +48,19 @@ def fuzz_engine(shell_proxy, launch_window):
     """
     asplit = os.environ.get("FORGE_FUZZ_AUTOSPLIT")
     auto_split = None if asplit is None else asplit.strip() == "1"
-    return FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=auto_split)
+    engine = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=auto_split)
+    yield engine
+    # forge-4b6: run_session only resets state at session START (so each seed starts
+    # from a clean baseline); nothing reset what the LAST steps left behind, so fuzz
+    # chaos leaked into every later test in the shared session. The observed killer:
+    # a leaked tiling-mode-enabled=false floats every subsequent window at Mutter
+    # cascade placement — 39 downstream failures with overlap/no-op fingerprints.
+    # Reset here so the fuzz lane is suite-safe regardless of where it runs.
+    # Best-effort: a dead shell must not mask the test's own result.
+    try:
+        engine._reset_workspace()
+    except Exception as e:  # noqa: BLE001
+        warnings.warn(f"fuzz post-session reset failed: {e}")
 
 
 @pytest.mark.fuzz
@@ -194,28 +207,44 @@ def test_fuzz_autosplit_differential(shell_proxy, launch_window):
     initial_windows = _env_int("FORGE_FUZZ_WINDOWS", 4)
     print("\n[fuzz] autosplit differential seed=%d steps=%d" % (seed, steps))
 
-    # Mode ON: generate + execute, capturing the exact executed step list for replay.
-    engine_on = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=True)
-    failure_on = engine_on.run_session(seed, steps, initial_windows=initial_windows)
-    step_list = list(engine_on.last_steps())
-    classes_on = _live_window_classes(shell_proxy)
-    print(
-        "[fuzz]   ON: failure=%s windows=%d (%s)"
-        % (
-            None if failure_on is None else failure_on.rule,
-            len(classes_on),
-            engine_on.session_stats_str(),
+    try:
+        # Mode ON: generate + execute, capturing the exact executed step list for replay.
+        engine_on = FuzzEngine(
+            shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=True
         )
-    )
+        failure_on = engine_on.run_session(seed, steps, initial_windows=initial_windows)
+        step_list = list(engine_on.last_steps())
+        classes_on = _live_window_classes(shell_proxy)
+        print(
+            "[fuzz]   ON: failure=%s windows=%d (%s)"
+            % (
+                None if failure_on is None else failure_on.rule,
+                len(classes_on),
+                engine_on.session_stats_str(),
+            )
+        )
 
-    # Mode OFF: REPLAY the identical step list (engine_off pins auto-split off via _reset).
-    engine_off = FuzzEngine(shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=False)
-    hit_off = engine_off.replay(step_list, expect_rule=None)
-    classes_off = _live_window_classes(shell_proxy)
-    print(
-        "[fuzz]   OFF: violation=%s windows=%d (%s)"
-        % (hit_off, len(classes_off), engine_off.session_stats_str())
-    )
+        # Mode OFF: REPLAY the identical step list (engine_off pins auto-split off via _reset).
+        engine_off = FuzzEngine(
+            shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=False
+        )
+        hit_off = engine_off.replay(step_list, expect_rule=None)
+        classes_off = _live_window_classes(shell_proxy)
+        print(
+            "[fuzz]   OFF: violation=%s windows=%d (%s)"
+            % (hit_off, len(classes_off), engine_off.session_stats_str())
+        )
+    finally:
+        # forge-4b6: suite-safety, mirroring the fuzz_engine fixture teardown — this
+        # test builds its own engines, so reset the leaked session state itself
+        # (auto_split=False is the schema default, so the pin restores the default too).
+        # Best-effort: a dead shell must not mask the test's own failure.
+        try:
+            FuzzEngine(
+                shell_proxy, launch_window, results_dir=_RESULTS_DIR, auto_split=False
+            )._reset_workspace()
+        except Exception as e:  # noqa: BLE001
+            warnings.warn(f"fuzz differential reset failed: {e}")
 
     if classes_on != classes_off:
         # Documented-divergence-tolerant: log, don't fail (focus-dependent close, see docstring).

@@ -476,6 +476,33 @@ class ShellProxy:
         except (ValueError, TypeError):
             return 0
 
+    def get_total_window_count(self) -> int:
+        """
+        Total window count across ALL workspaces (forge-4b6: teardown must see
+        windows the fuzz session left on non-active workspaces).
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.getTotalWindowCount()")
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
+    def close_one_window_any_workspace(self) -> int:
+        """
+        Close the first window found on any workspace via D-Bus (no workspace
+        activation needed; delete() works on non-active workspaces).
+
+        Returns:
+            Total number of remaining windows across all workspaces.
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.closeOneWindowAnyWorkspace()")
+        try:
+            return int(result)
+        except (ValueError, TypeError):
+            return 0
+
     def close_focused_window(self) -> str:
         """
         Close the currently focused window via Mutter's delete() (reliable on all
@@ -903,6 +930,22 @@ class ShellProxy:
             "(function(){const f=Main.extensionManager.lookup(%s);"
             "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
             "f.stateObj.settings.set_boolean('tiling-mode-enabled', %s);return 'ok';})()"
+            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
+        )
+        return self.eval(js) == "ok"
+
+    def set_focus_border(self, enabled: bool = True) -> bool:
+        """Reset Forge's `focus-border-toggle` GSetting (schema default True).
+
+        Teardown helper: the fuzzer's FocusBorderToggle flips this; left off, later
+        tests asserting focus/split border rendering fail (forge-4b6). Mirrors
+        set_tiling_mode. Returns True on success.
+        """
+        self._ensure_bridge()
+        js = (
+            "(function(){const f=Main.extensionManager.lookup(%s);"
+            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
+            "f.stateObj.settings.set_boolean('focus-border-toggle', %s);return 'ok';})()"
             % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
         )
         return self.eval(js) == "ok"

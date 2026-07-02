@@ -1278,6 +1278,34 @@
       return String(windows.length - 1);
     },
 
+    // Total window count across ALL workspaces (forge-4b6: the fuzz session
+    // spawns on whichever workspace its switch_ws step left active, so an
+    // active-workspace-only sweep misses leftovers on other workspaces).
+    getTotalWindowCount() {
+      const wm = global.workspace_manager;
+      let count = 0;
+      for (let i = 0; i < wm.get_n_workspaces(); i++) {
+        count += wm.get_workspace_by_index(i).list_windows().length;
+      }
+      return String(count);
+    },
+
+    // Close the first window found on ANY workspace (forge-4b6). delete()
+    // works without activating the window's workspace, so no focus games.
+    // Returns the remaining total count.
+    closeOneWindowAnyWorkspace() {
+      const wm = global.workspace_manager;
+      for (let i = 0; i < wm.get_n_workspaces(); i++) {
+        const windows = wm.get_workspace_by_index(i).list_windows();
+        if (windows.length > 0) {
+          // forge-191a: valid server timestamp (not CurrentTime/0); see closeAllWindows.
+          windows[0].delete(global.display.get_current_time_roundtrip());
+          return this.getTotalWindowCount();
+        }
+      }
+      return "0";
+    },
+
     // Close the FOCUSED window via Mutter's delete() (reliable across versions,
     // unlike a synthetic alt+F4 which Clutter VirtualInputDevice fails to deliver
     // on older Mutter). Returns the closed window's id, or "no_focus".

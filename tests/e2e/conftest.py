@@ -18,7 +18,6 @@ from framework.constants import (
     DEFAULT_TEST_APP,
     DEFAULT_TEST_APP_ARGS,
     FORGE_UUID,
-    RetryConfig,
     Timeout,
     Timing,
 )
@@ -27,7 +26,7 @@ from framework.input_simulator import InputSimulator
 from framework.screenshot import ScreenshotCapture
 from framework.shell_proxy import ShellProxy
 from framework.wait import WaitTimeoutError, wait_for
-from framework.window_helper import WindowHelper
+from framework.window_helper import WindowHelper, drain_all_windows
 
 # Test configuration
 # Honour FORGE_E2E_RESULTS_DIR so the docker runner can pin diagnostics to the
@@ -37,12 +36,6 @@ E2E_RESULTS_DIR = Path(
     os.environ.get("FORGE_E2E_RESULTS_DIR") or (Path(__file__).resolve().parent / "e2e-results")
 )
 SCREENSHOT_DIR = E2E_RESULTS_DIR / "screenshots"
-
-# Per-step timeout when polling for window-close progress during teardown
-# (forge-zsk). Generous vs. a normal close (<300ms under Xvfb) but bounded so a
-# window that refuses to close can't stall teardown for long; WINDOW_CLOSE_ATTEMPTS
-# caps the number of steps.
-CLOSE_POLL_TIMEOUT = 1.5
 
 
 def pytest_addoption(parser):
@@ -386,59 +379,16 @@ def clean_workspace(shell_proxy, input_sim) -> Generator[None, None, None]:
 
 
 def _close_all_windows(shell_proxy: ShellProxy) -> None:
-    """Close all windows on the current workspace one-by-one via D-Bus.
+    """Close all windows on EVERY workspace one-by-one via D-Bus.
 
-    Closing windows individually avoids overwhelming the rendering pipeline
-    under Xvfb, which can saturate the main loop and cause gnome-shell to
-    lose its D-Bus service channel name.
-
-    We do NOT proactively Quit or SIGTERM the gnome-text-editor GApplication
-    primary. On Mutter 50 headless Wayland the .service file
-    (`Exec=gnome-text-editor --gapplication-service`) means any gdbus call to
-    `org.gnome.TextEditor` D-Bus-activates a fresh service-mode instance just
-    to receive the message — which itself races registration and hangs with
-    "Failed to register: Timeout was reached", blocking subsequent
-    `--new-window` launches indefinitely. Letting the primary stay alive and
-    serve `--new-window` activations is the only path that doesn't poison
-    the session bus.
+    Thin wrapper over the shared drain (framework.window_helper.drain_all_windows,
+    also used by the fuzz engine's _reset_workspace) — see its docstring for the
+    one-by-one pacing and gnome-text-editor bus-poisoning rationale. Sweeping all
+    workspaces (not just the active one) is load-bearing: the fuzz session's
+    switch_ws chaos strands windows on other workspaces, and leftovers used to
+    survive this teardown for the rest of the suite (forge-4b6).
     """
-    for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
-        try:
-            windows = shell_proxy.get_windows()
-            if not windows:
-                break
-            count_before = len(windows)
-            shell_proxy.close_one_window()
-            # Poll for the window count to actually drop rather than a fixed
-            # WINDOW_CLOSE sleep (forge-zsk). get_windows() is a read-only
-            # Shell.Eval, so this never pokes the gnome-text-editor primary —
-            # the bus-poisoning invariant above is preserved. Short timeout so a
-            # window that won't close can't stall teardown; the attempt cap
-            # bounds total work and the next iteration re-reads state.
-            try:
-                wait_for(
-                    shell_proxy.get_windows,
-                    predicate=lambda w: isinstance(w, list) and len(w) < count_before,
-                    timeout=CLOSE_POLL_TIMEOUT,
-                    interval=Timing.POLL_INTERVAL_WINDOW,
-                )
-            except WaitTimeoutError:
-                # No progress this round; let the loop re-attempt (bounded).
-                pass
-        except Exception:
-            break
-    # Final settle: wait for a fully empty workspace instead of a fixed sleep.
-    # Swallow the timeout — a non-empty result is tolerated here exactly as the
-    # old unconditional WINDOW_SETTLE sleep tolerated it (best-effort teardown).
-    try:
-        wait_for(
-            shell_proxy.get_windows,
-            predicate=lambda w: isinstance(w, list) and len(w) == 0,
-            timeout=CLOSE_POLL_TIMEOUT,
-            interval=Timing.POLL_INTERVAL_WINDOW,
-        )
-    except WaitTimeoutError:
-        pass
+    drain_all_windows(shell_proxy)
 
 
 @pytest.fixture

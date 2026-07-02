@@ -26,6 +26,7 @@ from pathlib import Path
 from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, Timing
 from framework.shell_proxy import ShellProxyError
 from framework.wait import WaitTimeoutError
+from framework.window_helper import drain_all_windows
 
 # Oracle rules sourced from a one-shot, non-re-readable signal: the LogScanner advances its
 # byte offset PAST the matched line on read, and a dead/unresponsive shell can't be re-eval'd.
@@ -525,32 +526,12 @@ class FuzzEngine:
         """Drain EVERY workspace and revert persisted side-effects to a clean ws0 baseline.
 
         switch_ws chaos strands windows on other workspaces, so closing only ws0 leaves
-        residue the next session inherits (M2). Sweep all MAX_WORKSPACES indices under a
-        PER-WORKSPACE close bound (so a multi-workspace mess can't exit with residue), then
-        return to ws0. ensure_focus() before each focused-close lets an unfocused Xvfb
-        session still drain. Finally revert GapSize/float side-effects so the oracle baseline
-        (gap, overrides) matches self.gap.
+        residue the next session inherits (M2). drain_all_windows sweeps every workspace
+        without activation games (forge-4b6: shared with conftest's clean_workspace so the
+        suite-level teardown drains the same way), then return to ws0. Finally revert
+        GapSize/float side-effects so the oracle baseline (gap, overrides) matches self.gap.
         """
-        from . import actions
-
-        for ws in range(actions.MAX_WORKSPACES):
-            try:
-                self.shell.activate_workspace(ws)
-            except Exception:  # noqa: BLE001
-                continue
-            for _ in range(MAX_RESET_CLOSES):
-                try:
-                    wins = self.shell.get_windows()
-                except Exception:  # noqa: BLE001
-                    break
-                if not isinstance(wins, list) or not wins:
-                    break
-                try:
-                    self.shell.ensure_focus()
-                except Exception:  # noqa: BLE001
-                    pass
-                self.shell.close_focused_window()
-                time.sleep(Timing.POLL_INTERVAL_WINDOW)
+        drain_all_windows(self.shell)
         try:
             self.shell.activate_workspace(0)
         except Exception:  # noqa: BLE001
@@ -589,6 +570,12 @@ class FuzzEngine:
             self.shell.set_tiling_mode(True)
         except Exception:  # noqa: BLE001
             pass
+        try:
+            # FocusBorderToggle persists focus-border-toggle; restore the default (True) so later
+            # focus/split-border assertions aren't broken by a leaked toggle (forge-4b6).
+            self.shell.set_focus_border(True)
+        except Exception:  # noqa: BLE001
+            pass
         if self.auto_split is not None:
             try:
                 # Pin auto-split for the whole band (ON auto-nests new windows into deep trees,
@@ -612,10 +599,6 @@ class FuzzEngine:
         path.write_text(json.dumps(failure.to_dict(), indent=2))
         return path
 
-
-# Bound on teardown close attempts PER WORKSPACE (a window that refuses to close can't stall
-# a reset, and the bound is applied per-workspace so a multi-workspace mess fully drains).
-MAX_RESET_CLOSES = 12
 
 # _settle() backpressure poll: max wait for async finalizers (fuzz_pending_work busy) to drain,
 # and the poll interval. Kept short so a stuck/missing signal degrades to the old behavior fast.

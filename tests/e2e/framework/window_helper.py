@@ -7,14 +7,90 @@ and layout states in Forge.
 
 from typing import List, Optional, Tuple
 
-from .constants import Tolerance
+from .constants import RetryConfig, Timing, Tolerance
 from .shell_proxy import ShellProxy
+from .wait import WaitTimeoutError, wait_for
+
+# Per-step timeout when polling for window-close progress during teardown
+# (forge-zsk). Generous vs. a normal close (<300ms under Xvfb) but bounded so a
+# window that refuses to close can't stall teardown for long; WINDOW_CLOSE_ATTEMPTS
+# caps the number of steps.
+CLOSE_POLL_TIMEOUT = 1.5
 
 
 class WindowAssertionError(Exception):
     """Exception raised when a window assertion fails."""
 
     pass
+
+
+def drain_all_windows(shell_proxy: ShellProxy) -> int:
+    """Close every window on EVERY workspace, one at a time, via D-Bus.
+
+    Shared teardown drain for conftest's clean_workspace and the fuzz engine's
+    _reset_workspace (forge-4b6: the fuzz session spawns windows on whichever
+    workspace its switch_ws step left active; an active-workspace-only sweep
+    let leftovers on other workspaces survive into the rest of the suite).
+
+    Closing windows individually avoids overwhelming the rendering pipeline
+    under Xvfb, which can saturate the main loop and cause gnome-shell to
+    lose its D-Bus service channel name.
+
+    We do NOT proactively Quit or SIGTERM the gnome-text-editor GApplication
+    primary. On Mutter 50 headless Wayland the .service file
+    (`Exec=gnome-text-editor --gapplication-service`) means any gdbus call to
+    `org.gnome.TextEditor` D-Bus-activates a fresh service-mode instance just
+    to receive the message — which itself races registration and hangs with
+    "Failed to register: Timeout was reached", blocking subsequent
+    `--new-window` launches indefinitely. Letting the primary stay alive and
+    serve `--new-window` activations is the only path that doesn't poison
+    the session bus.
+
+    Returns the number of windows remaining (0 on success; best-effort).
+    """
+    for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
+        try:
+            count_before = shell_proxy.get_total_window_count()
+            if count_before == 0:
+                return 0
+            shell_proxy.close_one_window_any_workspace()
+            # Poll for the window count to actually drop rather than a fixed
+            # WINDOW_CLOSE sleep (forge-zsk). get_total_window_count() is a
+            # read-only Shell.Eval, so this never pokes the gnome-text-editor
+            # primary — the bus-poisoning invariant above is preserved. Short
+            # timeout so a window that won't close can't stall teardown; the
+            # attempt cap bounds total work and the next iteration re-reads state.
+            try:
+                wait_for(
+                    shell_proxy.get_total_window_count,
+                    predicate=lambda n: isinstance(n, int) and n < count_before,
+                    timeout=CLOSE_POLL_TIMEOUT,
+                    interval=Timing.POLL_INTERVAL_WINDOW,
+                )
+            except WaitTimeoutError:
+                # No progress this round; let the loop re-attempt (bounded).
+                pass
+        except Exception:
+            break
+    # Final settle: wait for a fully empty session instead of a fixed sleep.
+    # Swallow the timeout — a non-empty result is tolerated here exactly as the
+    # old unconditional WINDOW_SETTLE sleep tolerated it (best-effort teardown).
+    try:
+        wait_for(
+            shell_proxy.get_total_window_count,
+            predicate=lambda n: n == 0,
+            timeout=CLOSE_POLL_TIMEOUT,
+            interval=Timing.POLL_INTERVAL_WINDOW,
+        )
+        return 0
+    except WaitTimeoutError:
+        pass
+    except Exception:
+        return -1
+    try:
+        return shell_proxy.get_total_window_count()
+    except Exception:
+        return -1
 
 
 class WindowHelper:
