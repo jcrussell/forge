@@ -16,6 +16,8 @@ The idle body (`window.js`) runs this exact order — **the order is
 load-bearing**:
 
 ```
+tree.pruneDeadWindows()              // drop nodes whose Meta.Window wrapper is finalized —
+                                     // one dead wrapper would throw out of every later step (forge-4b6)
 processFloats()                      // classify every window TILE vs FLOAT
 _reconcileFullscreenFloatDemotion()  // after processFloats, which re-pins floats (forge-zo4)
 tree.render(from)                    // compute rects + move tiled windows
