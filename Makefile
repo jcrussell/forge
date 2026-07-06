@@ -51,6 +51,12 @@ build: clean metadata.json schemas compilemsgs metadata
 	rm -rf temp
 	mkdir -p temp
 	cp metadata.json temp
+	@# Release builds stamp the tag into version-name (shown by the GNOME
+	@# Extensions app and EGO). Guarded by FORGE_VERSION_NAME so a normal build
+	@# leaves the committed metadata.json untouched. See .github/workflows/publish.yml.
+	if [ -n "$$FORGE_VERSION_NAME" ]; then \
+		python3 -c "import json,os; p='temp/metadata.json'; d=json.load(open(p)); d['version-name']=os.environ['FORGE_VERSION_NAME']; json.dump(d,open(p,'w'),indent=2)"; \
+	fi
 	cp -r resources temp
 	cp -r schemas temp
 	cp -r config temp

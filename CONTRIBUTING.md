@@ -77,5 +77,10 @@ GNOME compatibility matters: changes should work on GNOME 45+ across X11 and
 Wayland. Mutter API differences belong in `lib/extension/compat.js`
 ([docs/dev/compat.md](docs/dev/compat.md)), not scattered through the codebase.
 
+## Releasing
+
+Maintainers: cutting a release and submitting to extensions.gnome.org is
+documented in [RELEASING.md](RELEASING.md).
+
 > Maintainers: this repo tracks work with **bd** (beads) and additional automation
 > conventions documented in [CLAUDE.md](CLAUDE.md).

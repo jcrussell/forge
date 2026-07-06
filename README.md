@@ -65,7 +65,32 @@ This fork includes significant improvements over the upstream version:
 
 ## Installation
 
-Build from source:
+### From extensions.gnome.org
+
+_Listing pending review — this fork is not yet published on extensions.gnome.org._
+Once it is, install it from the [GNOME Extensions](https://extensions.gnome.org)
+website (with the browser integration) or the **Extensions** / **Extension Manager**
+app by searching for "Forge".
+
+### From a pre-built release
+
+Download `forge@jmmaranan.com.zip` from the
+[latest release](https://github.com/jcrussell/forge/releases/latest), then:
+
+```bash
+# (optional) verify the checksum and build provenance
+sha256sum -c SHA256SUMS
+gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
+
+# install and enable
+gnome-extensions install --force forge@jmmaranan.com.zip
+gnome-extensions enable forge@jmmaranan.com
+```
+
+Log out and log back in (or restart GNOME Shell on X11 with `Alt+F2`, then `r`) for
+the extension to load, then run the `enable` command above if it isn't active yet.
+
+### Build from source
 
 ```bash
 # Install dependencies (Node.js 20+ and gettext required)

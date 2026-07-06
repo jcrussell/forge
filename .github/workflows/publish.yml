@@ -1,122 +1,97 @@
-# This workflow builds the gnome extension for release on extensions.gnome.org
-
-# For more information see:
-#@ https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+# Release workflow: build the GNOME Shell extension, attest its provenance, and
+# publish it as a GitHub Release.
+#
+# Trigger: push a tag matching v* (the repo's v<gnome>-<ego-build> scheme, e.g.
+# v49-90). The tagged commit is built into forge@jmmaranan.com.zip — the same
+# EGO-shaped zip a maintainer uploads to extensions.gnome.org (see RELEASING.md).
+#
+# The zip is checksummed (SHA256SUMS) and gets a keyless build-provenance
+# attestation (Sigstore via GitHub OIDC — no signing keys to manage), verifiable
+# by users with `gh attestation verify`. NOTE: this secures the GitHub side-load
+# path only; extensions.gnome.org has no author-signing mechanism.
+#
+# workflow_dispatch runs the same build + attest as a dry run but does NOT create
+# a Release (the release step is gated on a tag ref).
 
 name: release
-permissions:
-  contents: read
-  pull-requests: write
+
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Override git ref"
+        description: "Override git ref to build"
         type: string
         default: ""
         required: false
 
+permissions:
+  contents: write # create the Release and upload assets
+  id-token: write # OIDC token for keyless attestation
+  attestations: write # write the provenance attestation
+
 jobs:
   publishing:
-    strategy:
-      matrix:
-        node_version: ["22"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
         with:
+          # Full history: `make build` runs `git shortlog -sne --all` to generate
+          # the contributors list (lib/prefs/metadata.js).
+          fetch-depth: 0
           ref: ${{ inputs.ref }}
 
       - name: Install linux tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gettext make zip curl
+          # libglib2.0-bin provides glib-compile-schemas (needed by `make build`).
+          sudo apt-get install -y --no-install-recommends gettext make zip libglib2.0-bin
 
-      - name: Set up Node.js ${{ matrix.node_version }}
+      - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node_version }}
+          node-version: "22"
+          cache: "npm"
 
       - name: Install Node.js project dependencies
-        run: npm ci --verbose
+        run: npm ci
 
-      # - name: Build Node.js project
-      #   run: npm run build --if-present --verbose
+      - name: Run unit tests (release gate)
+        run: npm test
 
-      # - name: Test Node.js project
-      #   run: npm test --verbose
-
-      - name: Test Packaging
+      - name: Build distributable zip
+        # Stamp the tag into metadata.json's version-name for release builds only
+        # (build-target guard; a plain `make dist` leaves committed metadata clean).
+        env:
+          FORGE_VERSION_NAME: ${{ github.ref_name }}
         run: make dist
 
-      - name: Archive release artifacts
+      - name: Generate checksum
+        run: sha256sum "forge@jmmaranan.com.zip" > SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: "forge@jmmaranan.com.zip"
+
+      - name: Archive build artifacts
         uses: actions/upload-artifact@v6
         with:
           name: forge-gnome-extension
-          path: forge@jmmaranan.com.zip
+          path: |
+            forge@jmmaranan.com.zip
+            SHA256SUMS
 
-      # - name: Upload extension to Goe
-      #   shell: bash
-      #   env:
-      #     USERNAME: ${{ secrets.GOE_USERNAME }}
-      #     PASSWORD: ${{ secrets.GOE_PASSWORD }}
-      #   run: |
-      #     printf '::group::Getting CSRF Midleware Token for accounts/login form\n';
-      #     if test -z "${USERNAME:-}"; then printf 'Missing USERNAME from environment variable.\n::endgroup::\n'; exit 1; fi
-      #     if test -z "${PASSWORD:-}"; then printf 'Missing PASSWORD from environment variable\n::endgroup::\n'; exit 1; fi
-      #     curl 'https://extensions.gnome.org/accounts/login/' \
-      #         --junk-session-cookies \
-      #         -b 00-cookies-jar.txt -c 00-cookies-jar.txt \
-      #         --location --fail-with-body \
-      #         --no-progress-meter --verbose \
-      #         -o 01-get-accounts-login.html;
-
-      #     export CSRFMIDDLEWARETOKEN="$(grep --color=never 'csrfmiddlewaretoken' < 01-get-accounts-login.html | grep --only-matching --perl-regexp '(?<=value=.)([^\"]+)' | head -n 1)";
-      #     if test -z "${CSRFMIDDLEWARETOKEN:-}"; then printf 'Missing CSRFMIDDLEWARETOKEN from accounts/login form.\n::endgroup::\n'; exit 1; fi
-      #     printf '::endgroup::\n';
-
-      #     printf '::group::Authenticating in extensions.gnome.org\n';
-      #     if ! curl 'https://extensions.gnome.org/accounts/login/' \
-      #       -H 'origin: https://extensions.gnome.org' \
-      #       -H 'referer: https://extensions.gnome.org/accounts/login/' \
-      #       -H 'content-type: application/x-www-form-urlencoded' \
-      #         --data-urlencode 'next=' \
-      #         --data-urlencode "csrfmiddlewaretoken=${CSRFMIDDLEWARETOKEN}" \
-      #         --data-urlencode "username=${USERNAME}" \
-      #         --data-urlencode "password=${PASSWORD}" \
-      #         -b 00-cookies-jar.txt -c 00-cookies-jar.txt \
-      #         --location --fail-with-body \
-      #         --no-progress-meter --verbose \
-      #         -o 02-post-accounts-login.html;
-      #     then
-      #         printf 'Login failed with error: %s\n::endgroup::\n' "$?";
-      #         exit 2;
-      #     fi
-      #     printf '::endgroup::\n';
-
-      #     printf '::group::Getting CSRF Midleware Token for upload form\n';
-      #     curl 'https://extensions.gnome.org/upload/' \
-      #         -b 00-cookies-jar.txt -c 00-cookies-jar.txt \
-      #         --location --fail-with-body \
-      #         --no-progress-meter --verbose \
-      #         -o 03-get-upload.html;
-      #     export CSRFMIDDLEWARETOKEN="$(grep --color=never 'csrfmiddlewaretoken' < 03-get-upload.html | grep --only-matching --perl-regexp '(?<=value=.)([^\"]+)' | head -n 1)";
-      #     if test -z "${CSRFMIDDLEWARETOKEN:-}"; then printf 'Missing CSRFMIDDLEWARETOKEN from upload form.\n::endgroup::\n'; exit 3; fi
-      #     printf '::endgroup::\n';
-
-      #     printf '::group::Uploading extension zip\n';
-      #     curl 'https://extensions.gnome.org/upload/' \
-      #       -H 'origin: https://extensions.gnome.org' \
-      #       -H 'referer: https://extensions.gnome.org/upload/' \
-      #         -F "csrfmiddlewaretoken=${CSRFMIDDLEWARETOKEN}" \
-      #         -F 'tos_compliant=on' \
-      #         -F 'shell_license_compliant=on' \
-      #         -F 'source=@forge@jmmaranan.com.zip' \
-      #         -b 00-cookies-jar.txt -c 00-cookies-jar.txt \
-      #         --location --fail-with-body \
-      #         --no-progress-meter --verbose \
-      #         -o 04-post-upload.html;
-      #     printf '::endgroup::\n';
+      - name: Publish GitHub Release
+        # Only when built from a tag (tag push, or a tag selected for dispatch).
+        # A branch dispatch is a dry run: build + attest, no Release.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            forge@jmmaranan.com.zip
+            SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true
