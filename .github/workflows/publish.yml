@@ -90,6 +90,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
+          # A -beta/-rc tag (v49-90-beta.1, v49-90-rc.1) is a pre-release:
+          # flagged as such and never shown as "Latest". A bare tag (v49-90 — the
+          # hyphen is the gnome-major/ego-build separator, not a suffix) is the
+          # stable, EGO-bound cut. See RELEASING.md.
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           files: |
             forge@jmmaranan.com.zip
             SHA256SUMS

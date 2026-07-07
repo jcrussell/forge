@@ -9,14 +9,15 @@ build-provenance attestation, and publishes a GitHub Release.
 
 - **Tag scheme:** `v<gnome-major>-<ego-build>`, e.g. `v49-90`. The build number
   tracks the incrementing version EGO assigns on upload.
-- Bump `version` in `package.json` to match (it is the human-facing semver; EGO
-  assigns the integer `version` in `metadata.json` itself, so we don't set it there).
-- Tags are GPG-signed.
+- EGO assigns the integer `version` in `metadata.json` itself, so we don't set it
+  there. `package.json`'s `version` is npm dev-manifest bookkeeping only — not
+  shipped in the zip, not read at runtime — so bumping it is optional.
+- Lightweight tags are fine; signing is optional and CI does not check it.
 
 ## Cut a release
 
 ```bash
-git tag -s v49-90 -m "v49-90"
+git tag v49-90
 git push origin v49-90
 ```
 
@@ -24,6 +25,24 @@ CI then builds `forge@jmmaranan.com.zip`, generates `SHA256SUMS`, attests
 provenance, and creates the GitHub Release with auto-generated notes. To rehearse
 without releasing, run the workflow via **Actions → release → Run workflow**
 (`workflow_dispatch`) on a branch — it builds and attests but creates no Release.
+
+## Pre-releases (betas)
+
+To ship a build for testing without sending it to EGO, add a `-beta.N` or
+`-rc.N` suffix to the tag you're heading toward:
+
+```bash
+git tag v49-90-beta.1
+git push origin v49-90-beta.1
+```
+
+CI builds and attests the same zip but marks the GitHub Release as a
+**pre-release** (never shown as "Latest"). The suffix keeps the EGO counter
+clean: betas never touch EGO, so the eventual bare `v49-90` cut still becomes EGO
+build 90.
+
+**Do not upload a beta to EGO.** Only the bare, suffix-free tag is the EGO-bound
+release.
 
 ## Submit to extensions.gnome.org
 
