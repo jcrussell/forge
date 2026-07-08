@@ -82,13 +82,17 @@ Download `forge@jmmaranan.com.zip` from the
 sha256sum -c SHA256SUMS
 gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
 
-# install and enable
+# install
 gnome-extensions install --force forge@jmmaranan.com.zip
+
+# then log out and back in (X11: Alt+F2, then r) so the shell picks it up
+
+# ...and enable
 gnome-extensions enable forge@jmmaranan.com
 ```
 
-Log out and log back in (or restart GNOME Shell on X11 with `Alt+F2`, then `r`) for
-the extension to load, then run the `enable` command above if it isn't active yet.
+`enable` fails with "does not exist" until the shell has re-scanned — that's why the
+log-out/restart step comes between install and enable, not after.
 
 ### Build from source
 
