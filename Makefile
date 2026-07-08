@@ -2,6 +2,11 @@ UUID = forge@jmmaranan.com
 INSTALL_PATH = $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 MSGSRC = $(wildcard po/*.po)
 
+# Version stamped into the built metadata.json's version-name. CI sets this to the
+# exact tag (github.ref_name); locally it defaults to `git describe` (tag, or
+# v49-90-beta.1-3-gabc123 between tags, plus -dirty for uncommitted changes).
+FORGE_VERSION_NAME ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+
 # Shell configuration - explicitly use bash for portability across distros
 SHELL := /bin/bash
 .SHELLFLAGS := -eo pipefail -c
@@ -51,11 +56,13 @@ build: clean metadata.json schemas compilemsgs metadata
 	rm -rf temp
 	mkdir -p temp
 	cp metadata.json temp
-	@# Release builds stamp the tag into version-name (shown by the GNOME
-	@# Extensions app and EGO). Guarded by FORGE_VERSION_NAME so a normal build
-	@# leaves the committed metadata.json untouched. See .github/workflows/publish.yml.
-	if [ -n "$$FORGE_VERSION_NAME" ]; then \
-		python3 -c "import json,os; p='temp/metadata.json'; d=json.load(open(p)); d['version-name']=os.environ['FORGE_VERSION_NAME']; json.dump(d,open(p,'w'),indent=2)"; \
+	@# Stamp a git-derived version-name into the built metadata.json so the About
+	@# dialog and GNOME Extensions app show it (e.g. v49-90, or v49-90-beta.1-3-gabc123
+	@# between tags). CI overrides FORGE_VERSION_NAME with the exact tag; local builds
+	@# fall back to `git describe`. Only temp/ is touched — committed metadata.json
+	@# stays clean. See .github/workflows/publish.yml.
+	if [ -n "$(FORGE_VERSION_NAME)" ]; then \
+		python3 -c "import json,sys; p='temp/metadata.json'; d=json.load(open(p)); d['version-name']=sys.argv[1]; json.dump(d,open(p,'w'),indent=2)" "$(FORGE_VERSION_NAME)"; \
 	fi
 	cp -r resources temp
 	cp -r schemas temp
