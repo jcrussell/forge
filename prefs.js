@@ -23,7 +23,7 @@ import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/
 
 import { KeyboardPage } from "./lib/prefs/keyboard.js";
 import { AppearancePage } from "./lib/prefs/appearance.js";
-import { SettingsPage } from "./lib/prefs/settings.js";
+import { SettingsPage, makeAboutButton, findHeaderBar } from "./lib/prefs/settings.js";
 import { FloatingPage } from "./lib/prefs/floating.js";
 import { PortabilityPage } from "./lib/prefs/portability.js";
 
@@ -43,6 +43,16 @@ export default class ForgeExtensionPreferences extends ExtensionPreferences {
     this.window = window;
     window._settings = this.settings;
     window._kbdSettings = this.kbdSettings;
+
+    // Put About in the window header bar. Adw.PreferencesWindow doesn't expose
+    // its header bar, so find it before adding pages (only the chrome exists
+    // yet). If traversal fails on some shell version, fall back to the Tiling
+    // page via SettingsPage's aboutButton.
+    const aboutButton = makeAboutButton(window, this.metadata);
+    const headerBar = findHeaderBar(window);
+    if (headerBar) headerBar.pack_end(aboutButton);
+    this.aboutButton = headerBar ? null : aboutButton;
+
     window.add(new SettingsPage(this));
     window.add(new AppearancePage(this));
     window.add(new KeyboardPage(this));
