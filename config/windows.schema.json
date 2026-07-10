@@ -17,7 +17,7 @@
         "properties": {
           "wmClass": {
             "type": "string",
-            "description": "Window class to match. Use 'xprop WM_CLASS' or GNOME Looking Glass to find. Supports substring matching."
+            "description": "Window class to match. Use 'xprop WM_CLASS' or GNOME Looking Glass to find. Exact match (case-sensitive); comma-separates a list of exact classes."
           },
           "wmTitle": {
             "type": "string",

@@ -29,7 +29,7 @@ Each override:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `wmClass` | yes | Window class to match. **Substring** match. |
+| `wmClass` | yes | Window class to match. **Exact** match (case-sensitive); comma-separates a list of exact classes. |
 | `wmTitle` | no | Window title. Substring; `!` prefix negates; comma-separates multiple patterns. |
 | `mode` | yes | `float` = keep out of tiling; `tile` = force into tiling. |
 | `wmId` | — | Runtime-only (written by the per-window toggle); don't set by hand. |

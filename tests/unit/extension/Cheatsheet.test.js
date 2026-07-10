@@ -49,6 +49,9 @@ describe("Cheatsheet", () => {
       kbdSettings: {
         list_keys: vi.fn(() => []),
         get_strv: vi.fn(() => []),
+        // Real Gio.Settings.get_default_value(key) returns a GVariant; the cheatsheet
+        // reads its type string to skip non-"as" keys. Default every key to "as".
+        get_default_value: vi.fn(() => ({ get_type_string: () => "as" })),
         // Descriptions are read from the keybindings schema <summary>; mirror the
         // real Gio.Settings.settings_schema -> get_key(name).get_summary() chain.
         settings_schema: {
@@ -189,6 +192,27 @@ describe("Cheatsheet", () => {
       // Unknown prefix -> "Other"; empty summary -> _keyToDescription fallback.
       expect(groups.get("Other")).toEqual([
         { shortcut: "Super+x", description: "Totally Made Up Key" },
+      ]);
+    });
+
+    it("skips non-'as' keys so get_strv never trips a GLib CRITICAL (forge-u7t0)", () => {
+      mockExt.kbdSettings.list_keys = vi.fn(() => ["window-focus-left", "mod-mask-mouse-tile"]);
+      // mod-mask-mouse-tile is type "s"; every other shortcut key is "as".
+      mockExt.kbdSettings.get_default_value = vi.fn((key) => ({
+        get_type_string: () => (key === "mod-mask-mouse-tile" ? "s" : "as"),
+      }));
+      const getStrv = vi.fn(() => ["<Super>x"]);
+      mockExt.kbdSettings.get_strv = getStrv;
+
+      const groups = new Map(cheatsheet._getGroupedKeybindings());
+
+      // The string-typed key is never passed to get_strv (which would log a CRITICAL).
+      expect(getStrv).not.toHaveBeenCalledWith("mod-mask-mouse-tile");
+      expect(getStrv).toHaveBeenCalledWith("window-focus-left");
+      // ...and it does not appear in any rendered group.
+      const allShortcuts = [...groups.values()].flat();
+      expect(allShortcuts).toEqual([
+        { shortcut: "Super+x", description: "summary:window-focus-left" },
       ]);
     });
   });
