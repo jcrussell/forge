@@ -177,13 +177,16 @@ describe("WorkspaceManager", () => {
       expect(connectSpy).toHaveBeenCalledWith("window-added", expect.any(Function));
     });
 
-    it("should store signal ID in _workspaceSignals map", () => {
+    it("should store the workspace object and signal IDs in _workspaceSignals map", () => {
       workspaceManager.bindWorkspaceSignals(workspace0);
 
       expect(workspaceManager._workspaceSignals.has(0)).toBe(true);
-      const signals = workspaceManager._workspaceSignals.get(0);
-      expect(signals).toBeInstanceOf(Array);
-      expect(signals.length).toBeGreaterThan(0);
+      // forge-gw2c: the value is { workspace, signals } so disconnect can target
+      // the originally-bound object rather than re-resolving by (stale) index.
+      const entry = workspaceManager._workspaceSignals.get(0);
+      expect(entry.workspace).toBe(workspace0);
+      expect(entry.signals).toBeInstanceOf(Array);
+      expect(entry.signals.length).toBeGreaterThan(0);
     });
 
     it("should not double-bind to same workspace", () => {
