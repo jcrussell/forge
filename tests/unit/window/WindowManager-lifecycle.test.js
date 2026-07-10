@@ -54,16 +54,20 @@ describe("WindowManager - Window Lifecycle", () => {
   });
 
   describe("postProcessWindow", () => {
-    it("should move pointer with regular window", () => {
+    it("does not center or warp the pointer for a regular window (forge-f081)", () => {
       const metaWindow = createMockWindow({ title: "Regular Window" });
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
 
       const movePointerSpy = vi.spyOn(wm(), "movePointerWith");
+      const moveCenterSpy = vi.spyOn(wm(), "moveCenter");
 
       wm().postProcessWindow(nodeWindow);
 
-      expect(movePointerSpy).toHaveBeenCalledWith(metaWindow);
+      // The old movePointerWith(metaWindow) call was a dead no-op (wrong arg type)
+      // and has been removed; a regular window is left for the focus path to warp.
+      expect(moveCenterSpy).not.toHaveBeenCalled();
+      expect(movePointerSpy).not.toHaveBeenCalled();
     });
 
     it("should center and activate preferences window", () => {
@@ -335,7 +339,7 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(wm().minimizedWindow(nodeWindow)).toBe(false);
     });
 
-    it("should post-process window after tracking", () => {
+    it("post-processes a tracked regular window without warping the pointer", () => {
       const metaWindow = createMockWindow({ title: "Regular Window" });
       const movePointerSpy = vi.spyOn(wm(), "movePointerWith");
 
@@ -343,10 +347,11 @@ describe("WindowManager - Window Lifecycle", () => {
       wm().trackWindow(null, metaWindow);
       const nodeWindow = wm().findNodeWindow(metaWindow);
 
-      // Post-process
+      // Post-process — the dead movePointerWith(metaWindow) call was removed (forge-f081).
       wm().postProcessWindow(nodeWindow);
 
-      expect(movePointerSpy).toHaveBeenCalledWith(metaWindow);
+      expect(nodeWindow).toBeTruthy();
+      expect(movePointerSpy).not.toHaveBeenCalled();
     });
   });
 
