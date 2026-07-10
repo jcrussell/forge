@@ -7,24 +7,9 @@
             <summary>Show window border on focused window</summary>
         </key>
 
-        <key type="u" name="focus-border-size">
-            <default>3</default>
-            <summary>The focused border's current thickness</summary>
-        </key>
-
-        <key type="s" name="focus-border-color">
-            <default>'rgba(236, 94, 94, 1)'</default>
-            <summary>The focused border's current color</summary>
-        </key>
-
         <key type="b" name="split-border-toggle">
             <default>true</default>
             <summary>Show split direction border on focused window</summary>
-        </key>
-
-        <key type="s" name="split-border-color">
-            <default>'rgba(255, 246, 108, 1)'</default>
-            <summary>The focused border's current color</summary>
         </key>
 
         <key type="u" name="window-gap-size">
@@ -81,11 +66,6 @@
         <key type="b" name="window-maximize-on-single">
             <default>false</default>
             <summary>Maximize window when it is the only one on workspace</summary>
-        </key>
-
-        <key type="s" name="primary-layout-mode">
-            <default>'tiling'</default>
-            <summary>Layout modes: stacking, tiling</summary>
         </key>
 
         <key type="s" name="default-window-layout">

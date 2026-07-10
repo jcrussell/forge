@@ -161,13 +161,13 @@ describe("ConfigSync", () => {
   });
 
   describe("settings round-trip by type", () => {
-    it("should round-trip boolean, uint, int, string, double, and strv settings", () => {
+    it("should round-trip boolean, uint, int, string, and strv settings", () => {
       // Set values of each GVariant type
       settings.set_boolean("tiling-mode-enabled", true);
       settings.set_uint("window-gap-size", 8);
       settings.set_int("window-margin-top", 5);
       settings.set_string("default-window-layout", "stacked");
-      settings.set_double("focus-border-size", 2.5);
+      settings.set_uint("focus-border-radius", 12);
       settings.set_strv("workspace-skip-tile", ["1", "3"]);
 
       // Export to config manager
@@ -179,7 +179,7 @@ describe("ConfigSync", () => {
       settings.set_uint("window-gap-size", 0);
       settings.set_int("window-margin-top", 0);
       settings.set_string("default-window-layout", "split");
-      settings.set_double("focus-border-size", 0);
+      settings.set_uint("focus-border-radius", 0);
       settings.set_strv("workspace-skip-tile", []);
 
       // Import from exported config
@@ -190,7 +190,7 @@ describe("ConfigSync", () => {
       expect(settings.get_uint("window-gap-size")).toBe(8);
       expect(settings.get_int("window-margin-top")).toBe(5);
       expect(settings.get_string("default-window-layout")).toBe("stacked");
-      expect(settings.get_double("focus-border-size")).toBe(2.5);
+      expect(settings.get_uint("focus-border-radius")).toBe(12);
       expect(settings.get_strv("workspace-skip-tile")).toEqual(["1", "3"]);
     });
   });

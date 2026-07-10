@@ -53,6 +53,11 @@
           "description": "Exit tabbed mode when only single tab remains",
           "default": true
         },
+        "auto-reorient-on-close": {
+          "type": "boolean",
+          "description": "Re-orient a split container by its aspect ratio when a child window closes",
+          "default": false
+        },
         "default-window-layout": {
           "type": "string",
           "description": "Default layout for new containers",
@@ -79,6 +84,17 @@
           "type": "boolean",
           "description": "Only enable hover-to-focus when tiling mode is active",
           "default": false
+        },
+        "disable-edge-tiling": {
+          "type": "boolean",
+          "description": "Disable GNOME's built-in edge/half-tiling while Forge is enabled",
+          "default": true
+        },
+        "new-window-placement": {
+          "type": "string",
+          "description": "Initial monitor for a new window: 'pointer' (active/pointer monitor) or 'window-actual' (the window's own monitor)",
+          "enum": ["pointer", "window-actual"],
+          "default": "pointer"
         }
       },
       "additionalProperties": false
@@ -92,18 +108,6 @@
           "description": "Show border on focused window",
           "default": true
         },
-        "focus-border-size": {
-          "type": "integer",
-          "description": "Focused border thickness in pixels",
-          "minimum": 0,
-          "maximum": 10,
-          "default": 3
-        },
-        "focus-border-color": {
-          "type": "string",
-          "description": "Focused border color (CSS rgba format)",
-          "default": "rgba(236, 94, 94, 1)"
-        },
         "focus-border-radius": {
           "type": "integer",
           "description": "Border corner radius in pixels",
@@ -115,11 +119,6 @@
           "type": "boolean",
           "description": "Show split direction border on focused window",
           "default": true
-        },
-        "split-border-color": {
-          "type": "string",
-          "description": "Split direction border color (CSS rgba format)",
-          "default": "rgba(255, 246, 108, 1)"
         },
         "window-gap-size": {
           "type": "integer",
@@ -195,6 +194,19 @@
           "maximum": 10,
           "default": 1
         },
+        "stacked-tab-bar-height": {
+          "type": "integer",
+          "description": "Height of each stacked/tabbed title bar (pixels)",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 35
+        },
+        "tab-position": {
+          "type": "string",
+          "description": "Position of the stacked/tabbed title bar within its container (top or bottom)",
+          "enum": ["top", "bottom"],
+          "default": "top"
+        },
         "quick-settings-enabled": {
           "type": "boolean",
           "description": "Show Forge in quick settings",
@@ -248,12 +260,6 @@
       "type": "object",
       "description": "Miscellaneous settings",
       "properties": {
-        "primary-layout-mode": {
-          "type": "string",
-          "description": "Primary layout mode",
-          "enum": ["stacking", "tiling"],
-          "default": "tiling"
-        },
         "resize-amount": {
           "type": "integer",
           "description": "Window resize increment/decrement in pixels",

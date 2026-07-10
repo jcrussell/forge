@@ -142,6 +142,22 @@
           "$ref": "#/definitions/keybinding",
           "description": "Swap with last active window"
         },
+        "window-focus-next": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus next window (cyclic)"
+        },
+        "window-focus-prev": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Focus previous window (cyclic)"
+        },
+        "window-swap-next": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap next window (cyclic)"
+        },
+        "window-swap-prev": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Swap previous window (cyclic)"
+        },
         "window-snap-one-third-right": {
           "$ref": "#/definitions/keybinding",
           "description": "Snap window to right third"
@@ -197,6 +213,10 @@
         "window-reset-sizes": {
           "$ref": "#/definitions/keybinding",
           "description": "Reset window sizes to equal distribution"
+        },
+        "window-golden-ratio": {
+          "$ref": "#/definitions/keybinding",
+          "description": "Golden ratio resize"
         },
         "prefs-config-reload": {
           "$ref": "#/definitions/keybinding",
