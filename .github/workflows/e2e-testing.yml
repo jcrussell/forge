@@ -38,7 +38,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Read versions config
         id: set-matrix
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -115,7 +115,7 @@ jobs:
             set-env.sh /app/scripts/run-tests.sh
 
       - name: Upload test results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-results-fedora${{ matrix.fedora_version }}
@@ -123,7 +123,7 @@ jobs:
           retention-days: 14
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-screenshots-fedora${{ matrix.fedora_version }}
@@ -149,7 +149,7 @@ jobs:
       KB_TEST: test_focus_left_right
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -191,7 +191,7 @@ jobs:
             set-env.sh /app/scripts/run-tests.sh -k ${KB_TEST}
 
       - name: Upload keybinding-gate results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-keybinding-gate-results
@@ -224,7 +224,7 @@ jobs:
       MM_TEST: test_window_retiles_across_monitors
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -298,7 +298,7 @@ jobs:
           EOF
 
       - name: Upload multimonitor-gate results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-multimonitor-gate-results-fedora${{ matrix.fedora }}
@@ -320,7 +320,7 @@ jobs:
       - name: Download lane results
         if: always()
         continue-on-error: true
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           path: all-lane-results
           pattern: "*results*"
