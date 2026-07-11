@@ -30,7 +30,7 @@ _MONOCLE_TIMEOUT = 30
 
 
 @pytest.fixture(autouse=True)
-def _bound_monocle_runtime():
+def _bound_monocle_runtime(two_windows):
     """Fail fast instead of hanging if the self-append recursion regresses (forge-0mf).
 
     A regressed enter path recurses in renderTree; the synchronous D-Bus eval then
@@ -38,6 +38,11 @@ def _bound_monocle_runtime():
     on the NEXT test via _check_shell_alive. A SIGALRM keeps the bound low and the
     failure legible — and needs no extra test dependency (stdlib only; pytest runs
     tests in the main thread, so the alarm interrupts the blocking call here).
+
+    Depends on two_windows (which every test here requests anyway) so the alarm
+    arms AFTER window setup: launch retries + the _launch_windows recovery round
+    (forge-my4w) can legitimately exceed the budget, and an alarm firing there
+    would misreport a launch stall as a recursion hang.
     """
 
     def _on_timeout(signum, frame):

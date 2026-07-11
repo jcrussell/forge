@@ -25,7 +25,7 @@ from framework.gsettings import ForgeSettings
 from framework.input_simulator import InputSimulator
 from framework.screenshot import ScreenshotCapture
 from framework.shell_proxy import ShellProxy
-from framework.wait import WaitTimeoutError, wait_for
+from framework.wait import WaitTimeoutError, wait_for, wait_for_window_count
 from framework.window_helper import WindowHelper, drain_all_windows
 
 # Test configuration
@@ -391,6 +391,56 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     drain_all_windows(shell_proxy)
 
 
+def _log_window_shortfall(shell_proxy: ShellProxy, n: int, note: str) -> None:
+    """Append a fixture window-count mismatch event to fixture-recovery.log.
+
+    Recurrence evidence for the forge-my4w launch-race family. Fetches the live
+    window list itself (guarded — the shell may be the thing that broke) and
+    probes NameHasOwner for org.gnome.TextEditor. With the primary unit under
+    Restart=always this log fires >=5s after any vanish, so the primary has
+    normally re-registered by probe time: true is the expected reading either
+    way, while false means the systemd restart loop itself is dead (unit
+    failed) — a distinct, worse failure. NameHasOwner is answered by
+    dbus-daemon itself and can never D-Bus-activate the editor, so the
+    bus-poisoning invariant (_close_all_windows) holds. Best-effort: never
+    raises.
+    """
+    try:
+        try:
+            observed = repr(shell_proxy.get_windows())
+        except Exception as e:
+            observed = f"<get_windows failed: {e}>"
+        try:
+            probe = subprocess.run(
+                [
+                    "gdbus",
+                    "call",
+                    "--session",
+                    "--dest",
+                    "org.freedesktop.DBus",
+                    "--object-path",
+                    "/org/freedesktop/DBus",
+                    "--method",
+                    "org.freedesktop.DBus.NameHasOwner",
+                    "org.gnome.TextEditor",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            primary = (probe.stdout or probe.stderr).strip()
+        except Exception as e:
+            primary = f"<probe failed: {e}>"
+        log_path = E2E_RESULTS_DIR / "fixture-recovery.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a") as f:
+            f.write(f"--- {note} @ {time.time():.3f} ---\n")
+            f.write(f"expected={n} observed={observed}\n")
+            f.write(f"NameHasOwner(org.gnome.TextEditor)={primary}\n\n")
+    except Exception:
+        pass
+
+
 @pytest.fixture
 def test_window(shell_proxy, clean_workspace) -> Generator[dict, None, None]:
     """Launch a single test window."""
@@ -409,12 +459,38 @@ def _launch_windows(shell_proxy: ShellProxy, n: int) -> tuple:
 
     Shared by the two/three/four_windows fixtures so the launch+settle loop lives
     in one place; workflow tests that want N windows up-front reuse it too.
+
+    After the loop, verify the exact NET count (forge-my4w): each _launch_window
+    call only proves ITS window appeared (`> initial_count`), so an earlier
+    window vanishing mid-loop — the gnome-text-editor primary dying while a
+    later activation is in flight (forge-4wl family) — yields a "successful"
+    fixture with n-1 windows. On mismatch, do one full reset-and-relaunch round
+    (idempotent: no separate surplus/shortfall modes) before raising.
     """
-    windows = []
-    for _ in range(n):
-        windows.append(_launch_window(DEFAULT_TEST_APP, shell_proxy))
-        time.sleep(Timing.WINDOW_SETTLE)
-    return tuple(windows)
+
+    def _launch_loop() -> list:
+        windows = []
+        for _ in range(n):
+            windows.append(_launch_window(DEFAULT_TEST_APP, shell_proxy))
+            time.sleep(Timing.WINDOW_SETTLE)
+        return windows
+
+    for attempt in range(2):
+        windows = _launch_loop()
+        try:
+            # Windows are already settled, so the healthy path matches on the
+            # first poll and this adds no wall-clock time.
+            wait_for_window_count(shell_proxy, n, timeout=Timeout.DEFAULT)
+        except WaitTimeoutError:
+            if attempt:
+                _log_window_shortfall(shell_proxy, n, "recovery FAILED")
+                raise
+            _log_window_shortfall(shell_proxy, n, "count mismatch after launch loop; recovering")
+            _close_all_windows(shell_proxy)
+            continue
+        if attempt:
+            _log_window_shortfall(shell_proxy, n, "recovery succeeded")
+        return tuple(windows)
 
 
 @pytest.fixture

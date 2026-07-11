@@ -281,6 +281,27 @@ fi
 # D-Bus calls to this primary, bypassing GApplication.register() entirely.
 # Without this, every fresh --new-window blocks ~25s in register() while Gtk
 # waits on slow/missing portal calls on Mutter 50 headless Wayland.
+#
+# GApplication services idle-exit seconds after inactivity (~4s observed on
+# F42; clean exit 0, so Restart=on-failure would never fire) — and since a
+# serving primary hosts every test window in-process, each workspace drain
+# idle-exits it too. Restart=always/200ms below re-registers a primary within
+# ~200ms of every exit, NARROWING the no-primary window in which a
+# --new-window must cold-register and can race another in-flight registration
+# (forge-my4w window-vanish flakes; the conftest _launch_windows count verify
+# is the invariant that covers the sub-second residue). While some
+# --new-window process owns the name instead, the restarted service instance
+# fails "Unable to acquire bus name" and exits without activating anything
+# (G_APPLICATION_IS_SERVICE never falls back to remote activation, so no bus
+# poisoning is possible). StartLimitIntervalSec=0 keeps that retry loop from
+# tripping systemd's 5-starts/10s limit and permanently failing the unit. The
+# flat 200ms is deliberate: RestartSteps/RestartMaxDelaySec backoff was tried
+# and rejected — the step counter does NOT reset on clean exits (verified on
+# F42/systemd 257), so the benign idle-exit cycle ratchets the delay to the
+# max within ~5 cycles and permanently re-opens the no-primary gap. The
+# contention retry loop (~5Hz, each spawn dying cheaply at name acquisition)
+# is rare and bounded by the owning test's duration; its noise lands in the
+# unit journal, not gnome-shell.log.
 if command -v gnome-text-editor &>/dev/null; then
     EDITOR_ENV=(
         --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
@@ -298,6 +319,7 @@ if command -v gnome-text-editor &>/dev/null; then
     fi
     echo "Pre-launching gnome-text-editor GApplication primary..."
     systemd-run --unit=forge-text-editor-primary --uid=gnomeshell --gid=gnomeshell \
+        -p Restart=always -p RestartSec=200ms -p StartLimitIntervalSec=0 \
         "${EDITOR_ENV[@]}" \
         gnome-text-editor --gapplication-service 2>/dev/null || true
     # Wait for the primary to claim its bus name so test --new-window calls
