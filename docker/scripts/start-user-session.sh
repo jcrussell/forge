@@ -145,6 +145,17 @@ su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.wm.preferences num
 # Disable external search providers to prevent D-Bus cascade when
 # org.gnome.Settings.desktop fails (IOErrorEnum: The connection is closed)
 su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.desktop.search-providers disable-external true" 2>/dev/null || true
+# forge-1gjh: gnome-shell's bundled session default sets
+# org.gnome.mutter workspaces-only-on-primary=true, but glib only applies that
+# [org.gnome.mutter:GNOME] override when XDG_CURRENT_DESKTOP contains GNOME — which
+# the shell/mutter unit here does not set, so the key silently defaulted to false
+# and the multi-monitor gate validated a NON-default config (masking forge-16ms).
+# Pin the real desktop default explicitly on the multi-monitor leg so the gate
+# exercises it. Single-monitor lanes are unaffected (no visible effect with one
+# output), so this stays scoped to FORGE_E2E_VIRTUAL_MONITORS=2.
+if [ "${FORGE_E2E_VIRTUAL_MONITORS:-1}" = "2" ]; then
+    su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.mutter workspaces-only-on-primary true" 2>/dev/null || true
+fi
 
 # Screencast recording opt-in (forge-qgg, Wayland-only). Bring PipeWire +
 # WirePlumber up BEFORE gnome-shell so Mutter's screencast backend has them
