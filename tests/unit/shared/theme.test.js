@@ -378,6 +378,28 @@ describe("ThemeManagerBase", () => {
       expect(result).toBe(false);
       expect(mockSettings.get_uint("css-last-update")).toBe(0);
     });
+
+    // forge-8jks: the forge-0h9k null guard only covers the seeding-FAILED (null)
+    // leg. When stylesheet.css EXISTS but its dir is unwritable, Gio.File.copy
+    // THROWS a GError rather than returning false. Left unguarded it propagated out
+    // of the bare patchCss() call in enable(), aborting the extension
+    // half-initialized on every launch. patchCss must swallow it and return false.
+    it("returns false without throwing when copy raises a GError (unwritable dir)", () => {
+      mockSettings.set_uint("css-last-update", 0);
+      mockConfigMgr.stylesheetFile.copy = vi.fn(() => {
+        throw new Error("GError: Permission denied");
+      });
+      expect(themeManager._needUpdate()).toBe(true);
+
+      let result;
+      expect(() => {
+        result = themeManager.patchCss();
+      }).not.toThrow();
+
+      expect(result).toBe(false);
+      // css-last-update stays unwritten so patchCss retries once perms are fixed.
+      expect(mockSettings.get_uint("css-last-update")).toBe(0);
+    });
   });
 
   describe("reloadStylesheet", () => {
