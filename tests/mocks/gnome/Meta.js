@@ -65,6 +65,7 @@ export class Window extends withSignals() {
     this._monitor = params.monitor ?? 0;
     this._size_hints = params.size_hints ?? null;
     this._on_all_workspaces = params.on_all_workspaces ?? false;
+    this._always_on_all_workspaces = params.always_on_all_workspaces ?? false;
   }
 
   get_size_hints() {
@@ -125,13 +126,29 @@ export class Window extends withSignals() {
     return this._on_all_workspaces;
   }
 
-  // Test helper: pin/unpin "Always on Visible Workspace" (sticky). forge-yyum.
+  // forge-16ms: the user-requested "Always on Visible Workspace" pin, distinct from
+  // the EFFECTIVE sticky state Mutter sets implicitly for a non-primary-monitor
+  // window under workspaces-only-on-primary=true.
+  is_always_on_all_workspaces() {
+    return this._always_on_all_workspaces;
+  }
+
+  // Test helper: pin/unpin "Always on Visible Workspace" — a USER pin sets both the
+  // requested flag and the effective state. forge-yyum.
   stick() {
     this._on_all_workspaces = true;
+    this._always_on_all_workspaces = true;
   }
 
   unstick() {
     this._on_all_workspaces = false;
+    this._always_on_all_workspaces = false;
+  }
+
+  // forge-16ms: Mutter's IMPLICIT stickiness for a window on a non-primary monitor
+  // under workspaces-only-on-primary=true — effective sticky with NO user pin.
+  stickImplicit() {
+    this._on_all_workspaces = true;
   }
 
   showing_on_its_workspace() {
