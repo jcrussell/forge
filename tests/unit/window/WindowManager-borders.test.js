@@ -651,7 +651,9 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       wm().showWindowBorders();
 
-      const inset = 3;
+      // forge-hcbz: inset is now dpi-scaled (3 * 2 at this scale) to match the CSS
+      // border-width St scales to 6 physical px.
+      const inset = 3 * 2;
       const align = (v) => wm()._alignToBufferScale(v, 2);
       const ax = align(rawRect.x);
       const ay = align(rawRect.y);
@@ -661,6 +663,54 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       // Border must be sized/positioned from the ALIGNED rect, not the raw one.
       expect(mockBorder.set_size).toHaveBeenCalledWith(aw + inset * 2, ah + inset * 2);
       expect(mockBorder.set_position).toHaveBeenCalledWith(ax - inset, ay - inset);
+    });
+
+    // forge-hcbz: the border's CSS border-width (3px) is scaled to 6 physical px by
+    // St at 2x, but the JS inset that positions the border actor was a raw 3 — so at
+    // integer HiDPI the border painted 3 physical px over window content on every
+    // straight edge. The inset must scale by dpi() to match the drawn border width.
+    it("scales the border inset by dpi() so the ring stays outside the window", () => {
+      // Already buffer-scale-aligned coords (all even) so _alignToBufferScale is
+      // identity here, isolating the inset-scaling behavior from the #164 alignment.
+      const rect = new Rectangle({ x: 100, y: 100, width: 960, height: 540 });
+      const metaWindow = createMockWindow({
+        rect,
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+
+      const mockBorder = {
+        set_style_class_name: vi.fn(),
+        add_style_class_name: vi.fn(),
+        set_size: vi.fn(),
+        set_position: vi.fn(),
+        show: vi.fn(),
+        hide: vi.fn(),
+      };
+      metaWindow.get_compositor_private().border = mockBorder;
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+
+      // Second tiled sibling so the single-window border-skip path doesn't apply.
+      const metaWindow2 = createMockWindow({
+        rect: new Rectangle({ x: 1060, y: 100, width: 960, height: 540 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const nodeWindow2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow2);
+      nodeWindow2.mode = WINDOW_MODES.TILE;
+
+      wm().showWindowBorders();
+
+      // inset must be dpi-scaled to 6 (3 * 2). Before forge-hcbz it was a raw 3, so
+      // the border grew only 3px while its drawn width was 6 — overlapping content.
+      const inset = 3 * 2;
+      expect(mockBorder.set_position).toHaveBeenCalledWith(100 - inset, 100 - inset);
+      expect(mockBorder.set_size).toHaveBeenCalledWith(960 + inset * 2, 540 + inset * 2);
     });
   });
 });

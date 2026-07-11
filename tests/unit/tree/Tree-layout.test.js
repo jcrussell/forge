@@ -711,4 +711,28 @@ describe("Tree Layout Algorithms", () => {
       custom.cleanup();
     });
   });
+
+  // forge-qy65: Shell.App.create_icon_texture(size) takes a LOGICAL icon-size that
+  // St scales by scale_factor internally. Passing 24*dpi() double-scales the icon
+  // (96 physical at 2x) so it overflows/distorts the dpi-scaled tab bar. The tab
+  // bar height IS dpi-scaled (35*2=70), but the icon size must NOT be.
+  describe("tab icon scaling (forge-qy65)", () => {
+    afterEach(() => __resetScaleFactor());
+
+    it("passes the logical icon size (24), not 24*dpi(), so St scales it once", () => {
+      __setScaleFactor(2);
+      // _buildTabBase is node-type agnostic (icon + title scaffold); a CON node
+      // avoids the WINDOW constructor's compositor/app wiring.
+      const node = new Node(NODE_TYPES.CON, new St.Bin());
+      const app = { create_icon_texture: vi.fn(() => new St.Bin()) };
+
+      node._buildTabBase(app, "Title");
+
+      // Before forge-qy65 this was called with 48 (24*dpi()=48), which St then
+      // scaled again to 96 physical — double-scaled against the 70px bar.
+      expect(app.create_icon_texture).toHaveBeenCalledWith(24);
+      // Sanity: the bar the icon must fit IS dpi-scaled to 70, proving 24 is deliberate.
+      expect(ctx.tree.stackedBarHeight()).toBe(70); // 35 * 2
+    });
+  });
 });

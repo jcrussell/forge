@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { __setScaleFactor, __resetScaleFactor } from "gi://St";
 import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 import {
@@ -257,6 +258,34 @@ describe("WindowManager - Gap Calculations", () => {
 
       // Two tiled, non-minimized windows, so gap should be returned (5 * 3 = 15)
       expect(gap).toBe(15);
+    });
+  });
+
+  // forge-2s37: gaps are applied to physical-pixel work-area rects, alongside
+  // dpi-scaled tab bars/borders. An unscaled gap visually halves at integer HiDPI.
+  describe("HiDPI scaling (forge-2s37)", () => {
+    afterEach(() => __resetScaleFactor());
+
+    it("scales the gap by dpi() so it stays visually constant at integer HiDPI", () => {
+      __setScaleFactor(2);
+      ctx.settings.get_uint.mockImplementation((key) => {
+        if (key === "window-gap-size") return 4;
+        if (key === "window-gap-size-increment") return 2;
+        return 0;
+      });
+
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow: nodeWindow1 } = createWindowNode(ctx.tree, monitor, {
+        mode: "TILE",
+        windowOverrides: { id: 1 },
+      });
+      createWindowNode(ctx.tree, monitor, { mode: "TILE", windowOverrides: { id: 2 } });
+
+      const gap = wm().calculateGaps(nodeWindow1);
+
+      // 4 * 2 * dpi(2) = 16. Before forge-2s37 this returned 8 (unscaled) — half the
+      // visual size of the dpi-scaled tab bars/borders on the same 2x screen.
+      expect(gap).toBe(16);
     });
   });
 
