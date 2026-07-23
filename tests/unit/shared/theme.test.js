@@ -497,10 +497,15 @@ describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
     // Simulate a file that cannot be made writable (e.g. not owned by the user):
     // set_attribute_uint32 is a no-op, so the file stays read-only and the write fails.
     file.set_attribute_uint32 = vi.fn(() => true);
+    // forge-d59z: real GJS replace_contents THROWS a GError on failure (it does not
+    // return success=false); _updateCss must catch it and still log, not re-throw.
+    file.replace_contents = vi.fn(() => {
+      throw new Error("GLib.Error g-io-error-quark: Permission denied");
+    });
     const tm = new ThemeManagerBase({ configMgr, settings: createMockSettings() });
     tm.reloadStylesheet = vi.fn();
 
-    tm._updateCss();
+    expect(() => tm._updateCss()).not.toThrow();
 
     expect(tm.reloadStylesheet).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();

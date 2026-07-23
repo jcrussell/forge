@@ -41,16 +41,21 @@ describe("WindowManager - Movement & Positioning", () => {
   const wm = () => ctx.windowManager;
 
   describe("move", () => {
-    it("should not move grabbed window", () => {
-      const metaWindow = createMockWindow();
-      metaWindow.grabbed = true;
+    it("should not move a window under a live interactive grab", () => {
+      // forge-r2k9: the guard reads Forge's own grab state (node.grabMode set by
+      // _handleGrabOpBegin), not the phantom metaWindow.grabbed property that
+      // production never sets.
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const metaWindow = createMockWindow({ workspace: ctx.workspaces[0] });
+      const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      node.mode = WINDOW_MODES.TILE;
+      node.grabMode = "RESIZING";
 
       const moveFrameSpy = vi.spyOn(metaWindow, "move_frame");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
       wm().move(metaWindow, rect);
 
-      // Should not call move_frame on grabbed window
       expect(moveFrameSpy).not.toHaveBeenCalled();
     });
 

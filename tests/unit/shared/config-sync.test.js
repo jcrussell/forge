@@ -110,6 +110,16 @@ describe("ConfigSync", () => {
         this._keybindingsProps = props;
         this._mtimes.keybindings += 1;
       },
+      // forge-1n2v: method form returns the write result (real ConfigManager does
+      // too). Defaults to success; a test can override to simulate a failed write.
+      saveSettingsProps(props) {
+        this.settingsProps = props;
+        return true;
+      },
+      saveKeybindingsProps(props) {
+        this.keybindingsProps = props;
+        return true;
+      },
     };
   }
 

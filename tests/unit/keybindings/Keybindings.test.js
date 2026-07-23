@@ -7,7 +7,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
  *
  * Tests for allowDragDropTile() which determines whether a window drag should
  * trigger tiling based on the configured modifier key and current modifier state.
- * Uses Clutter modifier bitmask values: Super=64, Alt=8, Ctrl=4, Shift=2, grabbed=256.
+ * Uses Clutter modifier bitmask values: Super=64, Alt=8, Ctrl=4, Shift=1, grabbed=256.
  */
 describe("Keybindings", () => {
   let keybindings;
@@ -368,18 +368,23 @@ describe("Keybindings", () => {
         mockExt.kbdSettings.get_string.mockReturnValue("Shift");
       });
 
-      it("should allow tiling when Shift is held (state=2)", () => {
-        mockExt.extWm.getPointer.mockReturnValue([0, 0, 2]);
+      it("should allow tiling when Shift is held (state=1)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 1]);
         expect(keybindings.allowDragDropTile()).toBe(true);
       });
 
-      it("should allow tiling when Shift is held while grabbed (state=258)", () => {
-        mockExt.extWm.getPointer.mockReturnValue([0, 0, 258]);
+      it("should allow tiling when Shift is held while grabbed (state=257)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 257]);
         expect(keybindings.allowDragDropTile()).toBe(true);
       });
 
       it("should not allow tiling with no modifier (state=0)", () => {
         mockExt.extWm.getPointer.mockReturnValue([0, 0, 0]);
+        expect(keybindings.allowDragDropTile()).toBe(false);
+      });
+
+      it("should not allow tiling on Caps Lock (LOCK_MASK state=2)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 2]);
         expect(keybindings.allowDragDropTile()).toBe(false);
       });
 

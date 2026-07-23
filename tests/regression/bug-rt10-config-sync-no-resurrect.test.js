@@ -106,6 +106,15 @@ describe("Bug forge-rt10: auto-export must not resurrect deleted portable files"
         this._writes.keybindings += 1;
         this._mtimes.keybindings += 1;
       },
+      // forge-1n2v: export now writes via the boolean-returning method form.
+      saveSettingsProps(props) {
+        this.settingsProps = props;
+        return true;
+      },
+      saveKeybindingsProps(props) {
+        this.keybindingsProps = props;
+        return true;
+      },
     };
   }
 
