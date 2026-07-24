@@ -94,23 +94,33 @@ export function createMockWorkspaceManager(options = {}) {
  */
 export function createMockWindowGroup() {
   const children = [];
-  return {
+  // Clutter's add/remove_child reparent the actor, so St.Widget.get_parent()
+  // reports the container. Production code relies on that to detach an actor it
+  // only holds a reference to — Node._destroyDecoration removes its St.BoxLayout
+  // via decoration.get_parent().remove_child(), so a mock that never set the
+  // back-reference silently skipped every such removal (forge-21xq).
+  const group = {
     _children: children,
     get_children: vi.fn(() => [...children]),
     contains: vi.fn((child) => children.includes(child)),
     add_child: vi.fn((child) => {
-      if (!children.includes(child)) children.push(child);
+      if (children.includes(child)) return;
+      children.push(child);
+      if (child) child._parent = group;
     }),
     insert_child_below: vi.fn((child, sibling) => {
       if (children.includes(child)) return;
       const index = children.indexOf(sibling);
       children.splice(index === -1 ? children.length : index, 0, child);
+      if (child) child._parent = group;
     }),
     remove_child: vi.fn((child) => {
       const index = children.indexOf(child);
       if (index !== -1) children.splice(index, 1);
+      if (child && child._parent === group) child._parent = null;
     }),
   };
+  return group;
 }
 
 /**

@@ -155,6 +155,16 @@ export class Window extends withSignals() {
     return !this.minimized;
   }
 
+  // meta_window_located_on_workspace(): on_all_workspaces || workspace === ws.
+  // NOTE this is workspace-membership only — it is deliberately NOT minimized-
+  // aware, matching Mutter. showing_on_its_workspace() above is the other half
+  // and is likewise NOT workspace-aware ("would it show on ITS OWN workspace"),
+  // so a caller that needs "visible to the user right now" must test both
+  // (forge-h7fb).
+  located_on_workspace(workspace) {
+    return this._on_all_workspaces || this._workspace === workspace;
+  }
+
   change_workspace(workspace) {
     this._workspace = workspace;
   }
