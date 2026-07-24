@@ -42,8 +42,11 @@ export function createMockDisplay(options = {}) {
     get_current_monitor: vi.fn(() => 0),
     get_current_time: vi.fn(() => 12345),
     get_monitor_geometry: vi.fn((index) => {
-      const geom = geometries[index] || geometries[0];
-      return new Rectangle(geom);
+      // A real Display returns null for an invalid index. Honor an explicit null
+      // slot in monitorGeometries so strict tests can exercise that path; a real
+      // index still falls back to geometries[0] as before.
+      const geom = index in geometries ? geometries[index] : geometries[0];
+      return geom == null ? null : new Rectangle(geom);
     }),
     // Mutter maps a rect to the monitor it most overlaps (center fallback). Used
     // by move() to resolve the target monitor's work area for the off-screen

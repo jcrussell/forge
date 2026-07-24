@@ -245,6 +245,18 @@ describe("Cheatsheet", () => {
       expect(overlay.x).not.toBe(beforeX);
     });
 
+    it("does not throw or move the overlay when geometry is unavailable (forge-fhen.10)", () => {
+      cheatsheet.show();
+      const overlay = cheatsheet._overlay;
+      const setPosSpy = vi.spyOn(overlay, "set_position");
+
+      // get_monitor_geometry returns null for an invalid index (e.g. a -1 current
+      // monitor mid monitors-changed). _recenter must bail, not crash on .x/.width.
+      global.display.get_monitor_geometry.mockReturnValue(null);
+      expect(() => Main.layoutManager.emit("monitors-changed")).not.toThrow();
+      expect(setPosSpy).not.toHaveBeenCalled();
+    });
+
     it("disconnects monitors-changed on hide", () => {
       cheatsheet.show();
       const disconnectSpy = vi.spyOn(Main.layoutManager, "disconnect");
