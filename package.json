@@ -9,6 +9,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "prettier --list-different \"./**/*.{js,jsx,ts,tsx,json}\"",
     "lint:e2e": "eslint tests/e2e/framework",
+    "lint:src": "eslint lib extension.js prefs.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepare": "husky install",
     "format": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\""
   },

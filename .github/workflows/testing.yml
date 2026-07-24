@@ -64,6 +64,15 @@ jobs:
       - name: Run linter (prettier)
         run: npm run lint --verbose
 
+      # Advisory static-analysis gates (non-blocking, like the Security audit step below).
+      # These surface the statically-preventable bug classes (missing imports, dead code, type
+      # errors) without failing the build yet; enforcement is tracked as follow-up beads.
+      - name: Lint extension sources (advisory)
+        run: npm run lint:src || true
+
+      - name: Type check (advisory)
+        run: npm run typecheck || true
+
       - name: Run unit tests
         run: npm test --verbose
 

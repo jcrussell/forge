@@ -37,7 +37,47 @@ const gjsGlobals = {
   printerr: "readonly",
 };
 
+// Ambient globals available to the extension's ES-module sources at runtime under gnome-shell.
+// Unlike the e2e bridge (script scope), the extension `import`s its GI namespaces
+// (Meta/Clutter/St/...) via `gi://` — so those are NOT globals here and must NOT be listed
+// (listing them would mask a genuinely missing import, which is exactly the forge-jnfk class we
+// want no-undef to catch). Only the truly ambient host globals belong here.
+const extensionGlobals = {
+  globalThis: "readonly",
+  global: "readonly",
+  console: "readonly",
+  log: "readonly",
+  logError: "readonly",
+  imports: "readonly",
+  TextEncoder: "readonly",
+  TextDecoder: "readonly",
+};
+
 module.exports = [
+  {
+    // Correctness-only lint for the extension's own ES-module sources (advisory — see plan
+    // tooling/static-analysis-gates). Deliberately does NOT pull in js.configs.recommended yet;
+    // this catches the missing-import / use-before-init / dead-code classes (forge-jnfk, forge-3jx9)
+    // without the formatting/style noise a full recommended set adds on 13K LOC.
+    files: ["lib/**/*.js", "extension.js", "prefs.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: extensionGlobals,
+    },
+    rules: {
+      "no-undef": "error",
+      // classes:false — a method referencing a class declared later in the same module is
+      // runtime-safe (the method runs after module load); flagging it is a false positive.
+      // variables:true still catches genuine read-before-declaration (the forge-3jx9 class).
+      "no-use-before-define": ["error", { functions: false, classes: false, variables: true }],
+      // `_`-prefixed names are the repo's intentional-throwaway convention.
+      "no-unused-vars": ["error", { caughtErrors: "none", args: "none", varsIgnorePattern: "^_" }],
+      // `cond && obj.method()` / ternary side-effects are an idiomatic guard here (window.js:483).
+      "no-unused-expressions": ["error", { allowShortCircuit: true, allowTernary: true }],
+      "no-import-assign": "error",
+    },
+  },
   {
     files: ["tests/e2e/framework/**/*.js"],
     languageOptions: {
