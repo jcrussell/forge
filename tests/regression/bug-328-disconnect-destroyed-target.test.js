@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/index.js";
+import { NODE_TYPES } from "../../lib/extension/tree.js";
+import {
+  createMockWindow,
+  createWindowManagerFixture,
+  finalizeWindow,
+  getWorkspaceAndMonitor,
+} from "../mocks/helpers/index.js";
 
 /**
  * Bug #328 hardening: disconnectSignals() had no guard, so one
@@ -33,17 +39,22 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
   }
 
   it("a disposed window must not abort _removeSignals for remaining windows", () => {
-    const metaA = createMockWindow({ workspace: ctx.workspaces[0] });
+    // metaB is live and reached the normal way (Mutter's get_tab_list never
+    // returns finalized windows).
     const metaB = createMockWindow({ workspace: ctx.workspaces[0] });
-    metaA.windowSignals = [101];
     metaB.windowSignals = [102];
-    seedSignalState([metaA, metaB]);
-
-    // GJS finalized-wrapper behavior: method exists but throws on invocation.
-    vi.spyOn(metaA, "disconnect").mockImplementation(() => {
-      throw new Error("Object 0xdead has been already deallocated");
-    });
+    seedSignalState([metaB]);
     const disconnectB = vi.spyOn(metaB, "disconnect");
+
+    // A window closed (finalized) while still referenced by a tree WINDOW node —
+    // the faithful source of a dead wrapper during disable(). finalizeWindow makes
+    // EVERY method throw (disconnect AND get_compositor_private), not just the one
+    // the old spy remembered, so _removeSignals' per-window body must survive it.
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const dead = createMockWindow({ id: 9328 });
+    dead.windowSignals = [101];
+    ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dead);
+    finalizeWindow(dead);
 
     expect(() => wm()._removeSignals()).not.toThrow();
 

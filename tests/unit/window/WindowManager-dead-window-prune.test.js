@@ -4,6 +4,7 @@ import {
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
+  finalizeWindow,
 } from "../../mocks/helpers/index.js";
 
 /**
@@ -14,19 +15,10 @@ import {
  * callback on EVERY render, so tiling died shell-wide (new windows never
  * tiled, toggles/gaps/maximize silently no-op'd). renderTree must prune dead
  * nodes first and complete the pass for the live windows.
+ *
+ * finalizeWindow() finalizes the node's own Meta.Window in place: any method
+ * (incl. isWindowAlive's get_id() probe) throws, like the real dead wrapper.
  */
-
-// GJS semantics: any property read on a finalized wrapper throws.
-function makeDeadWindow() {
-  return new Proxy(
-    {},
-    {
-      get() {
-        throw new Error("Object Meta.Window (0xdead) has been already deallocated");
-      },
-    }
-  );
-}
 
 describe("WindowManager - dead-window prune on render", () => {
   let ctx;
@@ -44,7 +36,7 @@ describe("WindowManager - dead-window prune on render", () => {
     const live1 = createWindowNode(ctx.tree, monitor, {});
     const dead = createWindowNode(ctx.tree, monitor, {});
     const live2 = createWindowNode(ctx.tree, monitor, {});
-    dead.nodeWindow.nodeValue = makeDeadWindow();
+    finalizeWindow(dead.nodeWindow.nodeValue);
 
     // The GLib mock runs the idle callback synchronously, so this executes
     // prune + processFloats + tree.render inline.

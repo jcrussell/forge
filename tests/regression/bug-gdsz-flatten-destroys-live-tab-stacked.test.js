@@ -5,6 +5,7 @@ import {
   getWorkspaceAndMonitor,
   createWindowNode,
   createContainerNode,
+  finalizeActor,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -60,14 +61,7 @@ describe("Bug #5: flatten of a nested STACKED con keeps surviving windows' tabs 
     [w1, w2].forEach((w) => {
       expect(w.tab).toBeTruthy();
       stackedCon.decoration.add_child(w.tab);
-      const realGet = w.tab.get_child_at_index.bind(w.tab);
-      w.tab.destroy = () => {
-        w.tab._dead = true;
-      };
-      w.tab.get_child_at_index = (i) => {
-        if (w.tab._dead) throw new Error("St.BoxLayout has been already deallocated");
-        return realGet(i);
-      };
+      w.tab.destroy = () => finalizeActor(w.tab);
     });
 
     const t1 = w1.tab;

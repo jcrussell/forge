@@ -6,6 +6,7 @@ import {
   getMonitors,
   createWindowNode,
   createContainerNode,
+  finalizeActor,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -36,18 +37,11 @@ describe("Bug forge-6asv: reparenting a tabbed CON does not leave its children w
     ctx.extWm.currentMonWsNode = ctx.tree.nodeWorkpaces[0].getNodeByType(NODE_TYPES.MONITOR)[0];
   });
 
-  // Inject the "St.BoxLayout already deallocated" behavior onto a tab actor:
-  // destroy() flips a _dead flag (St mock's destroy_all_children() calls
-  // destroy() on each child), and get_child_at_index throws while _dead.
+  // Arm the real St lifecycle: destroy() (called by the St mock's
+  // destroy_all_children() on each child) finalizes the actor, so every later
+  // method call throws "St.BoxLayout has been already deallocated".
   const injectDeallocThrow = (tab) => {
-    const realGet = tab.get_child_at_index.bind(tab);
-    tab.destroy = () => {
-      tab._dead = true;
-    };
-    tab.get_child_at_index = (i) => {
-      if (tab._dead) throw new Error("St.BoxLayout has been already deallocated");
-      return realGet(i);
-    };
+    tab.destroy = () => finalizeActor(tab);
   };
 
   it("nulls direct WINDOW children's tabs so they rebuild and the next render is safe", () => {

@@ -5,6 +5,7 @@ import {
   getWorkspaceAndMonitor,
   createWindowNode,
   createContainerNode,
+  finalizeActor,
 } from "../mocks/helpers/index.js";
 
 /**
@@ -90,14 +91,7 @@ describe("Bug forge-wrot/forge-5r0j: window tab teardown on removeChild, idempot
 
     // Simulate the actor being finalized out from under the node (the parent
     // decoration's destroy_all_children path): later touches throw.
-    tab._dead = false;
-    tab.destroy = () => {
-      tab._dead = true;
-    };
-    tab.get_parent = () => {
-      if (tab._dead) throw new Error("St.BoxLayout has been already deallocated");
-      return null;
-    };
+    tab.destroy = () => finalizeActor(tab);
     tab.destroy(); // first teardown finalizes the actor
 
     expect(() => w1._destroyTab()).not.toThrow();

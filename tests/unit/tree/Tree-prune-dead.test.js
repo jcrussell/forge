@@ -4,6 +4,7 @@ import {
   createTreeFixture,
   getWorkspaceAndMonitor,
   createHorizontalLayout,
+  finalizeWindow,
 } from "../../mocks/helpers/index.js";
 
 /**
@@ -15,21 +16,11 @@ import {
  * render tree-wide (processFloats/apply walk all workspaces), which is how one
  * leaked node after the e2e fuzz session cascaded into 39 downstream test
  * failures. pruneDeadWindows() at render start is the self-heal.
+ *
+ * finalizeWindow() turns a live node's own Meta.Window into a faithful finalized
+ * wrapper in place: every method (incl. isWindowAlive's get_id() probe) throws,
+ * while identity compares (node.nodeValue === x) still work.
  */
-
-// GJS semantics: even property READS throw on a finalized wrapper. Identity
-// compares (node.nodeValue === x) don't trip the trap; isWindowAlive's
-// get_id() access does.
-function makeDeadWindow() {
-  return new Proxy(
-    {},
-    {
-      get() {
-        throw new Error("Object Meta.Window (0xdead) has been already deallocated");
-      },
-    }
-  );
-}
 
 describe("Tree - pruneDeadWindows", () => {
   let ctx;
@@ -45,7 +36,7 @@ describe("Tree - pruneDeadWindows", () => {
   it("prunes the dead node and keeps live siblings", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const wins = createHorizontalLayout(ctx.tree, monitor, 3);
-    wins[1].nodeWindow.nodeValue = makeDeadWindow();
+    finalizeWindow(wins[1].nodeWindow.nodeValue);
 
     ctx.tree.pruneDeadWindows();
 
@@ -72,8 +63,8 @@ describe("Tree - pruneDeadWindows", () => {
     // must not touch the second dead wrapper's properties.
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const wins = createHorizontalLayout(ctx.tree, monitor, 3);
-    wins[0].nodeWindow.nodeValue = makeDeadWindow();
-    wins[2].nodeWindow.nodeValue = makeDeadWindow();
+    finalizeWindow(wins[0].nodeWindow.nodeValue);
+    finalizeWindow(wins[2].nodeWindow.nodeValue);
 
     expect(() => ctx.tree.pruneDeadWindows()).not.toThrow();
 
@@ -85,7 +76,7 @@ describe("Tree - pruneDeadWindows", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const wins = createHorizontalLayout(ctx.tree, monitor, 3);
     monitor.rect = { x: 0, y: 0, width: 900, height: 500 };
-    wins[2].nodeWindow.nodeValue = makeDeadWindow();
+    finalizeWindow(wins[2].nodeWindow.nodeValue);
 
     // Dead node is not a tiled child even before the prune runs.
     expect(ctx.tree.getTiledChildren(monitor.childNodes)).toHaveLength(2);
@@ -108,7 +99,7 @@ describe("Tree - pruneDeadWindows", () => {
     const { monitor: monitorWs1 } = getWorkspaceAndMonitor(ctx, 1);
     const ws0Wins = createHorizontalLayout(ctx.tree, monitorWs0, 1);
     const ws1Wins = createHorizontalLayout(ctx.tree, monitorWs1, 2);
-    ws1Wins[0].nodeWindow.nodeValue = makeDeadWindow();
+    finalizeWindow(ws1Wins[0].nodeWindow.nodeValue);
 
     ctx.tree.pruneDeadWindows();
 
