@@ -3,6 +3,7 @@ import { NODE_TYPES } from "../../lib/extension/tree.js";
 import Meta from "gi://Meta";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -18,9 +19,6 @@ import {
  */
 describe("Bug forge-dvce: focus restore skips finalized siblings", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -32,8 +30,7 @@ describe("Bug forge-dvce: focus restore skips finalized siblings", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
 
     const dead = createMockWindow({ id: 9401, workspace: ctx.workspaces[0] });
-    dead.get_id = boom;
-    Object.defineProperty(dead, "minimized", { configurable: true, get: boom });
+    finalizeWindow(dead);
 
     const live = createMockWindow({ id: 9402, workspace: ctx.workspaces[0] });
     let liveFocused = false;

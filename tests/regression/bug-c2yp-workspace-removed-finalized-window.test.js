@@ -3,6 +3,7 @@ import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -25,9 +26,6 @@ import {
  */
 describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper", () => {
   let ctx, tree, wm;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
@@ -60,10 +58,7 @@ describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper"
     const dead = createMockWindow({ id: "dead" });
     const deadNode = tree.createNode(mo0ws1.nodeValue, NODE_TYPES.WINDOW, dead);
     deadNode.mode = WINDOW_MODES.TILE;
-    dead.get_id = boom;
-    dead.get_wm_class = boom;
-    dead.get_workspace = boom;
-    dead.get_monitor = boom;
+    finalizeWindow(dead);
 
     // The rehome preamble must not throw despite the dead node...
     expect(() => wm._rehomeWorkspaceWindowsBeforeRemoval(1)).not.toThrow();
@@ -86,9 +81,7 @@ describe("Bug forge-c2yp: workspace-removed survives a finalized window wrapper"
 
     const deadSibling = createMockWindow({ id: "deadSibling" });
     tree.createNode(mon.nodeValue, NODE_TYPES.WINDOW, deadSibling);
-    deadSibling.get_workspace = boom;
-    deadSibling.get_monitor = boom;
-    deadSibling.get_id = boom;
+    finalizeWindow(deadSibling);
 
     expect(() => wm._containerFullyMigrates(mon, mover)).not.toThrow();
   });

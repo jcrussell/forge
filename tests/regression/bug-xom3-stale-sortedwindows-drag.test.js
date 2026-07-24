@@ -3,6 +3,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   setPointer,
@@ -59,11 +60,7 @@ describe("forge-xom3: stale sortedWindows entry during a tile drag", () => {
       rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
       workspace: workspace0(),
     });
-    const disposed = () => {
-      throw new Error("Object Meta.Window (0xdead), has been already deallocated");
-    };
-    deadWin.get_id = disposed;
-    deadWin.get_frame_rect = disposed;
+    finalizeWindow(deadWin);
 
     // What trackCurrentMonWs left behind: the dead window precedes the live one.
     wm().sortedWindows = [deadWin, liveWin];

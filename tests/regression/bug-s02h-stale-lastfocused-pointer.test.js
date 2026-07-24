@@ -3,6 +3,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -51,11 +52,7 @@ describe("forge-s02h: stale lastFocusedWindow in deferred pointer warp", () => {
     const { win, node } = tiledNode();
     // Disposed GJS wrapper: every method throws, but the Node wrapper still
     // has _data set, mimicking a closed window's lingering lastFocusedWindow.
-    const disposed = () => {
-      throw new Error("Object Meta.Window (0xdead), has been already deallocated");
-    };
-    win.get_id = disposed;
-    win.get_frame_rect = disposed;
+    finalizeWindow(win);
 
     expect(() => wm().storePointerLastPosition(node)).not.toThrow();
     // The dead window must not get a stored pointer.

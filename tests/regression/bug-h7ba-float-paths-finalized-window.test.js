@@ -4,6 +4,7 @@ import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
   createWindowManagerFixture,
+  finalizeWindow,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
 
@@ -22,9 +23,6 @@ import {
  */
 describe("Bug forge-h7ba: float paths skip finalized windows", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -44,8 +42,7 @@ describe("Bug forge-h7ba: float paths skip finalized windows", () => {
     // Dead is created first so it is visited before the live window: before the
     // fix its throw aborts the loop and the live window is never unpinned.
     const dead = addFloat({ id: 8001 });
-    dead.get_id = boom;
-    dead.is_above = boom;
+    finalizeWindow(dead);
 
     const live = addFloat({ id: 8002 });
     live.make_above(); // is_above() === true
@@ -63,8 +60,7 @@ describe("Bug forge-h7ba: float paths skip finalized windows", () => {
 
   it("restoreAlwaysFloat skips a finalized float and still pins the live one", () => {
     const dead = addFloat({ id: 8003 });
-    dead.get_id = boom;
-    dead.is_above = boom;
+    finalizeWindow(dead);
 
     const live = addFloat({ id: 8004 }); // is_above() === false by default
 
@@ -81,8 +77,7 @@ describe("Bug forge-h7ba: float paths skip finalized windows", () => {
 
   it("removeFloatOverride does not throw on a finalized window", () => {
     const dead = createMockWindow({ id: 8005 });
-    dead.get_id = boom;
-    dead.get_wm_class = boom;
+    finalizeWindow(dead);
 
     expect(() => ctx.windowManager.removeFloatOverride(dead, true)).not.toThrow();
   });

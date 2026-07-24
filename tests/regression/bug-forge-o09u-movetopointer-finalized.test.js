@@ -3,6 +3,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -19,9 +20,6 @@ import {
  */
 describe("Bug forge-o09u: grab-end drop probes the cached node's liveness", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -37,10 +35,9 @@ describe("Bug forge-o09u: grab-end drop probes the cached node's liveness", () =
     draggedNode.mode = WINDOW_MODES.GRAB_TILE;
 
     const dead = createMockWindow({ id: 9302, workspace: ctx.workspaces[0] });
-    dead.get_id = boom;
-    dead.get_frame_rect = boom;
     const deadNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dead);
     deadNode.mode = WINDOW_MODES.TILE;
+    finalizeWindow(dead);
 
     // What the last pointer motion cached — now finalized at drop time.
     ctx.windowManager.nodeWinAtPointer = deadNode;

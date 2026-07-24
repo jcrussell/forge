@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -18,9 +19,6 @@ import {
  */
 describe("Bug forge-7bry: _containerFullyMigrates guards a finalized window", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -34,8 +32,7 @@ describe("Bug forge-7bry: _containerFullyMigrates guards a finalized window", ()
     ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow({ id: 9001 }));
 
     const dead = createMockWindow({ id: 9002 });
-    dead.get_id = boom;
-    dead.get_workspace = boom;
+    finalizeWindow(dead);
 
     let result;
     expect(() => {

@@ -3,6 +3,7 @@ import { LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
   createWindowNode,
@@ -21,9 +22,6 @@ import {
  */
 describe("Bug forge-e5mh: updateDecorationLayout skips finalized windows", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
@@ -47,12 +45,9 @@ describe("Bug forge-e5mh: updateDecorationLayout skips finalized windows", () =>
 
     // A window that closed mid-relayout: its wrapper is finalized.
     const dead = createMockWindow({ id: 9501, workspace: ctx.workspaces[0] });
-    dead.get_id = boom;
-    dead.showing_on_its_workspace = boom;
-    dead.is_fullscreen = boom;
-    Object.defineProperty(dead, "minimized", { configurable: true, get: boom });
     const deadNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dead);
     deadNode.mode = WINDOW_MODES.TILE;
+    finalizeWindow(dead);
 
     expect(() => ctx.windowManager.updateDecorationLayout()).not.toThrow();
     expect(con.decoration.show).toHaveBeenCalled();

@@ -3,6 +3,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -19,9 +20,6 @@ import {
  */
 describe("Bug forge-olv3: fullscreen-float demotion skips finalized windows", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture({
@@ -39,11 +37,9 @@ describe("Bug forge-olv3: fullscreen-float demotion skips finalized windows", ()
     liveNode.mode = WINDOW_MODES.FLOAT;
 
     const dead = createMockWindow({ id: 9202, workspace: ctx.workspaces[0] });
-    dead.get_id = boom;
-    dead.is_fullscreen = boom;
-    dead.is_above = boom;
     const deadNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dead);
     deadNode.mode = WINDOW_MODES.FLOAT;
+    finalizeWindow(dead);
 
     expect(() => ctx.windowManager._reconcileFullscreenFloatDemotion()).not.toThrow();
   });

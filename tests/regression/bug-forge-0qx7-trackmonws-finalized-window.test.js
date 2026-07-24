@@ -3,6 +3,7 @@ import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
 import {
   createMockWindow,
+  finalizeWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
@@ -20,9 +21,6 @@ import {
  */
 describe("Bug forge-0qx7: trackCurrentMonWs skips finalized windows", () => {
   let ctx;
-  const boom = () => {
-    throw new Error("Object .Meta.Window has been already deallocated");
-  };
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -38,10 +36,9 @@ describe("Bug forge-0qx7: trackCurrentMonWs skips finalized windows", () => {
     liveNode.mode = WINDOW_MODES.TILE;
 
     const dead = createMockWindow({ id: 9102, workspace: ctx.workspaces[0] });
-    dead.get_id = boom;
-    Object.defineProperty(dead, "minimized", { configurable: true, get: boom });
     const deadNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, dead);
     deadNode.mode = WINDOW_MODES.TILE;
+    finalizeWindow(dead);
 
     // A live focus window drives the tracking (not the dead one).
     ctx.display.get_focus_window.mockReturnValue(live);

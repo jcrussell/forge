@@ -7,6 +7,9 @@
 // Mock window factory
 export * from "./mockWindow.js";
 
+// Finalized-window modeling (faithful "already deallocated" wrapper)
+export * from "./finalizeWindow.js";
+
 // Signal mixin for mock objects
 export * from "./signalMixin.js";
 
