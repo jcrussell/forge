@@ -1,11 +1,14 @@
-// ESLint flat config for the E2E test bridge JS (forge-mpt).
+// ESLint flat config with two blocks, each with a distinct global environment:
 //
-// Scope: tests/e2e/framework/*.js only — the GJS snippets that run inside gnome-shell's
-// Eval scope (chiefly bridge.js, forge-1gu). Those used to be ~40 fragments embedded in
-// Python strings; now that they live in real .js files they can be linted for syntax/typos,
-// which was a stated reason for the consolidation. The rest of the repo (the extension's own
-// ES-module sources) is intentionally NOT covered here — Prettier handles formatting repo-wide
-// and these GJS files have a different global environment than the extension modules.
+//   1. The extension's own ES-module sources (lib/**, extension.js, prefs.js) — linted under
+//      js.configs.recommended plus repo-specific overrides (forge-fhen.3, blocking gate). These
+//      `import` their GI namespaces via `gi://`, so those are NOT globals here.
+//   2. The E2E test bridge JS (tests/e2e/framework/*.js, forge-mpt) — GJS snippets that run
+//      inside gnome-shell's Eval scope (chiefly bridge.js, forge-1gu). Script scope, GI
+//      namespaces are ambient globals. Consolidated out of ~40 Python-embedded fragments so
+//      they can be linted for syntax/typos.
+//
+// Prettier handles formatting repo-wide; these blocks add correctness/static-analysis on top.
 //
 // CommonJS file (the package has no "type":"module"), so ESLint 9 loads it as a flat config.
 
@@ -55,10 +58,11 @@ const extensionGlobals = {
 
 module.exports = [
   {
-    // Correctness-only lint for the extension's own ES-module sources (advisory — see plan
-    // tooling/static-analysis-gates). Deliberately does NOT pull in js.configs.recommended yet;
-    // this catches the missing-import / use-before-init / dead-code classes (forge-jnfk, forge-3jx9)
-    // without the formatting/style noise a full recommended set adds on 13K LOC.
+    // Lint for the extension's own ES-module sources under js.configs.recommended plus the
+    // repo-specific overrides below (forge-fhen.3 — blocking gate). recommended covers the
+    // missing-import / use-before-init / dead-code classes (forge-jnfk, forge-3jx9) that were the
+    // original advisory scope, and adds the rest of the correctness set; the overrides tune the
+    // handful of rules whose defaults are too strict for this codebase's idioms.
     files: ["lib/**/*.js", "extension.js", "prefs.js"],
     languageOptions: {
       ecmaVersion: 2022,
@@ -66,7 +70,9 @@ module.exports = [
       globals: extensionGlobals,
     },
     rules: {
-      "no-undef": "error",
+      // recommended first; the tuned overrides below take precedence (later keys win). `no-undef`
+      // is part of recommended, so it is no longer listed explicitly.
+      ...js.configs.recommended.rules,
       // classes:false — a method referencing a class declared later in the same module is
       // runtime-safe (the method runs after module load); flagging it is a false positive.
       // variables:true still catches genuine read-before-declaration (the forge-3jx9 class).

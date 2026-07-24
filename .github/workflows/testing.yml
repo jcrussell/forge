@@ -64,12 +64,14 @@ jobs:
       - name: Run linter (prettier)
         run: npm run lint --verbose
 
-      # Advisory static-analysis gates (non-blocking, like the Security audit step below).
-      # These surface the statically-preventable bug classes (missing imports, dead code, type
-      # errors) without failing the build yet; enforcement is tracked as follow-up beads.
-      - name: Lint extension sources (advisory)
-        run: npm run lint:src || true
+      # Blocking: lint the extension's ES-module sources under eslint's recommended set
+      # (forge-fhen.3). Catches missing imports, dead code, and the recommended correctness
+      # class before merge.
+      - name: Lint extension sources
+        run: npm run lint:src
 
+      # Advisory static-analysis gate (non-blocking, like the Security audit step below).
+      # Surfaces type errors without failing the build yet; enforcement tracked as forge-fhen.2.
       - name: Type check (advisory)
         run: npm run typecheck || true
 

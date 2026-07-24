@@ -55,6 +55,8 @@
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown",
     "**/*.{js,jsx}": "vitest related --run",
+    "lib/**/*.js": "eslint",
+    "{extension,prefs}.js": "eslint",
     "tests/e2e/framework/*.js": "eslint",
     "tests/e2e/**/*.py": [
       "ruff format",
