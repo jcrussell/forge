@@ -160,6 +160,7 @@ class FuzzEngine:
         gap=0,
         tol=8,
         auto_split=None,
+        hazard_weight=0,
     ):
         """
         Args:
@@ -170,6 +171,10 @@ class FuzzEngine:
             gap/tol: geometry overlap slack passed to the bridge oracle (px).
             auto_split: None = leave Forge's auto-split-enabled as-is; True/False = pin it for the
                 whole run (the ON band auto-nests new windows into deep trees, OFF is flat) — forge-cnrc.
+            hazard_weight: menu weight for actions.generate_step's disposal/ordering HAZARD
+                SEQUENCES (forge-fhen.9). 0 (default) = off: sessions are byte-identical to the
+                pre-hazard generator. >0 biases toward adjacency hazards; each emitted sub-step
+                still runs the full settle+oracle, so replay/shrink are unaffected.
         """
         self.shell = shell_proxy
         self.launch_fn = launch_fn
@@ -177,6 +182,7 @@ class FuzzEngine:
         self.gap = gap
         self.tol = tol
         self.auto_split = auto_split
+        self.hazard_weight = hazard_weight
         self.log = LogScanner(log_path)
         self._session_stats = {}  # peak {maxDepth,nodes,cons,maxSplitFanout} for the current session
         self._monitor_count = None  # cached per session (headless monitor set is static)
@@ -436,36 +442,50 @@ class FuzzEngine:
         self._res_baseline = self._resource_counts()
 
         for i in range(n_steps):
-            step = actions.generate_step(
-                rng, self._window_count(), actions.MAX_WORKSPACES, self._monitors()
+            generated = actions.generate_step(
+                rng,
+                self._window_count(),
+                actions.MAX_WORKSPACES,
+                self._monitors(),
+                hazard_weight=self.hazard_weight,
             )
-            executed.append(step)
-            if on_step:
-                on_step(i, step)
-            try:
-                self.execute(step)
-            except WaitTimeoutError:
-                # A spawn whose window never appeared (rect 0x0 / GApplication register race,
-                # or a sluggish long-running container) is a known INFRA flake, not a tree bug.
-                # Drop the step and keep fuzzing rather than aborting a long session.
-                executed.pop()
-                continue
-            except ShellProxyError as e:
-                # Distinguish a real command throw (action-threw, a tree-bug finding) from a
-                # spawn/close/switch_ws lifecycle/infra failure (lifecycle-threw) — m3.
-                rule = "action-threw" if step.get("kind") == "action" else "lifecycle-threw"
-                return FuzzFailure(rule, str(e), executed, seed, len(executed) - 1)
-            # Settle + oracle. A ShellProxyError HERE (not from execute) means the shell went
-            # unreachable while we were settling/reading — it almost certainly crashed ON this
-            # step. Record it as shell-dead with the repro instead of letting it escape the
-            # session loop (which aborted CONTINUE runs and persisted nothing). forge-cnrc.
-            try:
-                self._settle()
-                hit = self.check_with_retry()
-            except ShellProxyError as e:
-                return FuzzFailure("shell-dead", str(e), executed, seed, len(executed) - 1)
-            if hit:
-                return FuzzFailure(hit[0], hit[1], executed, seed, len(executed) - 1)
+            # generate_step may return a single step or a HAZARD SEQUENCE (a list of concrete steps
+            # composed from the same primitives — forge-fhen.9). Flatten to a list so every sub-step
+            # is recorded, executed, settled and oracle-checked INDIVIDUALLY. The saved repro is thus
+            # a flat step list that replays/shrinks exactly as before (hazards are a generation-time
+            # biasing device only; they add no new step kind and never skip a settle/oracle).
+            substeps = generated if isinstance(generated, list) else [generated]
+            for step in substeps:
+                executed.append(step)
+                if on_step:
+                    # Report the actual position in `executed` so each sub-step of a hazard
+                    # sequence gets a distinct sequential index (i is the generation-decision
+                    # index and would repeat across a flattened sequence).
+                    on_step(len(executed) - 1, step)
+                try:
+                    self.execute(step)
+                except WaitTimeoutError:
+                    # A spawn whose window never appeared (rect 0x0 / GApplication register race,
+                    # or a sluggish long-running container) is a known INFRA flake, not a tree bug.
+                    # Drop the step and keep fuzzing rather than aborting a long session.
+                    executed.pop()
+                    continue
+                except ShellProxyError as e:
+                    # Distinguish a real command throw (action-threw, a tree-bug finding) from a
+                    # spawn/close/switch_ws lifecycle/infra failure (lifecycle-threw) — m3.
+                    rule = "action-threw" if step.get("kind") == "action" else "lifecycle-threw"
+                    return FuzzFailure(rule, str(e), executed, seed, len(executed) - 1)
+                # Settle + oracle. A ShellProxyError HERE (not from execute) means the shell went
+                # unreachable while we were settling/reading — it almost certainly crashed ON this
+                # step. Record it as shell-dead with the repro instead of letting it escape the
+                # session loop (which aborted CONTINUE runs and persisted nothing). forge-cnrc.
+                try:
+                    self._settle()
+                    hit = self.check_with_retry()
+                except ShellProxyError as e:
+                    return FuzzFailure("shell-dead", str(e), executed, seed, len(executed) - 1)
+                if hit:
+                    return FuzzFailure(hit[0], hit[1], executed, seed, len(executed) - 1)
         # Clean session: sample the leak metric for the end-of-session summary (Angle 3).
         self._res_final = self._resource_counts()
         return None
