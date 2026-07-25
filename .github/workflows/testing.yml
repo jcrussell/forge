@@ -70,10 +70,11 @@ jobs:
       - name: Lint extension sources
         run: npm run lint:src
 
-      # Advisory static-analysis gate (non-blocking, like the Security audit step below).
-      # Surfaces type errors without failing the build yet; enforcement tracked as forge-fhen.2.
-      - name: Type check (advisory)
-        run: npm run typecheck || true
+      # Blocking: type-check the extension sources with tsc (checkJs over lib +
+      # extension.js + prefs.js). Catches the null-safety-on-typed-GNOME-returns and
+      # missing-member classes before merge (forge-fhen.2).
+      - name: Type check
+        run: npm run typecheck
 
       - name: Run unit tests
         run: npm test --verbose
