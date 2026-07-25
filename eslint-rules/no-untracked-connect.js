@@ -20,9 +20,17 @@
  *     not the statement's top-level expression.
  *   - `.connectObject(...)` is intentionally NOT matched: it is the auto-tracked
  *     idiom (GNOME's connectObject/disconnectObject bookkeeping) and needs no id.
+ *   - `this.connect(...)` (a SELF-connect, receiver is `ThisExpression`) is NOT
+ *     matched: a GObject's own handlers are freed when the object itself is
+ *     finalized, so a self-connect can never outlive its owner — it is not the
+ *     leak class. Note `this._settings.connect(...)` (receiver is a
+ *     MemberExpression, i.e. an EXTERNAL object stored on `this`) still fires.
  *
- * Severity is `warn`: fire-and-forget connects exist intentionally in a few
- * places (tree.js, prefs), so this is an advisory nudge, not a hard gate.
+ * Severity is `error` (forge-fhen.12): a blocking gate. Genuinely intentional
+ * fire-and-forget connects are actor-lifetime-bound (destroyed actors
+ * auto-disconnect) and carry a scoped `eslint-disable` with the reason at the
+ * site. Prefs sources are exempted by file scope in eslint.config.js (the prefs
+ * process is torn down wholesale on window close).
  */
 
 "use strict";
@@ -49,6 +57,9 @@ module.exports = {
         if (!callee || callee.type !== "MemberExpression") return;
         if (callee.computed || callee.property.type !== "Identifier") return;
         if (callee.property.name !== "connect") return; // NOT connectObject
+        // `this.connect(...)` is a self-connect — freed with the instance, never a
+        // leak. `this._x.connect(...)` (MemberExpression receiver) still fires.
+        if (callee.object.type === "ThisExpression") return;
         context.report({ node: callee.property, messageId: "untracked" });
       },
     };

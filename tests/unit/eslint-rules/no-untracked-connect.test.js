@@ -16,6 +16,10 @@ ruleTester.run("no-untracked-connect", rule, {
     "function f() { return foo.connect('x', cb); }",
     // connectObject is the auto-tracked idiom and must NOT fire.
     "foo.connectObject('x', cb, this);",
+    // Self-connect: a GObject's own handlers are freed with the instance, so it
+    // can never outlive its owner — not the leak class.
+    "this.connect('toggled', cb);",
+    "this.connect('destroy', () => {});",
     // Non-connect statements.
     "foo.disconnect(id);",
     "foo.emit('x');",

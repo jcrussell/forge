@@ -21,7 +21,7 @@ Forge models each workspace's windows as an i3/sway-style **tree** and reconcile
 
 The tiling logic lives in `lib/extension/` (tree model, window manager, command dispatch, focus/decoration, keybindings, monitors/workspaces); shared config/sync/theme code is in `lib/shared/`. The Prefs UI (`lib/prefs/`) is GTK4/Adwaita and not unit-tested.
 
-See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](docs/dev/architecture.md) (lifecycle, tree model, command dispatch, signal/cleanup discipline, config sources), [rendering.md](docs/dev/rendering.md) (render/placement pipeline, reload triggers, floating subsystem, theme engine), [compat.md](docs/dev/compat.md) (Mutter API drift + shim recipe).
+See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](docs/dev/architecture.md) (lifecycle, tree model, command dispatch, signal/cleanup discipline, config sources), [rendering.md](docs/dev/rendering.md) (render/placement pipeline, reload triggers, floating subsystem, theme engine), [compat.md](docs/dev/compat.md) (Mutter API drift + shim recipe), [hazards.md](docs/dev/hazards.md) (bug-class → guardrail catalog).
 
 ## Testing Infrastructure
 

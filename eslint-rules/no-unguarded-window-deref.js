@@ -20,7 +20,8 @@
  *   - a comparison operand       win.get_workspace() === null / mw.get_monitor() < 0
  *   - a logical/conditional/arg  operand, !x, cond ? ... , f(win.get_workspace())
  * ...because in all of those the null return is checked before use, so flagging
- * them is pure noise. Severity stays `warn` (future-facing guardrail).
+ * them is pure noise. Severity is `error` (forge-fhen.12): a blocking gate, once
+ * the last raw-chain site (command.js PrefsOpen) was fixed to capture-then-guard.
  */
 
 "use strict";

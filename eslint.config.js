@@ -96,10 +96,21 @@ module.exports = [
       // `cond && obj.method()` / ternary side-effects are an idiomatic guard here (window.js:483).
       "no-unused-expressions": ["error", { allowShortCircuit: true, allowTernary: true }],
       "no-import-assign": "error",
-      // forge-fhen.6 repo-local structural guards.
+      // forge-fhen.6 repo-local structural guards. Promoted to blocking `error`
+      // in forge-fhen.12 once the extension tree was clean.
       "local/no-raw-maximize-api": "error",
-      "local/no-untracked-connect": "warn",
-      "local/no-unguarded-window-deref": "warn",
+      "local/no-untracked-connect": "error",
+      "local/no-unguarded-window-deref": "error",
+    },
+  },
+  {
+    // forge-fhen.12: no-untracked-connect targets the disable()-leak class, which
+    // only exists in the long-lived shell process. Prefs is a separate GTK4
+    // process torn down wholesale on window close, so an un-disconnected handler
+    // there is not a leak — exempt the prefs sources rather than add ceremony.
+    files: ["lib/prefs/**/*.js", "prefs.js"],
+    rules: {
+      "local/no-untracked-connect": "off",
     },
   },
   {
