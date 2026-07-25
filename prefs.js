@@ -36,8 +36,11 @@ export default class ForgeExtensionPreferences extends ExtensionPreferences {
   constructor(...args) {
     super(...args);
     const iconPath = this.dir.get_child("resources").get_child("icons").get_path();
-    const iconTheme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
-    iconTheme.add_search_path(iconPath);
+    const display = Gdk.Display.get_default();
+    if (display && iconPath) {
+      const iconTheme = Gtk.IconTheme.get_for_display(display);
+      iconTheme.add_search_path(iconPath);
+    }
   }
 
   fillPreferencesWindow(window) {

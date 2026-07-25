@@ -72,8 +72,10 @@ export default class ForgeExtension extends Extension {
     // (edge-tiling on tiling-mode-enabled). Re-evaluate them when those settings
     // change so e.g. toggling Forge tiling off restores GNOME's native
     // edge-tiling, and toggling it back on re-applies the override.
+    const settings = this.settings;
+    if (!settings) return;
     this._overrideReconcileIds = ["tiling-mode-enabled", "disable-edge-tiling"].map((key) =>
-      this.settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
+      settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
     );
 
     this.configMgr = new ConfigManager(this);
@@ -112,6 +114,7 @@ export default class ForgeExtension extends Extension {
    * (forge-abk) records the user's latest GNOME value.
    */
   _applyOverride(desc) {
+    if (!this._gnomeSettings || !this._savedSettings) return; // already disabled
     const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
     if (!schema || !schema.has_key(desc.key)) {
       Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
@@ -121,6 +124,7 @@ export default class ForgeExtension extends Extension {
       this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schemaId: desc.schemaId }));
     }
     const gsettings = this._gnomeSettings.get(desc.schemaId);
+    if (!gsettings) return;
     const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";
     const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
     const original = gsettings[getter](desc.key);
@@ -140,6 +144,7 @@ export default class ForgeExtension extends Extension {
    * in _gnomeSettings is kept for possible re-apply (forge-abk).
    */
   _restoreOverride(desc) {
+    if (!this._savedSettings) return; // already disabled
     const idx = this._savedSettings.findIndex(
       (s) => s.schemaId === desc.schemaId && s.key === desc.key
     );
@@ -150,6 +155,7 @@ export default class ForgeExtension extends Extension {
   }
 
   _isOverrideSaved(desc) {
+    if (!this._savedSettings) return false; // already disabled
     return this._savedSettings.some((s) => s.schemaId === desc.schemaId && s.key === desc.key);
   }
 
@@ -161,10 +167,11 @@ export default class ForgeExtension extends Extension {
    * user's latest GNOME value wins (re-captured on re-apply).
    */
   _reconcileOverridesFor(changedKey) {
-    if (!this._savedSettings || !this._gnomeSettings) return; // already disabled
+    const settings = this.settings;
+    if (!this._savedSettings || !this._gnomeSettings || !settings) return; // already disabled
     try {
       for (const desc of overridesGatedBy(changedKey)) {
-        const action = reconcileAction(desc, this.settings, this._isOverrideSaved(desc));
+        const action = reconcileAction(desc, settings, this._isOverrideSaved(desc));
         if (action === "apply") this._applyOverride(desc);
         else if (action === "restore") this._restoreOverride(desc);
       }
@@ -186,7 +193,7 @@ export default class ForgeExtension extends Extension {
     // so a settings write during teardown can't re-enter the reconcile handler.
     if (this._overrideReconcileIds) {
       for (const id of this._overrideReconcileIds) {
-        this.settings.disconnect(id);
+        this.settings?.disconnect(id);
       }
       this._overrideReconcileIds = null;
     }
