@@ -16,6 +16,7 @@ __pycache__/
 *.pyc
 .coverage
 htmlcov/
+coverage/
 
 # Beads / Dolt files (added by bd init)
 .dolt/
