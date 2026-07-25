@@ -24,3 +24,6 @@ htmlcov/
 
 # Local scratch / debugging artifacts (gitignored to prevent accidental commits)
 .scratch/
+
+# Python virtualenv (local tooling, not part of the extension)
+.venv/
