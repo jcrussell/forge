@@ -3,6 +3,7 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
+    "strictNullChecks": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "skipLibCheck": true,
