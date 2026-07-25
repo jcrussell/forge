@@ -70,9 +70,9 @@ jobs:
       - name: Lint extension sources
         run: npm run lint:src
 
-      # Blocking: type-check the extension sources with tsc (checkJs over lib +
-      # extension.js + prefs.js). Catches the null-safety-on-typed-GNOME-returns and
-      # missing-member classes before merge (forge-fhen.2).
+      # Blocking: type-check the extension sources with tsc (checkJs + strictNullChecks
+      # over lib + extension.js + prefs.js). Catches the null-safety-on-typed-GNOME-returns
+      # and missing-member classes before merge (forge-fhen.2, strictNullChecks fhen.11).
       - name: Type check
         run: npm run typecheck
 
