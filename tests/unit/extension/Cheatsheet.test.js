@@ -53,8 +53,8 @@ describe("Cheatsheet", () => {
         // reads its type string to skip non-"as" keys. Default every key to "as".
         get_default_value: vi.fn(() => ({ get_type_string: () => "as" })),
         // Descriptions are read from the keybindings schema <summary>; mirror the
-        // real Gio.Settings.settings_schema -> get_key(name).get_summary() chain.
-        settings_schema: {
+        // real Gio.Settings.settingsSchema -> get_key(name).get_summary() chain.
+        settingsSchema: {
           get_key: vi.fn((name) => ({ get_summary: () => `summary:${name}` })),
         },
       },
@@ -178,7 +178,7 @@ describe("Cheatsheet", () => {
         "window-snap-center": "Snap center",
         "totally-made-up-key": "", // no summary -> fall back to key-derived text
       };
-      mockExt.kbdSettings.settings_schema.get_key = vi.fn((name) => ({
+      mockExt.kbdSettings.settingsSchema.get_key = vi.fn((name) => ({
         get_summary: () => summaries[name],
       }));
 

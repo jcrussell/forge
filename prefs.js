@@ -32,6 +32,7 @@ export default class ForgeExtensionPreferences extends ExtensionPreferences {
 
   kbdSettings = this.getSettings("org.gnome.shell.extensions.forge.keybindings");
 
+  /** @param {ConstructorParameters<typeof ExtensionPreferences>} args */
   constructor(...args) {
     super(...args);
     const iconPath = this.dir.get_child("resources").get_child("icons").get_path();

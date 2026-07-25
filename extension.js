@@ -118,7 +118,7 @@ export default class ForgeExtension extends Extension {
       return;
     }
     if (!this._gnomeSettings.has(desc.schemaId)) {
-      this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schema_id: desc.schemaId }));
+      this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schemaId: desc.schemaId }));
     }
     const gsettings = this._gnomeSettings.get(desc.schemaId);
     const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";

@@ -350,7 +350,8 @@ describe("ConfigManager", () => {
       configManager.windowProps = sampleWindowConfig;
 
       expect(mockFile.replace_contents).toHaveBeenCalled();
-      const writtenContents = mockFile.replace_contents.mock.calls[0][0];
+      // replace_contents receives UTF-8 bytes (TextEncoder), matching how the read path decodes.
+      const writtenContents = new TextDecoder().decode(mockFile.replace_contents.mock.calls[0][0]);
       expect(JSON.parse(writtenContents)).toEqual(sampleWindowConfig);
     });
 
@@ -367,7 +368,7 @@ describe("ConfigManager", () => {
 
       configManager.windowProps = { test: true };
 
-      const writtenContents = mockFile.replace_contents.mock.calls[0][0];
+      const writtenContents = new TextDecoder().decode(mockFile.replace_contents.mock.calls[0][0]);
       expect(writtenContents).toContain("    "); // 4-space indent
     });
 

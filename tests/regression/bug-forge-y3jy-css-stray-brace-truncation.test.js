@@ -73,7 +73,7 @@ describe("Bug forge-y3jy: a stray '}' truncates the stylesheet and the write des
 
     expect(ok).toBe(true);
     expect(file.replace_contents).toHaveBeenCalled();
-    const written = file.replace_contents.mock.calls[0][0];
+    const written = new TextDecoder().decode(file.replace_contents.mock.calls[0][0]);
     // The rule after the edited one must survive the round-trip.
     expect(written).toContain(".window-floated-border");
   });

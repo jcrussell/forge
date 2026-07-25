@@ -56,7 +56,9 @@ describe("Bug forge-rohk: a failed write leaves the AST dirty and the retry no-o
     expect(theme.setCssProperty(".tiled", "color", "red")).toBe(true);
 
     expect(file.replace_contents).toHaveBeenCalledTimes(2);
-    expect(file.replace_contents.mock.calls[1][0]).toContain("color: red");
+    expect(new TextDecoder().decode(file.replace_contents.mock.calls[1][0])).toContain(
+      "color: red"
+    );
     expect(theme.getCssProperty(".tiled", "color").value).toBe("red");
   });
 
