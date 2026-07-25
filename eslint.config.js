@@ -14,6 +14,15 @@
 
 const js = require("@eslint/js");
 
+// Repo-local rules (forge-fhen.6): structural guards against recurring GNOME
+// hazard classes (raw Mutter maximize APIs, untracked signal connects, unguarded
+// window derefs). CommonJS require — this config file is CJS (no "type":"module").
+const localRules = {
+  "no-raw-maximize-api": require("./eslint-rules/no-raw-maximize-api"),
+  "no-untracked-connect": require("./eslint-rules/no-untracked-connect"),
+  "no-unguarded-window-deref": require("./eslint-rules/no-unguarded-window-deref"),
+};
+
 // gnome-shell Eval-scope globals. @girs/* provides TypeScript *typings*, which do nothing for
 // ESLint's no-undef — the globals must be declared here explicitly so `global`, `imports`, the
 // GI namespaces, etc. resolve as defined rather than flagged. `global` (the gnome-shell global
@@ -69,6 +78,11 @@ module.exports = [
       sourceType: "module",
       globals: extensionGlobals,
     },
+    plugins: {
+      // forge-fhen.6: inline plugin object exposing the repo-local rules under
+      // the `local/` namespace.
+      local: { rules: localRules },
+    },
     rules: {
       // recommended first; the tuned overrides below take precedence (later keys win). `no-undef`
       // is part of recommended, so it is no longer listed explicitly.
@@ -82,6 +96,10 @@ module.exports = [
       // `cond && obj.method()` / ternary side-effects are an idiomatic guard here (window.js:483).
       "no-unused-expressions": ["error", { allowShortCircuit: true, allowTernary: true }],
       "no-import-assign": "error",
+      // forge-fhen.6 repo-local structural guards.
+      "local/no-raw-maximize-api": "error",
+      "local/no-untracked-connect": "warn",
+      "local/no-unguarded-window-deref": "warn",
     },
   },
   {
