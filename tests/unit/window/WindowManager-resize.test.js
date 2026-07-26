@@ -375,8 +375,11 @@ describe("WindowManager - Resize Operations", () => {
       wm().resize(GrabOp.RESIZING_E, 50);
 
       // Bug #6: resize() passes skipOffscreenClamp so move() resizes only.
+      // forge-t7qh: and commitDuringGrab so the just-set grabMode doesn't make
+      // move() bail before committing the frame (keyboard resize would no-op).
       expect(moveSpy).toHaveBeenCalledWith(metaWindow, expect.any(Object), null, {
         skipOffscreenClamp: true,
+        commitDuringGrab: true,
       });
     });
 

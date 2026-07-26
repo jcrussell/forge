@@ -61,4 +61,20 @@ describe("Bug forge-r2k9: move() skips a window under a live grab", () => {
 
     expect(spy).toHaveBeenCalled();
   });
+
+  // forge-t7qh: the guard must NOT swallow resize()'s own in-band commit. The
+  // keyboard-resize path sets grabMode=RESIZING and then calls move() to commit
+  // the frame; it opts out of the guard via commitDuringGrab. Without this
+  // exemption every directional WindowResize* keybinding is a total no-op.
+  it("commits a grabbed window's frame when commitDuringGrab is set (keyboard resize)", () => {
+    const { meta, node } = trackedWindow();
+    node.grabMode = GRAB_TYPES.RESIZING;
+    const spy = vi.spyOn(meta, "move_resize_frame");
+
+    ctx.windowManager.move(meta, { x: 400, y: 400, width: 500, height: 500 }, null, {
+      commitDuringGrab: true,
+    });
+
+    expect(spy).toHaveBeenCalled();
+  });
 });
