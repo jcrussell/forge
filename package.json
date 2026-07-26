@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/forge-ext/forge.git"
+    "url": "git+https://github.com/jcrussell/forge.git"
   },
   "keywords": [
     "gnome",
@@ -31,9 +31,9 @@
   ],
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/forge-ext/forge/issues"
+    "url": "https://github.com/jcrussell/forge/issues"
   },
-  "homepage": "https://github.com/forge-ext/forge#readme",
+  "homepage": "https://github.com/jcrussell/forge#readme",
   "devDependencies": {
     "@girs/adw-1": "^1.4.2-3.2.7",
     "@girs/clutter-13": "^13.0.0-3.2.7",

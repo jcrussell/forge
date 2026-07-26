@@ -19,6 +19,10 @@ pages go deeper.
   triggers, the floating subsystem, and the CSS/theme engine.
 - **[compat.md](dev/compat.md)** — the Mutter API version-drift map and the
   `compat.js` shim recipe (GNOME 45+ support).
+- **[hazards.md](dev/hazards.md)** — the bug-class → guardrail catalog and the
+  custom ESLint rules that enforce it.
+- **[translations.md](dev/translations.md)** — the gettext/i18n setup for the
+  extension and prefs.
 
 ## User guide (`docs/user/`)
 

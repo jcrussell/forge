@@ -8,8 +8,8 @@ releases (most at Mutter 49). **All version drift is centralized in
 ## The pattern
 
 ```js
-const SHELL_MAJOR = parseInt(PACKAGE_VERSION.split(".")[0], 10);   // compat.js
-export const IS_MUTTER_49_PLUS = SHELL_MAJOR >= 49;                // compat.js
+const SHELL_MAJOR = parseInt(PACKAGE_VERSION.split(".")[0], 10);   // shell-version.js
+export const IS_MUTTER_49_PLUS = SHELL_MAJOR >= 49;                // compat.js (imports SHELL_MAJOR)
 ```
 
 GNOME Shell and Mutter share a version (same release cycle), so the Shell major
