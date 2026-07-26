@@ -58,9 +58,6 @@ jobs:
       - name: Install Node.js project dependencies
         run: npm ci --verbose
 
-      - name: Build Node.js project
-        run: npm run build --if-present --verbose
-
       - name: Run linter (prettier)
         run: npm run lint --verbose
 
@@ -73,6 +70,9 @@ jobs:
       # Blocking: type-check the extension sources with tsc (checkJs + strictNullChecks
       # over lib + extension.js + prefs.js). Catches the null-safety-on-typed-GNOME-returns
       # and missing-member classes before merge (forge-fhen.2, strictNullChecks fhen.11).
+      # The `pretypecheck` npm script runs `make metadata` first: lib/prefs/settings.js
+      # imports the build-generated (and gitignored) lib/prefs/metadata.js, which does not
+      # exist in a fresh checkout. Needs `make` — installed above.
       - name: Type check
         run: npm run typecheck
 
