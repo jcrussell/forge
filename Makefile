@@ -151,6 +151,9 @@ check-deps:
 	@echo "Checking build dependencies..."
 	@command -v glib-compile-schemas &>/dev/null || (echo "ERROR: glib-compile-schemas not found. Install glib2-devel or libglib2.0-dev" && exit 1)
 	@command -v git &>/dev/null || (echo "ERROR: git not found" && exit 1)
+	@# `build` stamps version-name into temp/metadata.json with python3, and
+	@# .SHELLFLAGS carries -e, so its absence aborts the build with a bare 127.
+	@command -v python3 &>/dev/null || (echo "ERROR: python3 not found (needed to stamp metadata.json)" && exit 1)
 	@command -v zip &>/dev/null || echo "WARNING: zip not found, 'make dist' will fail"
 	@command -v xgettext &>/dev/null || echo "WARNING: xgettext not found, translations will be skipped"
 	@command -v msgfmt &>/dev/null || echo "WARNING: msgfmt not found, translations will be skipped"
