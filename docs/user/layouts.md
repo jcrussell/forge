@@ -34,6 +34,29 @@ Instead of splitting space, a container can show one child at a time:
 - `default-window-layout` (`tiled` | `tabbed` | `stacked`) sets the layout a newly
   *split* container starts in.
 
+### Tab bar appearance
+
+In Preferences → Appearance:
+
+- **Tab bar position** (`tab-position`, default `top`) — put the stacked/tabbed
+  title bars at the `top` or `bottom` of their container.
+- **Tab bar height** (`stacked-tab-bar-height`, default `35`, range 1–200) — height
+  in pixels of each title bar.
+
+Turning tab decorations off entirely (the tab-decoration shortcut,
+`showtab-decoration-enabled`) hides the bars; stacked children then overlap fully
+and you switch between them with focus navigation.
+
+## Re-orient a split when a window closes
+
+**Auto re-orient on close** (`auto-reorient-on-close`, **off** by default, in
+Preferences → Tiling) flips a split container's direction to match its shape when
+one of its children closes — so a container left tall and narrow becomes a vertical
+split, and a wide short one becomes horizontal.
+
+It's off by default because it overrides a split direction you set by hand with
+`Super+g` / split-vertical / split-horizontal.
+
 ## Monocle
 
 Monocle gathers **all** of the workspace's tiled windows into a single **tabbed**
@@ -49,6 +72,16 @@ Snap the focused window to a region without restructuring the tree (defaults use
 
 - Halves/thirds: snap 1/3 and 2/3 left/right (e.g. `Ctrl+Alt+d` = 1/3 left).
 - **Center** — `Ctrl+Alt+c`.
+
+## Golden ratio
+
+**Golden ratio resize** splits the focused window against its siblings at ≈1.618
+instead of evenly — a wide editor beside a narrower companion pane. It reshapes the
+existing container rather than restructuring the tree, and `Super+equal` (reset
+sizes) puts everything back to an even split.
+
+**`window-golden-ratio` has no default chord** — assign one in Preferences →
+Keyboard.
 
 ## Float vs tile
 

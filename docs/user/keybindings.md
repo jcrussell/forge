@@ -29,10 +29,35 @@ also accept arrow keys.
 | Toggle cheatsheet | `Super+Shift+/` |
 | Lock screen | `Super+q` |
 
-Some actions ship **unbound** (e.g. workspace monocle) — assign them yourself.
+### Ships unbound
+
+These have **no default chord** — the cheatsheet only lists bound actions, so
+assign them in Preferences → Keyboard to discover them:
+
+| Action | Setting |
+| --- | --- |
+| Focus next / previous sibling (cyclic) | `window-focus-next` / `window-focus-prev` |
+| Swap with next / previous sibling (cyclic) | `window-swap-next` / `window-swap-prev` |
+| [Golden ratio resize](layouts.md#golden-ratio) | `window-golden-ratio` |
+| [Toggle monocle](layouts.md#monocle) | `workspace-monocle-toggle` |
+| Move pointer to focused window | `window-pointer-to-focus` |
+| Export configuration | `prefs-config-export` |
+
+The cyclic actions walk the focused window's **tiled siblings** in order and wrap
+around at the ends, so you can cycle a container without thinking about direction —
+useful inside a stacked or tabbed container where up/down navigation is ambiguous.
+
+### GNOME defaults Forge frees
+
 Forge intentionally frees several GNOME defaults on enable (native edge-tiling,
-maximize/unmaximize keys, `Super+L`) so they don't collide; these are restored when
-the extension is disabled.
+maximize/unmaximize/minimize keys, `Super+L`) so they don't collide; **all are
+restored when the extension is disabled**.
+
+Edge-tiling is opt-out: **Disable GNOME edge-tiling** (`disable-edge-tiling`, on by
+default, in Preferences → Tiling) controls it. Turn it off to keep GNOME's native
+half-tiling alongside Forge. It's also tied to Forge's own tiling toggle — switching
+Forge tiling off (`Super+w`) restores GNOME edge-tiling immediately, and switching
+it back on re-applies the override.
 
 ## Customizing
 
@@ -44,6 +69,11 @@ Three equivalent ways to change a binding:
   array of accelerator strings (e.g. `['<Super>h', '<Super>Left']`).
 - **Portable file** — `~/.config/forge/config/keybindings.json` (see
   [config.md](config.md)); reload with `Super+Shift+r`.
+
+If you assign a chord that's already taken by another Forge action, Preferences →
+Keyboard warns you and names the actions it collides with. The binding is still
+applied — Forge doesn't block it — so you can resolve the conflict whichever way
+you prefer.
 
 ## Drag to tile
 
