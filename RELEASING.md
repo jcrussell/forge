@@ -25,6 +25,34 @@ CI then builds `forge@jmmaranan.com.zip`, generates `SHA256SUMS`, attests
 provenance, and creates the GitHub Release with auto-generated notes. To rehearse
 without releasing, run the workflow via **Actions → release → Run workflow**
 (`workflow_dispatch`) on a branch — it builds and attests but creates no Release.
+The notes are still generated there, so the step log shows exactly what a real
+tag would publish.
+
+### Release notes
+
+Notes are generated from **commit subjects**, not PRs, by
+[`.github/scripts/release-notes.sh`](.github/scripts/release-notes.sh): commits
+since the previous `v*` tag are bucketed by conventional-commit type into
+Features / Bug Fixes / Documentation & Translations / Maintenance, with anything
+that doesn't parse listed under Other so nothing is silently dropped. GitHub's
+built-in `generate_release_notes` is PR-derived and this repo commits straight to
+`dev`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
+a compare link).
+
+Nothing needs maintaining per release. When a release *does* need a human note —
+a changed default, a migration step — put it in an **annotated** tag and it
+becomes the prelude above the generated sections:
+
+```bash
+git tag -a v49-90 -m "Stacked/tabbed layouts are now enabled by default."
+git push origin v49-90
+```
+
+Preview any range locally:
+
+```bash
+./.github/scripts/release-notes.sh v49-90 v49-89
+```
 
 ## Pre-releases (betas)
 

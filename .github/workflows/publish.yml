@@ -10,8 +10,9 @@
 # by users with `gh attestation verify`. NOTE: this secures the GitHub side-load
 # path only; extensions.gnome.org has no author-signing mechanism.
 #
-# workflow_dispatch runs the same build + attest as a dry run but does NOT create
-# a Release (the release step is gated on a tag ref).
+# workflow_dispatch on a BRANCH is a dry run: same build + attest, no Release (the
+# release step is gated on a tag ref). Dispatching with a tag selected does create
+# one, exactly like a tag push.
 
 name: release
 
@@ -84,6 +85,14 @@ jobs:
             forge@jmmaranan.com.zip
             SHA256SUMS
 
+      - name: Generate release notes
+        # Runs on dispatch too, so a dry run still shows what the notes would say
+        # (check the step log). Needs the tags + history that fetch-depth: 0 gives us.
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          ./.github/scripts/release-notes.sh "${{ github.ref_name }}" | tee RELEASE_NOTES.md
+
       - name: Publish GitHub Release
         # Only when built from a tag (tag push, or a tag selected for dispatch).
         # A branch dispatch is a dry run: build + attest, no Release.
@@ -98,5 +107,8 @@ jobs:
           files: |
             forge@jmmaranan.com.zip
             SHA256SUMS
-          generate_release_notes: true
+          # Notes come from conventional-commit subjects, not PRs: GitHub's
+          # generate_release_notes is PR-derived and this repo commits straight to
+          # dev, so it shipped empty bodies (beta.1 and beta.2 were link-only).
+          body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
