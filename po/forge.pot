@@ -305,6 +305,17 @@ msgid "Changes the focused window's border and preview hint colors"
 msgstr ""
 
 #: lib/prefs/appearance.js
+msgid "Stylesheet cannot be parsed"
+msgstr ""
+
+#: lib/prefs/appearance.js
+msgid ""
+"Colors and border sizes cannot be saved until the errors in ~/.config/forge/"
+"stylesheet/forge/stylesheet.css are fixed. Delete that file to start again "
+"from the default stylesheet."
+msgstr ""
+
+#: lib/prefs/appearance.js
 msgid "Border size"
 msgstr ""
 
@@ -566,11 +577,11 @@ msgid "Failed to open config directory"
 msgstr ""
 
 #: lib/prefs/portability.js
-msgid "Configuration exported successfully"
+msgid "Export failed"
 msgstr ""
 
 #: lib/prefs/portability.js
-msgid "Export failed"
+msgid "Configuration exported successfully"
 msgstr ""
 
 #: lib/prefs/portability.js
@@ -583,6 +594,10 @@ msgstr ""
 
 #: lib/prefs/portability.js
 msgid "Import failed"
+msgstr ""
+
+#: lib/prefs/portability.js
+msgid "Configuration partially imported"
 msgstr ""
 
 #: lib/prefs/settings.js
@@ -791,14 +806,6 @@ msgid "Show window border on focused window"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "The focused border's current thickness"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "The focused border's current color"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "The size of the gap between windows in the workarea"
 msgstr ""
 
@@ -836,10 +843,6 @@ msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
 msgid "Maximize window when it is the only one on workspace"
-msgstr ""
-
-#: schemas/org.gnome.shell.extensions.forge.gschema.xml
-msgid "Layout modes: stacking, tiling"
 msgstr ""
 
 #: schemas/org.gnome.shell.extensions.forge.gschema.xml
