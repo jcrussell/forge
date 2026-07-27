@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NODE_TYPES, LAYOUT_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import {
@@ -97,5 +97,57 @@ describe("forge-h6z9: manual resize debounce scoped to its window/grab", () => {
     wm()._handleGrabOpBegin(ctx.display, winA, GrabOp.MOVING);
 
     expect(wm()._manualResizeEndId).toBeFalsy();
+  });
+
+  // forge-zr6f: the cross product h6z9 left uncovered. Its flush lived inside
+  // resize(), so it only fired for keyboard->keyboard. A real pointer grab on a
+  // DIFFERENT window arrives via the grab-op-begin signal instead, which cleared
+  // the timer without cleaning A.
+  describe("forge-zr6f: a pointer grab on another window still flushes A", () => {
+    it("clears A's grab state instead of stranding grabMode", () => {
+      focus(winA);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+      expect(nodeA.grabMode).toBeTruthy();
+
+      // User clicks/drags window B within the 120ms debounce. Mutter emits
+      // grab-op-begin with focus already moved to B.
+      focus(winB);
+      wm()._handleGrabOpBegin(ctx.display, winB, GrabOp.MOVING);
+
+      expect(nodeA.grabMode).toBeNull();
+      expect(nodeA.initRect).toBeNull();
+    });
+
+    it("leaves A reachable by move() again (the user-visible symptom)", () => {
+      focus(winA);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+
+      focus(winB);
+      wm()._handleGrabOpBegin(ctx.display, winB, GrabOp.MOVING);
+      wm()._handleGrabOpEnd(ctx.display, winB, GrabOp.MOVING);
+
+      // With grabMode stranded, forge-r2k9's guard in move() skipped A on every
+      // tree.apply(), so A kept stale geometry while its siblings reflowed.
+      const target = { x: 10, y: 20, width: 200, height: 400 };
+      const commit = vi.spyOn(winA, "move_resize_frame");
+      wm().move(winA, target);
+
+      expect(commit).toHaveBeenCalled();
+    });
+
+    it("does NOT flush on same-window key auto-repeat (accumulation preserved)", () => {
+      focus(winA);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+      const firstInit = nodeA.initRect;
+
+      // Key held: resize() re-enters _handleGrabOpBegin for the SAME window.
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+      wm().resize(GrabOp.KEYBOARD_RESIZING_E, 10);
+
+      // Identity, not equality: a flush would null it and re-anchor to the
+      // already-grown frame, which is the forge-12f/forge-5v6 breakage.
+      expect(nodeA.initRect).toBe(firstInit);
+      expect(nodeA.grabMode).toBeTruthy();
+    });
   });
 });

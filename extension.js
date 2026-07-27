@@ -68,38 +68,61 @@ export default class ForgeExtension extends Extension {
       Logger.warn(`Failed to disable GNOME conflicting features: ${e}`);
     }
 
-    // forge-abk: some overrides are gated on a runtime-toggleable Forge setting
-    // (edge-tiling on tiling-mode-enabled). Re-evaluate them when those settings
-    // change so e.g. toggling Forge tiling off restores GNOME's native
-    // edge-tiling, and toggling it back on re-applies the override.
-    const settings = this.settings;
-    if (!settings) return;
-    this._overrideReconcileIds = ["tiling-mode-enabled", "disable-edge-tiling"].map((key) =>
-      settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
-    );
+    // forge-tus6: everything below can throw (config import does GSettings writes,
+    // the managers build actors, patchCss touches the filesystem). GNOME Shell's
+    // _callExtensionEnable catches a throw from enable(), marks the extension ERROR
+    // and does NOT call disable() — so without this the overrides applied above stay
+    // written to the user's dconf, surviving even an uninstall: native maximize/
+    // minimize/tile keybindings and Super+L would be permanently dead with no
+    // Forge left to restore them. Tear down on the way out, then rethrow so the
+    // Shell still reports the real failure.
+    try {
+      // forge-abk: some overrides are gated on a runtime-toggleable Forge setting
+      // (edge-tiling on tiling-mode-enabled). Re-evaluate them when those settings
+      // change so e.g. toggling Forge tiling off restores GNOME's native
+      // edge-tiling, and toggling it back on re-applies the override.
+      const settings = this.settings;
+      // Unreachable in practice (getSettings() throws on a missing schema rather
+      // than returning null); kept for type-narrowing. Throwing rather than
+      // returning routes it through the same restore path as any other failure.
+      if (!settings) throw new Error("enable: settings unavailable");
+      this._overrideReconcileIds = ["tiling-mode-enabled", "disable-edge-tiling"].map((key) =>
+        settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
+      );
 
-    this.configMgr = new ConfigManager(this);
+      this.configMgr = new ConfigManager(this);
 
-    // Initialize config sync - imports from files if they exist
-    this.configSync = new ConfigSync({
-      configMgr: this.configMgr,
-      settings: this.settings,
-      kbdSettings: this.kbdSettings,
-    });
-    this.configSync.init();
+      // Initialize config sync - imports from files if they exist
+      this.configSync = new ConfigSync({
+        configMgr: this.configMgr,
+        settings: this.settings,
+        kbdSettings: this.kbdSettings,
+      });
+      this.configSync.init();
 
-    this.theme = new ExtensionThemeManager(this);
-    this.extWm = new WindowManager(this);
-    this.keybindings = new Keybindings(this);
-    this.cheatsheet = new Cheatsheet(this);
-    this.keybindings.cheatsheet = this.cheatsheet;
+      this.theme = new ExtensionThemeManager(this);
+      this.extWm = new WindowManager(this);
+      this.keybindings = new Keybindings(this);
+      this.cheatsheet = new Cheatsheet(this);
+      this.keybindings.cheatsheet = this.cheatsheet;
 
-    this._onSessionModeChanged(Main.sessionMode);
-    this._sessionId = Main.sessionMode.connect("updated", this._onSessionModeChanged.bind(this));
+      this._onSessionModeChanged(Main.sessionMode);
+      this._sessionId = Main.sessionMode.connect("updated", this._onSessionModeChanged.bind(this));
 
-    this.theme.patchCss();
-    this.theme.reloadStylesheet();
-    this.extWm.enable();
+      this.theme.patchCss();
+      this.theme.reloadStylesheet();
+      this.extWm.enable();
+    } catch (e) {
+      // disable() is the single source of truth for teardown: it restores
+      // _savedSettings and drops whatever was constructed before the throw (every
+      // member access there is optional-chained, so partial state is fine).
+      try {
+        this.disable();
+      } catch (cleanupError) {
+        Logger.error(`enable: cleanup after failed enable also failed: ${cleanupError}`);
+      }
+      throw e;
+    }
     Logger.info(`enable: finalized vars`);
   }
 
