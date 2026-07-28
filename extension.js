@@ -249,6 +249,9 @@ export default class ForgeExtension extends Extension {
     this.configSync = null;
     this.settings = null;
     this.kbdSettings = null;
+    // forge-l2f7: clear Logger's module-level settings ref last (all Logger use
+    // above still needs it). Counterpart to Logger.init() in enable().
+    Logger.destroy();
   }
 
   _onSessionModeChanged(session) {

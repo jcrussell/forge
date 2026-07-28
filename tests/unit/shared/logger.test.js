@@ -336,4 +336,31 @@ describe("Logger", () => {
       expect(logSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("destroy (forge-l2f7)", () => {
+    it("should release the settings ref and stop reading it", () => {
+      // beforeEach left logging enabled at level ALL.
+      Logger.destroy();
+      mockSettings.get_boolean.mockClear();
+      mockSettings.get_uint.mockClear();
+
+      Logger.fatal("test");
+      Logger.error("test");
+
+      // No output, and the stale settings object is never touched again.
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(mockSettings.get_boolean).not.toHaveBeenCalled();
+      expect(mockSettings.get_uint).not.toHaveBeenCalled();
+    });
+
+    it("should not throw and should resume logging after re-init", () => {
+      Logger.destroy();
+      expect(() => Logger.info("after destroy")).not.toThrow();
+      expect(logSpy).not.toHaveBeenCalled();
+
+      Logger.init(mockSettings);
+      Logger.info("after re-init");
+      expect(logSpy).toHaveBeenCalledWith("[Forge] [INFO]", "after re-init");
+    });
+  });
 });
