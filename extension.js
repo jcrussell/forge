@@ -252,11 +252,11 @@ export default class ForgeExtension extends Extension {
   }
 
   _onSessionModeChanged(session) {
-    if (session.currentMode === "user" || session.parentMode === "user") {
-      Logger.info("user on session change");
-      this._addIndicator();
-      this.keybindings?.enable();
-    } else if (session.currentMode === "unlock-dialog") {
+    // forge-aggo: check unlock-dialog FIRST. Real GNOME emits the lock screen as
+    // {currentMode:"unlock-dialog", parentMode:"user"}, so a leading
+    // `parentMode === "user"` test wins on lock and this teardown never runs —
+    // leaving keybindings registered and the indicator visible on the lock screen.
+    if (session.currentMode === "unlock-dialog") {
       // Keep running on lock screen so the window tree persists in memory; only
       // disable keybindings here (re-enabled on user session). Shutting the whole
       // extension down on lock was rejected under GNOME 45 session-mode review.
@@ -264,6 +264,10 @@ export default class ForgeExtension extends Extension {
       Logger.info("lock-screen on session change");
       this.keybindings?.disable();
       this._removeIndicator();
+    } else if (session.currentMode === "user" || session.parentMode === "user") {
+      Logger.info("user on session change");
+      this._addIndicator();
+      this.keybindings?.enable();
     }
   }
 

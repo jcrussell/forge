@@ -106,7 +106,10 @@ describe("Bug #354: session-mode idempotence", () => {
 
     it("unlock cycle recreates the indicator once", () => {
       ext._onSessionModeChanged({ currentMode: "user" });
-      ext._onSessionModeChanged({ currentMode: "unlock-dialog" });
+      // forge-aggo: real GNOME emits parentMode:"user" on lock; a bare
+      // {currentMode:"unlock-dialog"} is a shape the shell never sends and made
+      // this assertion pass on both buggy and fixed code.
+      ext._onSessionModeChanged({ currentMode: "unlock-dialog", parentMode: "user" });
       ext._onSessionModeChanged({ currentMode: "user" });
 
       expect(ext.indicator.quickSettingsItems).toHaveLength(1);
@@ -158,7 +161,10 @@ describe("Bug #354: session-mode idempotence", () => {
       const registered = addKeybinding.mock.calls.map((c) => c[0]);
       expect(registered.length).toBeGreaterThan(0);
 
-      ext._onSessionModeChanged({ currentMode: "unlock-dialog" });
+      // forge-aggo: feed the real lock-screen shape (parentMode:"user"); a bare
+      // {currentMode:"unlock-dialog"} routed into the user branch on buggy code
+      // yet this test still passed, guarding a real regression class vacuously.
+      ext._onSessionModeChanged({ currentMode: "unlock-dialog", parentMode: "user" });
 
       const removed = removeKeybinding.mock.calls.map((c) => c[0]);
       expect(removed.sort()).toEqual(registered.slice().sort());
