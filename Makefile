@@ -11,6 +11,15 @@ FORGE_VERSION_NAME ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 SHELL := /bin/bash
 .SHELLFLAGS := -eo pipefail -c
 
+# forge-iupo: `build` lists `clean` and the generators (metadata, schemas) that
+# clean deletes as plain prerequisites. Under `make -j`, prerequisite listing
+# order is NOT honored, so clean can race and delete a just-generated
+# lib/prefs/metadata.js or schemas/gschemas.compiled — shipping a zip that fails
+# to open prefs / never enables. Every build here is already from-clean (no
+# incremental path), so serializing prerequisites globally costs nothing and
+# removes the race deterministically. (dist also asserts the zip manifest below.)
+.NOTPARALLEL:
+
 # Tool detection (using bash-specific &> redirect)
 HAS_XGETTEXT := $(shell command -v xgettext &>/dev/null && echo yes || echo no)
 HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
@@ -185,6 +194,11 @@ purge:
 dist: build
 	cd temp && \
 	zip -qr "../${UUID}.zip" .
+	@# forge-iupo: defense-in-depth — fail loudly if the zip is missing a file
+	@# whose absence silently breaks the extension (prefs won't open / never
+	@# enables), catching any future prerequisite-ordering regression.
+	@unzip -l "$(UUID).zip" | grep -q 'lib/prefs/metadata.js' || { echo "dist: FATAL — zip is missing lib/prefs/metadata.js"; exit 1; }
+	@unzip -l "$(UUID).zip" | grep -q 'schemas/gschemas.compiled' || { echo "dist: FATAL — zip is missing schemas/gschemas.compiled"; exit 1; }
 
 restart:
 	if bash -c 'xprop -root &> /dev/null'; then \
