@@ -1444,7 +1444,12 @@
     // creation. Wrapped so a seat that isn't ready returns a sentinel instead of throwing.
     ensureVirtualDevices() {
       try {
-        const seat = Clutter.get_default_backend().get_default_seat();
+        // GNOME 51 removed Clutter.get_default_backend() (use the stage context).
+        const backend =
+          typeof Clutter.get_default_backend === "function"
+            ? Clutter.get_default_backend()
+            : global.stage.context.get_backend();
+        const seat = backend.get_default_seat();
         if (!globalThis._forgeTestVKbd) {
           globalThis._forgeTestVKbd = seat.create_virtual_device(
             Clutter.InputDeviceType.KEYBOARD_DEVICE

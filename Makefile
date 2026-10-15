@@ -275,8 +275,8 @@ unit-test-docker-coverage: docker-test-build
 # E2E Testing (real GNOME Shell in containers)
 # Uses Fedora base images; Fedora version determines GNOME version:
 # Fedora 39 = GNOME 45, 40 = GNOME 46, 41 = GNOME 47,
-# 42 = GNOME 48, 43 = GNOME 49, 44 = GNOME 50, rawhide = next devel cycle
-SUPPORTED_FEDORA_VERSIONS := 39 40 41 42 43 44
+# 42 = GNOME 48, 43 = GNOME 49, 44 = GNOME 50, 45 = GNOME 51, rawhide = next devel cycle
+SUPPORTED_FEDORA_VERSIONS := 39 40 41 42 43 44 45
 
 # Map GNOME versions to Fedora versions for user convenience
 # Usage: make e2e-test GNOME_VERSION=49  or  make e2e-test FEDORA_VERSION=43
@@ -293,8 +293,10 @@ ifdef GNOME_VERSION
     FEDORA_VERSION := 43
   else ifeq ($(GNOME_VERSION),50)
     FEDORA_VERSION := 44
+  else ifeq ($(GNOME_VERSION),51)
+    FEDORA_VERSION := 45
   else
-    $(error Unknown GNOME_VERSION=$(GNOME_VERSION). Supported: 45, 46, 47, 48, 49, 50)
+    $(error Unknown GNOME_VERSION=$(GNOME_VERSION). Supported: 45, 46, 47, 48, 49, 50, 51)
   endif
 endif
 

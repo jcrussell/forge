@@ -26,7 +26,7 @@ See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](doc
 ## Testing Infrastructure
 
 - **Unit tests** — Vitest with mocked GNOME APIs (`tests/mocks/`); run `npm test`, or `make unit-test-docker` for the canonical Docker environment. Structure, mock helpers, and how to write non-vacuous tests: **[tests/README.md](tests/README.md)**.
-- **E2E tests** — real GNOME Shell in self-contained Fedora Docker containers (D-Bus `Shell.Eval` + xdotool); run `make e2e-test` (defaults to GNOME 48 / Fedora 42), `make e2e-test GNOME_VERSION=<n>`, or `make e2e-test-all`. Supported range is GNOME 45–50; see `tests/e2e/gnome-versions.json`. Full infrastructure docs: **[tests/e2e/README.md](tests/e2e/README.md)**.
+- **E2E tests** — real GNOME Shell in self-contained Fedora Docker containers (D-Bus `Shell.Eval` + xdotool); run `make e2e-test` (defaults to GNOME 48 / Fedora 42), `make e2e-test GNOME_VERSION=<n>`, or `make e2e-test-all`. Supported range is GNOME 45–51; see `tests/e2e/gnome-versions.json`. Full infrastructure docs: **[tests/e2e/README.md](tests/e2e/README.md)**.
 
 ## Key Concepts
 
