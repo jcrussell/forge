@@ -9,6 +9,22 @@ import {
 import Meta, { Rectangle } from "../../mocks/gnome/Meta.js";
 import St from "../../mocks/gnome/St.js";
 
+const ACTIVE = "window-tabbed-tab-active";
+
+// A tab double that tracks its style classes like St.Widget does, so tests can
+// assert both the resulting state and how many restyles were requested.
+function makeTab({ active = false } = {}) {
+  const classes = new Set(["window-tabbed-tab"]);
+  if (active) classes.add(ACTIVE);
+  return {
+    _destroyed: false,
+    get_parent: vi.fn(() => ({ add_child: vi.fn() })),
+    has_style_class_name: vi.fn((name) => classes.has(name)),
+    add_style_class_name: vi.fn((name) => classes.add(name)),
+    remove_style_class_name: vi.fn((name) => classes.delete(name)),
+  };
+}
+
 /**
  * WindowManager border and focus indicator tests
  *
@@ -77,11 +93,7 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       // Create mock tab
-      const mockTab = {
-        _destroyed: false,
-        get_parent: vi.fn(() => ({ add_child: vi.fn() })),
-        remove_style_class_name: vi.fn(),
-      };
+      const mockTab = makeTab({ active: true });
       nodeWindow.tab = mockTab;
 
       wm().hideWindowBorders();
@@ -107,11 +119,7 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
-      const mockTab = {
-        _destroyed: false,
-        get_parent: vi.fn(() => ({ add_child: vi.fn() })),
-        remove_style_class_name: vi.fn(),
-      };
+      const mockTab = makeTab({ active: true });
       nodeWindow.tab = mockTab;
 
       wm().hideWindowBorders();
@@ -223,12 +231,7 @@ describe("WindowManager - Borders and Focus Indicators", () => {
 
       const nodeWindow1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow1.mode = WINDOW_MODES.TILE;
-      nodeWindow1.tab = {
-        add_style_class_name: vi.fn(),
-        remove_style_class_name: vi.fn(),
-        _destroyed: false,
-        get_parent: vi.fn(() => ({})),
-      };
+      nodeWindow1.tab = makeTab();
 
       const metaWindow2 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
@@ -257,12 +260,7 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
       nodeWindow.mode = WINDOW_MODES.TILE;
 
-      const mockTab = {
-        add_style_class_name: vi.fn(),
-        remove_style_class_name: vi.fn(),
-        _destroyed: false,
-        get_parent: vi.fn(() => ({})),
-      };
+      const mockTab = makeTab();
       nodeWindow.tab = mockTab;
 
       wm().showWindowBorders();
@@ -712,5 +710,103 @@ describe("WindowManager - Borders and Focus Indicators", () => {
       expect(mockBorder.set_position).toHaveBeenCalledWith(100 - inset, 100 - inset);
       expect(mockBorder.set_size).toHaveBeenCalledWith(960 + inset * 2, 540 + inset * 2);
     });
+  });
+});
+
+/**
+ * Tab active-class churn (Cogl shadow crash, mutter#4973).
+ *
+ * The active tab carries a CSS box-shadow. updateBorderLayout() used to strip the
+ * active class from every tab and re-add it to the focused one on every focus /
+ * render update, forcing St to drop and rebuild the tab's theme node and shadow
+ * pipeline each time. That rebuild path is where gnome-shell crashed. A tab whose
+ * state does not change must not be restyled at all.
+ */
+describe("WindowManager - tab active class is only changed when focus changes", () => {
+  let ctx;
+  const wm = () => ctx.windowManager;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      settings: {
+        "focus-border-toggle": true,
+        "focus-border-hidden-on-single": false,
+        "split-border-toggle": false,
+        "window-gap-size": 4,
+      },
+    });
+  });
+
+  function tabbedPair(layout) {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = layout;
+    const mk = (x) => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x, y: 0, width: 960, height: 1080 }),
+        workspace: ctx.workspaces[0],
+        wm_class: "TestApp",
+      });
+      const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      return { metaWindow, nodeWindow };
+    };
+    return [mk(0), mk(960)];
+  }
+
+  it.each([LAYOUT_TYPES.TABBED, LAYOUT_TYPES.STACKED])(
+    "%s: an already-active focused tab is not restyled by updateBorderLayout",
+    (layout) => {
+      const [focused, other] = tabbedPair(layout);
+      focused.nodeWindow.tab = makeTab({ active: true });
+      other.nodeWindow.tab = makeTab();
+      global.display.get_focus_window.mockReturnValue(focused.metaWindow);
+
+      wm().updateBorderLayout();
+
+      for (const { nodeWindow } of [focused, other]) {
+        expect(nodeWindow.tab.add_style_class_name).not.toHaveBeenCalled();
+        expect(nodeWindow.tab.remove_style_class_name).not.toHaveBeenCalled();
+      }
+      expect(focused.nodeWindow.tab.has_style_class_name(ACTIVE)).toBe(true);
+      expect(other.nodeWindow.tab.has_style_class_name(ACTIVE)).toBe(false);
+    }
+  );
+
+  it("moves the active class exactly once when focus moves to a sibling", () => {
+    const [previous, focused] = tabbedPair(LAYOUT_TYPES.TABBED);
+    previous.nodeWindow.tab = makeTab({ active: true });
+    focused.nodeWindow.tab = makeTab();
+    global.display.get_focus_window.mockReturnValue(focused.metaWindow);
+
+    wm().updateBorderLayout();
+
+    expect(previous.nodeWindow.tab.remove_style_class_name).toHaveBeenCalledOnce();
+    expect(previous.nodeWindow.tab.add_style_class_name).not.toHaveBeenCalled();
+    expect(focused.nodeWindow.tab.add_style_class_name).toHaveBeenCalledOnce();
+    expect(focused.nodeWindow.tab.remove_style_class_name).not.toHaveBeenCalled();
+    expect(previous.nodeWindow.tab.has_style_class_name(ACTIVE)).toBe(false);
+    expect(focused.nodeWindow.tab.has_style_class_name(ACTIVE)).toBe(true);
+  });
+
+  it("hideWindowBorders on its own still clears every active tab", () => {
+    const [a, b] = tabbedPair(LAYOUT_TYPES.TABBED);
+    a.nodeWindow.tab = makeTab({ active: true });
+    b.nodeWindow.tab = makeTab();
+    global.display.get_focus_window.mockReturnValue(a.metaWindow);
+
+    wm().hideWindowBorders();
+
+    expect(a.nodeWindow.tab.has_style_class_name(ACTIVE)).toBe(false);
+    expect(b.nodeWindow.tab.remove_style_class_name).not.toHaveBeenCalled();
+  });
+
+  it("showWindowBorders does not re-add an active class that is already set", () => {
+    const [focused] = tabbedPair(LAYOUT_TYPES.TABBED);
+    focused.nodeWindow.tab = makeTab({ active: true });
+    global.display.get_focus_window.mockReturnValue(focused.metaWindow);
+
+    wm().showWindowBorders();
+
+    expect(focused.nodeWindow.tab.add_style_class_name).not.toHaveBeenCalled();
   });
 });

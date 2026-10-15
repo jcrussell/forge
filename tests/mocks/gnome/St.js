@@ -27,6 +27,10 @@ export class Widget extends withSignals() {
     this.style_class = this.style_class.replace(name, "").trim();
   }
 
+  has_style_class_name(name) {
+    return this.style_class.split(/\s+/).includes(name);
+  }
+
   show() {
     this.visible = true;
   }
