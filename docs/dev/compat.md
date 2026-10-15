@@ -23,9 +23,16 @@ and self-documents which API landed where.
 | Shim | Mutter ≤ 48 | Mutter ≥ 49 |
 | --- | --- | --- |
 | `isMaximized` / `isNotMaximized` | `get_maximized() === BOTH` / `=== 0` | `is_maximized()` |
-| `maximize(w, flags)` | `maximize(flags)` | `set_maximize_flags(flags)` + `maximize()` |
-| `unmaximize(w)` | `unmaximize(BOTH)` | `set_unmaximize_flags(BOTH)` + `unmaximize()` |
+| `maximize(w, flags)` | `maximize(flags)` | BOTH → `maximize()`; partial → `set_maximize_flags(flags)` (never both) |
+| `unmaximize(w)` | `unmaximize(BOTH)` if maximized | `unmaximize()` if maximized (no-op otherwise) |
 | `getMaximizeFlags` | `get_maximized()` | `get_maximize_flags()` |
+
+GNOME 48/51 St and Clutter shims (also in `compat.js`):
+
+| Shim | Before | From |
+| --- | --- | --- |
+| `stBoxOrientation(vertical)` | `{ vertical }` (≤ 47) | `{ orientation: Clutter.Orientation.* }` (48+; `vertical` removed at 51) |
+| `getClutterBackend()` | `Clutter.get_default_backend()` (≤ 50) | `global.stage.context.get_backend()` (51+) |
 
 ## Drift map (reference)
 
@@ -38,6 +45,13 @@ and self-documents which API landed where.
 - `set_unmaximize_flags` (**49+**) **early-returns** unless the window was actually
   maximized — so on a tile-mode-but-not-maximized window it does **not** clear
   `tile_mode`.
+- **49+**: `set_maximize_flags(flags)` / `set_unmaximize_flags(flags)` *perform* the
+  (un)maximize; `maximize()` / `unmaximize()` are just the BOTH variants (`maximize()`
+  also refuses `unmanaging` windows). They are not "stage, then apply" pairs.
+- **51**: `set_unmaximize_flags` / `unmaximize` on a **non-maximized** window no longer
+  early-returns — `meta_window_process_config()` falls through to
+  `meta_window_move_resize()`. Doing that on every render crashed gnome-shell 51 in
+  `meta_window_update_monitor(NULL)`, hence `Compat.unmaximize` checks the flags first.
 - `meta_window_untile` is `META_EXPORT_TEST` (private, not callable from GJS) across
   48/49/50 — the API gap that forces Forge's 1px-shave geometry workaround for the
   Wayland tile-inference bug.
