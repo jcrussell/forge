@@ -276,3 +276,66 @@ describe("Cheatsheet", () => {
     });
   });
 });
+
+/**
+ * GNOME 51 removed St's `vertical` property (gjs.guide "Port Extensions to GNOME
+ * Shell 51"); constructing `new St.BoxLayout({ vertical: true })` there throws
+ * "No property vertical on StBoxLayout", so the overlay never builds. Below 48 the
+ * `orientation` prop does not exist yet, so `vertical` is still the only option.
+ */
+describe("Cheatsheet layout orientation per GNOME version", () => {
+  afterEach(() => {
+    vi.doUnmock("resource:///org/gnome/shell/misc/config.js");
+    vi.resetModules();
+  });
+
+  async function buildOverlay(packageVersion) {
+    vi.resetModules();
+    vi.doMock("resource:///org/gnome/shell/misc/config.js", () => ({
+      PACKAGE_VERSION: packageVersion,
+    }));
+    const { Cheatsheet: FreshCheatsheet } = await import("../../../lib/extension/cheatsheet.js");
+    const sheet = new FreshCheatsheet({
+      kbdSettings: {
+        list_keys: vi.fn(() => ["window-focus-left"]),
+        get_strv: vi.fn(() => ["<Super>h"]),
+        get_default_value: vi.fn(() => ({ get_type_string: () => "as" })),
+        settingsSchema: { get_key: vi.fn(() => ({ get_summary: () => "Focus left" })) },
+      },
+    });
+    sheet._buildOverlay();
+    return sheet._overlay;
+  }
+
+  function boxLayouts(actor, out = []) {
+    if (actor?.constructParams) out.push(actor);
+    for (const child of actor?.children ?? []) boxLayouts(child, out);
+    return out;
+  }
+
+  it("GNOME 51: never passes `vertical` and lays out via orientation", async () => {
+    const overlay = await buildOverlay("51.0");
+    const boxes = boxLayouts(overlay);
+    // overlay, header row, content row, 2 columns, 1 category section (+ its rows)
+    expect(boxes.length).toBeGreaterThanOrEqual(6);
+    for (const box of boxes) expect(box.constructParams).not.toHaveProperty("vertical");
+
+    const [headerRow, contentBox] = overlay.children;
+    const [leftColumn, rightColumn] = contentBox.children;
+    expect(overlay.orientation).toBe(Clutter.Orientation.VERTICAL);
+    expect(headerRow.orientation).toBe(Clutter.Orientation.HORIZONTAL);
+    expect(contentBox.orientation).toBe(Clutter.Orientation.HORIZONTAL);
+    expect(leftColumn.orientation).toBe(Clutter.Orientation.VERTICAL);
+    expect(rightColumn.orientation).toBe(Clutter.Orientation.VERTICAL);
+    expect(leftColumn.children[0].orientation).toBe(Clutter.Orientation.VERTICAL);
+  });
+
+  it("GNOME 47: keeps the legacy `vertical` prop (orientation not available yet)", async () => {
+    const overlay = await buildOverlay("47.0");
+    const [, contentBox] = overlay.children;
+    expect(overlay.constructParams).toMatchObject({ vertical: true });
+    expect(overlay.constructParams).not.toHaveProperty("orientation");
+    expect(contentBox.constructParams).toMatchObject({ vertical: false });
+    expect(contentBox.children[0].constructParams).toMatchObject({ vertical: true });
+  });
+});

@@ -133,6 +133,9 @@ export class BoxLayout extends Widget {
   constructor(params = {}) {
     super(params);
     this.children = [];
+    // Keep the raw construct params so tests can assert which properties were
+    // passed (GNOME 51 removed `vertical`; passing it there throws).
+    this.constructParams = params;
     // Model Clutter orientation (0 = HORIZONTAL, 1 = VERTICAL). St.BoxLayout
     // defaults to HORIZONTAL; the legacy `vertical` boolean prop was removed on
     // GNOME 50, so production code sets `orientation` directly.

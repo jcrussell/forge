@@ -193,3 +193,70 @@ describe("compat (Mutter 48 branch)", () => {
     });
   });
 });
+
+// GNOME 51 removed two APIs Forge used directly (gjs.guide "Port Extensions to
+// GNOME Shell 51"): the St `vertical` property (deprecated at 48 in favor of
+// `orientation`) and Clutter.get_default_backend() (replaced by
+// global.stage.context.get_backend()). Each branch of both shims is covered here.
+describe("stBoxOrientation", () => {
+  it("uses the legacy `vertical` prop before GNOME 48 (no St orientation prop yet)", async () => {
+    const Compat = await loadCompat("47.2");
+    expect(Compat.stBoxOrientation(true)).toEqual({ vertical: true });
+    expect(Compat.stBoxOrientation(false)).toEqual({ vertical: false });
+  });
+
+  it.each(["48.0", "50.4", "51.0"])("uses Clutter.Orientation on GNOME %s", async (v) => {
+    const Compat = await loadCompat(v);
+    const {
+      default: { Orientation },
+    } = await import("gi://Clutter");
+    expect(Compat.stBoxOrientation(true)).toEqual({ orientation: Orientation.VERTICAL });
+    expect(Compat.stBoxOrientation(false)).toEqual({ orientation: Orientation.HORIZONTAL });
+  });
+});
+
+describe("getClutterBackend", () => {
+  afterEach(() => {
+    delete global.stage;
+  });
+
+  it("uses Clutter.get_default_backend() up to GNOME 50", async () => {
+    const Compat = await loadCompat("50.4");
+    const { default: Clutter } = await import("gi://Clutter");
+    global.stage = { context: { get_backend: vi.fn() } };
+    expect(Compat.getClutterBackend()).toBe(Clutter.get_default_backend());
+    expect(global.stage.context.get_backend).not.toHaveBeenCalled();
+  });
+
+  it("uses global.stage.context.get_backend() on GNOME 51+", async () => {
+    const Compat = await loadCompat("51.0");
+    const backend = { get_default_seat: vi.fn() };
+    global.stage = { context: { get_backend: vi.fn(() => backend) } };
+    expect(Compat.getClutterBackend()).toBe(backend);
+  });
+});
+
+describe("compat acceptance: removed GNOME 51 APIs are only reached via compat.js", async () => {
+  const { readFileSync, readdirSync, statSync } = await import("node:fs");
+  const { join, relative } = await import("node:path");
+  const root = join(import.meta.dirname, "../../..");
+  const files = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith(".js")) files.push(p);
+    }
+  };
+  walk(join(root, "lib/extension"));
+  files.push(join(root, "extension.js"));
+
+  it.each(files.map((f) => relative(root, f)).filter((f) => !f.endsWith("compat.js")))(
+    "%s does not call Clutter.get_default_backend() or pass St `vertical`",
+    (file) => {
+      const src = readFileSync(join(root, file), "utf8");
+      expect(src).not.toMatch(/get_default_backend\s*\(/);
+      expect(src).not.toMatch(/\bvertical\s*:\s*(true|false)/);
+    }
+  );
+});
