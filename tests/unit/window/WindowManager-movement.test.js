@@ -59,14 +59,31 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(moveFrameSpy).not.toHaveBeenCalled();
     });
 
-    it("should unmaximize window before moving", () => {
-      const metaWindow = createMockWindow();
+    it("should unmaximize a maximized window before moving", () => {
+      const metaWindow = createMockWindow({
+        maximized_horizontally: true,
+        maximized_vertically: true,
+      });
       const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
       wm().move(metaWindow, rect);
 
-      expect(unmaximizeSpy).toHaveBeenCalled();
+      expect(unmaximizeSpy).toHaveBeenCalledOnce();
+    });
+
+    // GNOME 51: an unmaximize request on a non-maximized window turns into a
+    // meta_window_move_resize() and crashed gnome-shell on every render.
+    it("should not send an unmaximize request for a non-maximized window", () => {
+      const metaWindow = createMockWindow();
+      const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
+      const setUnmaximizeSpy = vi.spyOn(metaWindow, "set_unmaximize_flags");
+      const rect = { x: 100, y: 100, width: 800, height: 600 };
+
+      wm().move(metaWindow, rect);
+
+      expect(unmaximizeSpy).not.toHaveBeenCalled();
+      expect(setUnmaximizeSpy).not.toHaveBeenCalled();
     });
 
     it("should remove transitions from window actor", () => {

@@ -54,29 +54,58 @@ describe("compat (Mutter 49+ branch)", () => {
     });
   });
 
+  // Mutter 49+ (verified against window.c of 49.0, 50.5 and 51.0):
+  // set_maximize_flags(flags) itself performs the maximize, and maximize() is
+  // just set_maximize_flags(BOTH) plus an unmanaging guard. Calling both turns
+  // a partial maximize into BOTH and maximizes twice.
   describe("maximize", () => {
-    it("calls set_maximize_flags(BOTH) then maximize() with no args", () => {
+    it("full maximize calls maximize() once (it carries the unmanaging guard)", () => {
       const w = { set_maximize_flags: vi.fn(), maximize: vi.fn() };
       Compat.maximize(w);
-      expect(w.set_maximize_flags).toHaveBeenCalledWith(MaximizeFlags.BOTH);
       expect(w.maximize).toHaveBeenCalledOnce();
       expect(w.maximize).toHaveBeenCalledWith();
+      expect(w.set_maximize_flags).not.toHaveBeenCalled();
     });
 
-    it("honors an explicit flags argument", () => {
+    it("partial maximize calls only set_maximize_flags(flags)", () => {
       const w = { set_maximize_flags: vi.fn(), maximize: vi.fn() };
       Compat.maximize(w, MaximizeFlags.HORIZONTAL);
+      expect(w.set_maximize_flags).toHaveBeenCalledOnce();
       expect(w.set_maximize_flags).toHaveBeenCalledWith(MaximizeFlags.HORIZONTAL);
+      expect(w.maximize).not.toHaveBeenCalled();
     });
   });
 
+  // On Mutter 51, set_unmaximize_flags()/unmaximize() on a window that is NOT
+  // maximized is no longer a no-op: meta_window_process_config() falls through
+  // to meta_window_move_resize(). Forge called this on every render, which is
+  // the path that crashed gnome-shell 51 in meta_window_update_monitor(NULL).
   describe("unmaximize", () => {
-    it("calls set_unmaximize_flags(BOTH) then unmaximize() with no args", () => {
-      const w = { set_unmaximize_flags: vi.fn(), unmaximize: vi.fn() };
+    it("does nothing when the window is not maximized", () => {
+      const w = {
+        get_maximize_flags: vi.fn(() => 0),
+        set_unmaximize_flags: vi.fn(),
+        unmaximize: vi.fn(),
+      };
       Compat.unmaximize(w);
-      expect(w.set_unmaximize_flags).toHaveBeenCalledWith(MaximizeFlags.BOTH);
+      expect(w.unmaximize).not.toHaveBeenCalled();
+      expect(w.set_unmaximize_flags).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["fully", MaximizeFlags.BOTH],
+      ["vertically", MaximizeFlags.VERTICAL],
+      ["horizontally", MaximizeFlags.HORIZONTAL],
+    ])("calls unmaximize() exactly once when %s maximized", (_label, flags) => {
+      const w = {
+        get_maximize_flags: vi.fn(() => flags),
+        set_unmaximize_flags: vi.fn(),
+        unmaximize: vi.fn(),
+      };
+      Compat.unmaximize(w);
       expect(w.unmaximize).toHaveBeenCalledOnce();
       expect(w.unmaximize).toHaveBeenCalledWith();
+      expect(w.set_unmaximize_flags).not.toHaveBeenCalled();
     });
   });
 
@@ -177,8 +206,18 @@ describe("compat (Mutter 48 branch)", () => {
   });
 
   describe("unmaximize", () => {
+    it("does nothing when the window is not maximized", () => {
+      const w = { get_maximized: vi.fn(() => 0), unmaximize: vi.fn() };
+      Compat.unmaximize(w);
+      expect(w.unmaximize).not.toHaveBeenCalled();
+    });
+
     it("calls unmaximize(BOTH) once and does not touch set_unmaximize_flags", () => {
-      const w = { unmaximize: vi.fn(), set_unmaximize_flags: vi.fn() };
+      const w = {
+        get_maximized: vi.fn(() => MaximizeFlags.VERTICAL),
+        unmaximize: vi.fn(),
+        set_unmaximize_flags: vi.fn(),
+      };
       Compat.unmaximize(w);
       expect(w.unmaximize).toHaveBeenCalledOnce();
       expect(w.unmaximize).toHaveBeenCalledWith(MaximizeFlags.BOTH);

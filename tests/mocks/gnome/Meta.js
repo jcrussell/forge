@@ -170,19 +170,14 @@ export class Window extends withSignals() {
   }
 
   maximize(directions) {
-    // Mutter 48 calls maximize(flags); Mutter 49+ calls set_maximize_flags(flags)
-    // then maximize() with no args. Honor an explicit `directions` arg, else any
-    // flags staged via set_maximize_flags(), else default to BOTH — so partial
-    // maximize round-trips through get_maximize_flags()/get_maximized().
-    const flags = directions ?? this._pendingMaximizeFlags ?? MaximizeFlags.BOTH;
-    this.maximized_horizontally = Boolean(flags & MaximizeFlags.HORIZONTAL);
-    this.maximized_vertically = Boolean(flags & MaximizeFlags.VERTICAL);
-    this._pendingMaximizeFlags = null;
+    // Mutter 48: maximize(flags). Mutter 49+: maximize() takes no args and is
+    // set_maximize_flags(BOTH) (window.c of 49.0/50.5/51.0).
+    this.set_maximize_flags(directions ?? MaximizeFlags.BOTH);
   }
 
   unmaximize(directions) {
-    this.maximized_horizontally = false;
-    this.maximized_vertically = false;
+    // Mutter 48: unmaximize(flags). Mutter 49+: unmaximize() == set_unmaximize_flags(BOTH).
+    this.set_unmaximize_flags(directions ?? MaximizeFlags.BOTH);
   }
 
   get_maximized() {
@@ -303,14 +298,16 @@ export class Window extends withSignals() {
     return this._actor;
   }
 
+  // Mutter 49+ Meta.Window API (see lib/extension/compat.js). On real Mutter 49+
+  // these setters apply immediately; they are not staged for a later maximize().
   set_unmaximize_flags(flags) {
-    // GNOME 49+ method
+    if (flags & MaximizeFlags.HORIZONTAL) this.maximized_horizontally = false;
+    if (flags & MaximizeFlags.VERTICAL) this.maximized_vertically = false;
   }
 
-  // Mutter 49+ Meta.Window API (see lib/extension/compat.js). On real Mutter 49+,
-  // maximize state is staged with set_maximize_flags() and applied by maximize().
   set_maximize_flags(flags) {
-    this._pendingMaximizeFlags = flags;
+    if (flags & MaximizeFlags.HORIZONTAL) this.maximized_horizontally = true;
+    if (flags & MaximizeFlags.VERTICAL) this.maximized_vertically = true;
   }
 
   is_maximized() {
