@@ -171,7 +171,7 @@ describe("ThemeManagerBase", () => {
     });
 
     it("should set cssTag", () => {
-      expect(themeManager.cssTag).toBe(38);
+      expect(themeManager.cssTag).toBe(39);
     });
   });
 

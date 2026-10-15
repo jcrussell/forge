@@ -84,13 +84,13 @@
   border-radius: 8px;
   color: white;
   margin: 1px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  /* No box-shadow on tabs: painting it crashes gnome-shell in Cogl
+   * (mutter#4973). Restore the 1px rgba(0, 0, 0, 0.2) ring once that is fixed. */
 }
 
 .window-tabbed-tab-active {
   background-color: rgba(17, 199, 224, 1);
   color: black;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .window-tabbed-tab-close {
