@@ -42,6 +42,13 @@ describe("accelStrvFromInput (forge-f5sl)", () => {
   it("rejects a mixed valid+invalid input as a whole (no partial save)", () => {
     expect(accelStrvFromInput("<Super>a,bogus", gtk)).toEqual({ valid: false, strv: null });
   });
+
+  it("accepts spaces around the commas and key names in any case (#338)", () => {
+    expect(accelStrvFromInput("<Super>A , <Super>b", gtk)).toEqual({
+      valid: true,
+      strv: ["<Super>a", "<Super>b"],
+    });
+  });
 });
 
 describe("findAccelConflicts (forge-cos)", () => {
