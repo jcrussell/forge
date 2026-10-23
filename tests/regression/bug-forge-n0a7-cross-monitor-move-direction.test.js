@@ -54,4 +54,31 @@ describe("Bug forge-n0a7: middle child crosses monitors in the move direction", 
     expect(rightMon.contains(w2)).toBe(true);
     expect(leftMon.contains(w2)).toBe(false);
   });
+
+  it("a window in a container first moves out of it, on its own monitor (#549)", () => {
+    leftMon.layout = LAYOUT_TYPES.HSPLIT;
+    const a = ctx.tree.createNode(
+      leftMon.nodeValue,
+      NODE_TYPES.WINDOW,
+      createMockWindow({ id: 1, monitor: 0, workspace: ctx.workspaces[0] })
+    );
+    const con = ctx.tree.createNode(leftMon.nodeValue, NODE_TYPES.CON, null);
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    const mk = (id) =>
+      ctx.tree.createNode(
+        con.nodeValue,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ id, monitor: 0, workspace: ctx.workspaces[0] })
+      );
+    const b = mk(2);
+    const c = mk(3);
+    [a, b, c].forEach((w) => (w.mode = WINDOW_MODES.TILE));
+
+    expect(ctx.tree.move(c, MotionDirection.RIGHT)).toBe(true);
+    expect(c.parentNode).toBe(leftMon);
+    expect(leftMon.lastChild).toBe(c);
+
+    expect(ctx.tree.move(c, MotionDirection.RIGHT)).toBe(true);
+    expect(rightMon.contains(c)).toBe(true);
+  });
 });
