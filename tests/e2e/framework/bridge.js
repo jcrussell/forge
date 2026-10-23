@@ -140,7 +140,7 @@
       }
     },
 
-    // forge-kvao/forge-s6g: shadow get_size_hints on the LEFTMOST window of a
+    // forge-kvao/forge-s6g: shadow get_min_size on the LEFTMOST window of a
     // class so the min-size redistribution can be exercised deterministically in
     // e2e (no headless app reports a large min-width). The own-property override
     // lives on the live Meta.Window and so survives the async render cycle. A
@@ -162,8 +162,8 @@
           b.nodeValue.get_frame_rect().x < a.nodeValue.get_frame_rect().x ? b : a
         );
         const win = target.nodeValue;
-        if (!win._origGetSizeHints) win._origGetSizeHints = win.get_size_hints;
-        win.get_size_hints = () => ({ min_width: minWidth, min_height: minHeight });
+        if (!win._origGetMinSize) win._origGetMinSize = win.get_min_size;
+        win.get_min_size = () => [true, minWidth, minHeight];
         const ext = forgeExt();
         if (ext && ext.extWm) ext.extWm.renderTree("e2e-minsize");
         return JSON.stringify({ ok: true, id: win.get_id(), rect: rect(win.get_frame_rect()) });
@@ -182,9 +182,9 @@
           r,
           (acc, n) => {
             const v = n.nodeValue;
-            if (isWindowOfClass(n, wmClass) && v._origGetSizeHints) {
-              v.get_size_hints = v._origGetSizeHints;
-              delete v._origGetSizeHints;
+            if (isWindowOfClass(n, wmClass) && v._origGetMinSize) {
+              v.get_min_size = v._origGetMinSize;
+              delete v._origGetMinSize;
               return { acc: acc + 1 };
             }
             return { acc };

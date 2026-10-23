@@ -7,7 +7,7 @@ floored at its minimum and its slack-bearing siblings shrink, so a large-min
 window never overlaps its neighbour.
 
 No headless app reliably reports a large minimum width, so this drives the
-behavior deterministically: a bridge helper shadows get_size_hints() on the
+behavior deterministically: a bridge helper shadows get_min_size() on the
 leftmost tiled window with a minimum wider than its 50% share, then re-renders.
 We then assert from the rendered frames that the constrained window grew past
 its equal share AND that the two windows do not overlap.
