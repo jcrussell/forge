@@ -80,6 +80,10 @@ export class Window extends withSignals() {
     return new Rectangle({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
   }
 
+  is_override_redirect() {
+    return this._override_redirect ?? false;
+  }
+
   get_frame_rect() {
     return this._rect;
   }
