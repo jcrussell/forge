@@ -79,7 +79,7 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       expect(nodeWindow1.percent + nodeWindow2.percent).toBeCloseTo(1, 5);
     });
 
-    it("should call nextVisible to find resize pair", () => {
+    it("should look up the resize pair along the split", () => {
       const metaWindow1 = createMockWindow({
         rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
         workspace: workspace0(),
@@ -101,11 +101,11 @@ describe("WindowManager - Handle Resizing Behavior", () => {
       wm().grabOp = GrabOp.RESIZING_E;
       global.display.get_focus_window.mockReturnValue(metaWindow1);
 
-      const nextVisibleSpy = vi.spyOn(ctx.tree, "nextVisible");
+      const pairSpy = vi.spyOn(wm(), "_resizePairFor");
 
       wm()._handleResizing(nodeWindow1);
 
-      expect(nextVisibleSpy).toHaveBeenCalled();
+      expect(pairSpy).toHaveBeenCalled();
     });
 
     it("redistributes the resize so sibling percents still sum to 1", () => {
