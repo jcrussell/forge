@@ -197,8 +197,8 @@ dist: build
 	@# forge-iupo: defense-in-depth — fail loudly if the zip is missing a file
 	@# whose absence silently breaks the extension (prefs won't open / never
 	@# enables), catching any future prerequisite-ordering regression.
-	@unzip -l "$(UUID).zip" | grep -q 'lib/prefs/metadata.js' || { echo "dist: FATAL — zip is missing lib/prefs/metadata.js"; exit 1; }
-	@unzip -l "$(UUID).zip" | grep -q 'schemas/gschemas.compiled' || { echo "dist: FATAL — zip is missing schemas/gschemas.compiled"; exit 1; }
+	@unzip -l "$(UUID).zip" | grep 'lib/prefs/metadata.js' >/dev/null || { echo "dist: FATAL — zip is missing lib/prefs/metadata.js"; exit 1; }
+	@unzip -l "$(UUID).zip" | grep 'schemas/gschemas.compiled' >/dev/null || { echo "dist: FATAL — zip is missing schemas/gschemas.compiled"; exit 1; }
 
 restart:
 	if bash -c 'xprop -root &> /dev/null'; then \
