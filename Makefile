@@ -26,7 +26,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
 .PHONY: all clean install schemas uninstall enable disable log debug check-deps \
 	dev prod build metadata compilemsgs update-pot update-po dist purge restart test test-x test-open \
-	format lint unit-test unit-test-watch unit-test-coverage \
+	format lint unit-test test-sandbox unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
 	e2e-test e2e-test-fast e2e-fuzz e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
@@ -252,6 +252,10 @@ lint:
 # Unit tests (local with mocked GNOME APIs)
 unit-test:
 	npm test
+
+# Scenario suite on a nested, isolated GNOME Shell (tests/nested/README.md)
+test-sandbox:
+	cd tests/nested && sandbox/run-suite.sh
 
 unit-test-watch:
 	npm run test:watch
@@ -497,6 +501,9 @@ help:
 	@echo "  unit-test-docker       Run tests in Docker"
 	@echo "  unit-test-docker-watch Run tests in Docker (watch mode)"
 	@echo "  unit-test-docker-coverage  Run tests in Docker with coverage"
+	@echo ""
+	@echo "Nested-shell scenarios (tests/nested/README.md):"
+	@echo "  test-sandbox     Run the scenario suite on a nested, isolated GNOME Shell"
 	@echo ""
 	@echo "E2E Tests:"
 	@echo "  e2e-test         Run E2E tests (default GNOME 48)"
