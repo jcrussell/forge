@@ -60,6 +60,8 @@ vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   wm: mockWm,
   panel: mockPanel,
   notify: () => {},
+  modalCount: 0,
+  sessionMode: { isLocked: false },
 }));
 
 // Also set global.Main to use the same overview object reference
