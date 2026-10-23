@@ -42,6 +42,15 @@ describe("CommandHandler", () => {
         isMonitor: vi.fn(() => false),
         appendChild: vi.fn(),
         parentNode: { layout: LAYOUT_TYPES.HSPLIT },
+        isStackedOrTabbed() {
+          return this.layout === LAYOUT_TYPES.STACKED || this.layout === LAYOUT_TYPES.TABBED;
+        },
+        setGroupLayout(layout) {
+          this.layout = layout;
+        },
+        restoreSplitLayout(fallback) {
+          this.layout = fallback;
+        },
       },
       isFloat: vi.fn(() => false),
     };
