@@ -40,6 +40,36 @@ describe("WindowManager - Movement & Positioning", () => {
   // Convenience accessor
   const wm = () => ctx.windowManager;
 
+  describe("first frame (forge-ext/forge#588)", () => {
+    it("leaves a window alone until its actor paints the first frame", () => {
+      const metaWindow = createMockWindow();
+      const windowActor = metaWindow.get_compositor_private();
+      let onFirstFrame;
+      vi.spyOn(windowActor, "connect").mockImplementation((signal, callback) => {
+        if (signal === "first-frame") onFirstFrame = callback;
+        return 1;
+      });
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
+      const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
+      const queueEventSpy = vi.spyOn(wm(), "queueEvent").mockImplementation(() => {});
+      const rect = { x: 100, y: 100, width: 800, height: 600 };
+
+      wm()._awaitFirstFrame(metaWindow);
+      wm().move(metaWindow, rect);
+
+      expect(moveResizeSpy).not.toHaveBeenCalled();
+      expect(unmaximizeSpy).not.toHaveBeenCalled();
+
+      onFirstFrame();
+      expect(queueEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "window-first-frame" }),
+        50
+      );
+      wm().move(metaWindow, rect);
+      expect(moveResizeSpy).toHaveBeenCalled();
+    });
+  });
+
   describe("move", () => {
     it("should not move a window under a live interactive grab", () => {
       // forge-r2k9: the guard reads Forge's own grab state (node.grabMode set by
