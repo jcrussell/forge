@@ -68,8 +68,16 @@ export class Window extends withSignals() {
     this._always_on_all_workspaces = params.always_on_all_workspaces ?? false;
   }
 
-  get_size_hints() {
-    return this._size_hints;
+  // `size_hints: { min_width, min_height }` sets the minimum size (as a frame size:
+  // frame_rect_to_client_rect below adds no frame extents)
+  get_min_size() {
+    const hints = this._size_hints;
+    if (!hints) return [false, 0, 0];
+    return [true, hints.min_width ?? 0, hints.min_height ?? 0];
+  }
+
+  frame_rect_to_client_rect(rect) {
+    return new Rectangle({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
   }
 
   get_frame_rect() {

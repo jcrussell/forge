@@ -193,3 +193,27 @@ describe("compat (Mutter 48 branch)", () => {
     });
   });
 });
+
+describe("compat getMinFrameSize", () => {
+  let Compat;
+  beforeEach(async () => {
+    Compat = await loadCompat("50.0");
+  });
+
+  it("is null when the window reports no minimum", () => {
+    expect(Compat.getMinFrameSize(new Window({}))).toBe(null);
+  });
+
+  it("adds the frame extents to the client minimum", () => {
+    const win = new Window({ size_hints: { min_width: 400, min_height: 300 } });
+    // A server-side title bar: the client is 30 px shorter than the frame
+    win.frame_rect_to_client_rect = (r) => ({ ...r, y: r.y + 30, height: r.height - 30 });
+    expect(Compat.getMinFrameSize(win)).toEqual({ min_width: 400, min_height: 330 });
+  });
+
+  it("is null when the window has no get_min_size", () => {
+    const win = new Window({});
+    win.get_min_size = undefined;
+    expect(Compat.getMinFrameSize(win)).toBe(null);
+  });
+});
