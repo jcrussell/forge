@@ -127,14 +127,16 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(removeTransitionsSpy).toHaveBeenCalled();
     });
 
-    it("should call move_frame with correct coordinates", () => {
+    it("moves and resizes in one request, never moving first (#544)", () => {
       const metaWindow = createMockWindow();
       const moveFrameSpy = vi.spyOn(metaWindow, "move_frame");
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
       const rect = { x: 100, y: 200, width: 800, height: 600 };
 
       wm().move(metaWindow, rect);
 
-      expect(moveFrameSpy).toHaveBeenCalledWith(true, 100, 200);
+      expect(moveFrameSpy).not.toHaveBeenCalled();
+      expect(moveResizeSpy).toHaveBeenCalledWith(true, 100, 200, 800, 600);
     });
 
     it("should call move_resize_frame with complete rect", () => {
@@ -155,7 +157,7 @@ describe("WindowManager - Movement & Positioning", () => {
 
       wm().move(metaWindow, rect);
 
-      // Should still try to unmaximize but not call move_frame
+      // Should still try to unmaximize but not move the window
       expect(moveFrameSpy).not.toHaveBeenCalled();
     });
 
