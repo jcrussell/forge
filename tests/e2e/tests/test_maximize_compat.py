@@ -44,8 +44,8 @@ class TestMaximizeCompat:
         """Re-tiling a maximized window unmaximizes it (Compat.unmaximize via move()).
 
         Maximize a lone window (window-maximize-on-single), disable that setting so
-        it can't immediately re-maximize, then float it: Forge's move()
-        unconditionally calls Compat.unmaximize (window.js), so Mutter no longer
+        it can't immediately re-maximize, then float it: Forge's move() calls
+        Compat.unmaximize (window.js) on the maximized window, so Mutter no longer
         reports the window maximized. (Tiling a *new* window alongside is not used
         here — under headless the test app opens maximized and isn't re-tiled.)
         """

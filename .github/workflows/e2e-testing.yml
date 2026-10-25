@@ -3,7 +3,8 @@
 #
 # Uses Fedora version numbers:
 #   Fedora 39 = GNOME 45, Fedora 40 = GNOME 46, Fedora 41 = GNOME 47,
-#   Fedora 42 = GNOME 48, Fedora 43 = GNOME 49, Fedora 44 = GNOME 50
+#   Fedora 42 = GNOME 48, Fedora 43 = GNOME 49, Fedora 44 = GNOME 50,
+#   Fedora 45 = GNOME 51
 
 name: e2e-testing
 
@@ -24,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       fedora_version:
-        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47, 42=GNOME48, 43=GNOME49, 44=GNOME50)'
+        description: 'Fedora version (39=GNOME45, 40=GNOME46, 41=GNOME47, 42=GNOME48, 43=GNOME49, 44=GNOME50, 45=GNOME51)'
         required: false
         default: ''
 
@@ -204,13 +205,13 @@ jobs:
   # The default matrix never sets it, so multi-monitor tiling had zero CI signal.
   # Headless dual-monitor is Wayland-only (gnome-shell --headless --wayland accepts
   # two --virtual-monitor flags); X11/Xvfb lanes (F<=42) cannot fake a 2nd output, so
-  # this lane runs only on the Wayland-headless versions: F43 (GNOME 49) and F44
-  # (GNOME 50), via a {fedora:[43,44]} matrix. Modeled on e2e-keybinding-gate.
-  # Decision: a dedicated job (not a {monitors:[1,2]} dimension on the default lane)
-  # keeps the default 6-version lane fast and unchanged.
+  # this lane runs only on the Wayland-headless versions: F43 (GNOME 49), F44
+  # (GNOME 50) and F45 (GNOME 51), via a {fedora:[43,44,45]} matrix. Modeled on
+  # e2e-keybinding-gate. Decision: a dedicated job (not a {monitors:[1,2]} dimension
+  # on the default lane) keeps the default version lane fast and unchanged.
   #
   # NOTE: this IS wired into e2e-summary's blocking failure ladder (forge-1zn part 1) —
-  # a failure on either the F43 or F44 leg blocks the merge, same as the keybinding gate.
+  # a failure on any leg blocks the merge, same as the keybinding gate.
   e2e-multimonitor-gate:
     needs: setup
     if: github.event.pull_request.draft == false
@@ -218,7 +219,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fedora: [43, 44]
+        fedora: [43, 44, 45]
     env:
       MM_FEDORA_VERSION: ${{ matrix.fedora }}
       MM_TEST: test_window_retiles_across_monitors
@@ -359,7 +360,7 @@ jobs:
       - name: Check E2E test results
         run: |
           # e2e-multimonitor-gate (forge-wrt/forge-1zn) is now BLOCKING: a failure on
-          # either the F43 or F44 leg (the matrix result is `failure` if either fails)
+          # any leg (the matrix result is `failure` if any leg fails)
           # gates the merge, same as the keybinding gate. Promoted after it ran green
           # on both legs (forge-1zn part 1).
           if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then

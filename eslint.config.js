@@ -101,6 +101,37 @@ module.exports = [
       "local/no-raw-maximize-api": "error",
       "local/no-untracked-connect": "error",
       "local/no-unguarded-window-deref": "error",
+      // GNOME 51 removed St's `vertical` and Clutter.get_default_backend(); both are
+      // reached only through compat.js shims (Compat.stBoxOrientation /
+      // Compat.getClutterBackend), which is exempted below.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.object.name='Clutter'][callee.property.name='get_default_backend']",
+          message: "Removed in GNOME 51: use Compat.getClutterBackend().",
+        },
+        {
+          selector:
+            "NewExpression[callee.object.name='St'] > ObjectExpression > Property[key.name='vertical']",
+          message:
+            "St `vertical` was removed in GNOME 51: spread Compat.stBoxOrientation(vertical).",
+        },
+        {
+          selector: "CallExpression[callee.property.name='set_vertical']",
+          message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
+        },
+        {
+          selector: "AssignmentExpression > MemberExpression.left[property.name='vertical']",
+          message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/extension/compat.js"],
+    rules: {
+      "no-restricted-syntax": "off",
     },
   },
   {

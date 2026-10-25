@@ -132,7 +132,7 @@ export default class ForgeExtension extends Extension {
    * Gio.Settings for an absent schema, or reading/writing an absent key, raises
    * a C-level g_error that TERMINATES gnome-shell and is NOT a catchable JS
    * exception (forge-rj4x), so the probe is a crash guard, not optional. On a
-   * normal GNOME 45-50 desktop every schema/key is present, so this is a no-op
+   * normal GNOME 45+ desktop every schema/key is present, so this is a no-op
    * guard. Re-captures `original` fresh on every call, so a runtime re-apply
    * (forge-abk) records the user's latest GNOME value.
    */

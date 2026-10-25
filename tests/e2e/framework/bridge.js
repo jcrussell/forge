@@ -687,7 +687,9 @@
                 try {
                   const w = c.nodeValue;
                   if (w && w.is_fullscreen && w.is_fullscreen()) return null;
-                  if (w && w.get_maximized && w.get_maximized()) return null;
+                  // get_maximized() was removed at Mutter 49 (get_maximize_flags()).
+                  const maxFlags = w && (w.get_maximize_flags || w.get_maximized);
+                  if (maxFlags && maxFlags.call(w)) return null;
                 } catch (e) {
                   return null;
                 }
@@ -785,9 +787,15 @@
           if (!w.is_fullscreen()) w.make_fullscreen();
         } else if (op === "unfullscreen") {
           if (w.is_fullscreen()) w.unmake_fullscreen();
-        } else if (op === "maximize") w.maximize(Meta.MaximizeFlags.BOTH);
-        else if (op === "unmaximize") w.unmaximize(Meta.MaximizeFlags.BOTH);
-        else return JSON.stringify({ ok: false, reason: "unknown-op:" + op });
+        } else if (op === "maximize" || op === "unmaximize") {
+          // Mutter 49+ (un)maximize() take no flags and expose get_maximize_flags();
+          // on 51 unmaximizing a non-maximized window is not a no-op, so guard it
+          // the same way Compat.unmaximize does.
+          const is49 = typeof w.get_maximize_flags === "function";
+          const flags = is49 ? w.get_maximize_flags() : w.get_maximized();
+          if (op === "maximize") is49 ? w.maximize() : w.maximize(Meta.MaximizeFlags.BOTH);
+          else if (flags) is49 ? w.unmaximize() : w.unmaximize(Meta.MaximizeFlags.BOTH);
+        } else return JSON.stringify({ ok: false, reason: "unknown-op:" + op });
         return JSON.stringify({ ok: true, op });
       } catch (e) {
         return JSON.stringify({ ok: false, error: e.message });

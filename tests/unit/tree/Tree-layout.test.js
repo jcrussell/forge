@@ -295,8 +295,10 @@ describe("Tree Layout Algorithms", () => {
         expect(child.rect.height).toBe(800 - totalBars);
       });
 
-      // The decoration hosts the title-bar column vertically and is shown.
-      expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
+      // The decoration hosts the title-bar column vertically and is shown. The
+      // suite runs as GNOME 47, which has no St `orientation` yet: `vertical` is
+      // the property that lays the column out there.
+      expect(container.decoration.vertical).toBe(true);
       expect(container.decoration.visible).toBe(true);
       expect(container.decoration.height).toBe(totalBars);
     });
@@ -395,9 +397,37 @@ describe("Tree Layout Algorithms", () => {
 
       const params = { stackedHeight: 35, tiledChildren: [child, sibling] };
 
+      // Start from a stacked (vertical) host so the flip back to a row is observable.
+      ctx.tree.processStacked(container, child, params, 0);
+      expect(container.decoration.vertical).toBe(true);
+
       ctx.tree.processTabbed(container, child, params, 0);
 
-      expect(container.decoration.orientation).toBe(Clutter.Orientation.HORIZONTAL);
+      expect(container.decoration.vertical).toBe(false);
+    });
+
+    // GNOME 51 removed St's `vertical`; the decoration host must be laid out via
+    // `orientation` there and never receive `vertical`.
+    it("GNOME 51: lays the decoration out via orientation, never `vertical`", async () => {
+      vi.resetModules();
+      vi.doMock("resource:///org/gnome/shell/misc/config.js", () => ({
+        PACKAGE_VERSION: "51.0",
+      }));
+      try {
+        const fresh = await import("../../../lib/extension/tree.js");
+        const container = new fresh.Node(fresh.NODE_TYPES.CON, new St.Bin());
+
+        fresh.Tree.prototype._ensureDecoration(container, true);
+        expect(container.decoration.constructParams).not.toHaveProperty("vertical");
+        expect(container.decoration.vertical).toBe(false);
+        expect(container.decoration.orientation).toBe(Clutter.Orientation.VERTICAL);
+
+        fresh.Tree.prototype._ensureDecoration(container, false);
+        expect(container.decoration.orientation).toBe(Clutter.Orientation.HORIZONTAL);
+      } finally {
+        vi.doUnmock("resource:///org/gnome/shell/misc/config.js");
+        vi.resetModules();
+      }
     });
 
     it("should account for tab decoration height", () => {

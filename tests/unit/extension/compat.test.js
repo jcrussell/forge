@@ -274,28 +274,3 @@ describe("getClutterBackend", () => {
     expect(Compat.getClutterBackend()).toBe(backend);
   });
 });
-
-describe("compat acceptance: removed GNOME 51 APIs are only reached via compat.js", async () => {
-  const { readFileSync, readdirSync, statSync } = await import("node:fs");
-  const { join, relative } = await import("node:path");
-  const root = join(import.meta.dirname, "../../..");
-  const files = [];
-  const walk = (dir) => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (p.endsWith(".js")) files.push(p);
-    }
-  };
-  walk(join(root, "lib/extension"));
-  files.push(join(root, "extension.js"));
-
-  it.each(files.map((f) => relative(root, f)).filter((f) => !f.endsWith("compat.js")))(
-    "%s does not call Clutter.get_default_backend() or pass St `vertical`",
-    (file) => {
-      const src = readFileSync(join(root, file), "utf8");
-      expect(src).not.toMatch(/get_default_backend\s*\(/);
-      expect(src).not.toMatch(/\bvertical\s*:\s*(true|false)/);
-    }
-  );
-});

@@ -452,6 +452,7 @@ e2e-versions:
 	@echo "  GNOME 48 (Fedora 42) - default"
 	@echo "  GNOME 49 (Fedora 43)"
 	@echo "  GNOME 50 (Fedora 44)"
+	@echo "  GNOME 51 (Fedora 45)"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make e2e-test                    # Run with default (GNOME 48)"

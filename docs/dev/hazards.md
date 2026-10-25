@@ -75,10 +75,11 @@ Mutter 49) called directly, so it crashes on the other version.
 - **Guardrail (blocking):** `local/no-raw-maximize-api` bans the raw
   maximize/unmaximize APIs everywhere except `lib/extension/compat.js`, forcing
   all callers through the version-dispatch shims. Full drift map + recipe:
-  [compat.md](compat.md).
-- **Gap:** a few drifting calls don't yet route through `compat.js` (e.g. the
-  seat lookup in `focus.js`, some `get_active_workspace*` sites). Candidates for a
-  future rule/shim.
+  [compat.md](compat.md). `no-restricted-syntax` (in `eslint.config.js`) likewise
+  bans the APIs GNOME 51 removed — St `vertical` and `Clutter.get_default_backend()`
+  — outside `compat.js` (`Compat.stBoxOrientation` / `Compat.getClutterBackend`).
+- **Gap:** a few drifting calls don't yet route through `compat.js` (e.g. some
+  `get_active_workspace*` sites). Candidates for a future rule/shim.
 
 ### 6. GLib source-id leaks
 A `GLib.timeout_add` / `idle_add` whose id is not removed on the owning object's

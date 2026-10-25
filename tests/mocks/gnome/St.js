@@ -140,19 +140,13 @@ export class BoxLayout extends Widget {
     // Keep the raw construct params so tests can assert which properties were
     // passed (GNOME 51 removed `vertical`; passing it there throws).
     this.constructParams = params;
-    // Model Clutter orientation (0 = HORIZONTAL, 1 = VERTICAL). St.BoxLayout
-    // defaults to HORIZONTAL; the legacy `vertical` boolean prop was removed on
-    // GNOME 50, so production code sets `orientation` directly.
+    // `vertical` (GNOME <= 50) and `orientation` (Clutter.Orientation, 0 =
+    // HORIZONTAL, 1 = VERTICAL; GNOME 48+) are plain, independent fields that
+    // record what production code wrote, so a test can tell which property was
+    // used. Which one is valid on which release is Compat.stBoxOrientation's
+    // job (compat.test.js); production code must go through it.
+    this.vertical = params.vertical ?? false;
     this.orientation = params.orientation ?? 0;
-  }
-
-  // Read-only `vertical` getter mirroring GNOME 50, where St.BoxLayout.vertical
-  // was REMOVED: code must set `orientation`. There is deliberately no setter, so
-  // a legacy `decoration.vertical = true` write is a dead no-op (it lands on a
-  // throwaway own property and never changes the layout) — the same failure mode
-  // as on real GNOME 50.
-  get vertical() {
-    return this.orientation === 1;
   }
 
   add_child(child) {

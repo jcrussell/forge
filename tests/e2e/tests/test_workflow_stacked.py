@@ -25,9 +25,10 @@ from framework.workflow import step
 _STACKED_DECORATION_PROBE = r"""
 (() => {
   // Clutter is not injected into the Shell.Eval scope (Main/global are), so import
-  // it explicitly — sibling probes do the same. Needed to read the decoration's
-  // orientation: St.BoxLayout.vertical was removed on GNOME 50, so derive the
-  // vertical flag from orientation === Clutter.Orientation.VERTICAL instead.
+  // it explicitly — sibling probes do the same. Read the decoration's real layout
+  // from its ClutterBoxLayout manager: that has `orientation` on every supported
+  // version, whereas St.BoxLayout only gained `orientation` at 48 (`vertical` was
+  // removed at 51). Reading d.orientation on 45-47 would see a stale JS expando.
   const Clutter = imports.gi.Clutter;
   const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
   const wm = ext && ext.extWm;
@@ -42,7 +43,7 @@ _STACKED_DECORATION_PROBE = r"""
     childCount: con.childNodes.length,
     hasDecoration: !!d,
     decoVisible: d ? d.visible : null,
-    decoVertical: d ? (d.orientation === Clutter.Orientation.VERTICAL) : null,
+    decoVertical: d ? (d.get_layout_manager().orientation === Clutter.Orientation.VERTICAL) : null,
     decoChildCount: d && d.get_children ? d.get_children().length : null,
     decoHeight: d ? d.height : null,
   });

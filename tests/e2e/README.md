@@ -29,9 +29,10 @@ make e2e-test
 | 42 | 48 | Supported (default) |
 | 43 | 49 | Supported |
 | 44 | 50 | Supported |
+| 45 | 51 | Supported |
 | rawhide | next devel cycle | Manual only (`make e2e-test FEDORA_VERSION=rawhide`) |
 
-Fedora 39-44 all run in CI (`supported_fedora` in `gnome-versions.json`). Rawhide is excluded to avoid breakage from upstream instability, but can be tested manually with `FEDORA_VERSION=rawhide`.
+Fedora 39-45 all run in CI (`supported_fedora` in `gnome-versions.json`). Rawhide is excluded to avoid breakage from upstream instability, but can be tested manually with `FEDORA_VERSION=rawhide`.
 
 ## Running Tests
 

@@ -1,5 +1,5 @@
 # Docker Compose for Forge E2E Testing
-# Uses Fedora version (maps to GNOME: F39=G45, F40=G46, F41=G47, F42=G48, F43=G49, F44=G50)
+# Uses Fedora version (maps to GNOME: F39=G45, F40=G46, F41=G47, F42=G48, F43=G49, F44=G50, F45=G51)
 #
 # NOTE: This container requires systemd as PID 1.
 # For interactive use, prefer: make e2e-debug
