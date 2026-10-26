@@ -31,7 +31,8 @@
       .filter(
         (n) =>
           n.nodeValue.get_workspace() === global.workspace_manager.get_active_workspace() &&
-          !n.nodeValue.minimized
+          !n.nodeValue.minimized &&
+          !n.nodeValue.is_maximized() // a maximized window covers the others by design
       )
       .map((n) => {
         const f = n.nodeValue.get_frame_rect();

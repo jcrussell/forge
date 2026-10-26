@@ -215,13 +215,20 @@ MODIFIER_KEYVALS = [("CONTROL_MASK", 0xffe3), ("SHIFT_MASK", 0xffe1), ("MOD1_MAS
 def chord(binding):
     """Keyvals ("0xffe3, 0xffeb, 0x6f") for Forge's keybinding setting `binding` (its first
     accelerator), e.g. chord("window-resize-right-increase") -> Ctrl+Super+O by default."""
-    gi.require_version("Gdk", "3.0")
-    gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, Gtk
     accel = js(f"""{WM}.ext.kbdSettings.get_strv("{binding}")[0] ?? "" """)
     if not accel:
         raise RuntimeError(f"Forge keybinding {binding} is not set")
+    return accel_keys(accel)
+
+
+def accel_keys(accel):
+    """Keyvals ("0xffe9, 0xffc7") for an accelerator such as "<Alt>F10"."""
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
     key, mods = Gtk.accelerator_parse(accel)
+    if not key:
+        raise RuntimeError(f"cannot parse the accelerator {accel!r}")
     keyvals = []
     for name, keyval in MODIFIER_KEYVALS:
         if mods & getattr(Gdk.ModifierType, name) and keyval not in keyvals:
@@ -322,6 +329,55 @@ def nested_layout(openers=(open_editor, open_editor, open_editor)):
     return top[0], b, c
 
 
+def pointer(actions, tick_ms=30):
+    """Play pointer and key events in the sandbox (see pointer.js): ("move", x, y),
+    ("press", button), ("release", button), ("key", keyval, 1|0), ("wait", ms)."""
+    run_js_file("pointer.js", {"__ACTIONS__": json.dumps([list(a) for a in actions]),
+                               "__TICK_MS__": tick_ms}, "__ptr")
+
+
+def title_point(win):
+    """A point on the window's title bar away from its buttons (its middle, 18 px down)."""
+    return win["x"] + win["w"] // 2, win["y"] + 18
+
+
+def drag_window(win_id, to_x, to_y, steps=25, modifier=None):
+    """Drag a window by its title bar (or, with `modifier` such as SUPER, from its middle with the
+    modifier held) and drop it with the pointer at (to_x, to_y)."""
+    settle()
+    w = find(windows(), win_id)
+    x0, y0 = (w["x"] + w["w"] // 2, w["y"] + w["h"] // 2) if modifier else title_point(w)
+    acts = [("move", x0, y0)]
+    if modifier:
+        acts.append(("key", modifier, 1))
+    acts += [("wait", 100), ("press", 1), ("wait", 100)]
+    acts += [("move", x0 + (to_x - x0) * i / steps, y0 + (to_y - y0) * i / steps) for i in range(1, steps + 1)]
+    acts += [("wait", 300), ("release", 1)]
+    if modifier:
+        acts.append(("key", modifier, 0))
+    pointer(acts)
+    time.sleep(1.2)
+    settle()
+
+
+def click(x, y, count=1, button=1):
+    acts = [("move", x, y), ("wait", 150)]
+    for _ in range(count):
+        acts += [("press", button), ("release", button)]
+    pointer(acts, tick_ms=20)
+    time.sleep(1.0)
+
+
+def tab_center(win_id):
+    """Centre of the window's tab in its tabbed group's tab bar, or None if it has no tab shown."""
+    return js(f"""(() => {{ const n = {WM}.tree.getNodeByType("WINDOW")
+            .find(n => n.nodeValue.get_id() === {win_id});
+        const t = n?.tab;
+        if (!t || !t.get_stage() || !t.is_mapped()) return null;
+        const [x, y] = t.get_transformed_position(), [w, h] = t.get_transformed_size();
+        return [Math.round(x + w / 2), Math.round(y + h / 2)]; }})()""")
+
+
 def summary(results):
     """Print the result line and return the exit status: 0 only if every check passed and Forge
     logged no JS errors."""
@@ -355,7 +411,9 @@ def layout_problems():
         const wm = {WM};
         const area = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(0);
         const probs = [];
-        const nodes = ({HERE}?.getNodeByType("WINDOW") ?? []).filter(n => !n.isFloat() && !n.nodeValue.minimized);   // Forge doesn't tile minimized windows
+        // Forge doesn't tile minimized windows, and a maximized one covers the others by design
+        const nodes = ({HERE}?.getNodeByType("WINDOW") ?? []).filter(n => !n.isFloat() &&
+            !n.nodeValue.minimized && !n.nodeValue.is_maximized());
         const tag = (n) => n.nodeValue.get_id() % 1000;
         const frames = nodes.map(n => [n, n.nodeValue.get_frame_rect()]);
         for (const [n, f] of frames) {{
@@ -389,6 +447,8 @@ def layout_problems():
             if (!p || !(p.layout === "HSPLIT" || p.layout === "VSPLIT")) continue;
             const kids = wm.tree.getTiledChildren(p.childNodes);
             if (kids.length < 2) continue;
+            // a minimized, maximized or floating child keeps its share for when it comes back
+            if (kids.length !== p.childNodes.length) continue;
             const pcts = kids.map(k => k.percent ?? 0);
             if (pcts.some(v => v <= 0)) continue;   // unset percents = equal split
             if (pcts.some(v => v > 1)) probs.push(`${{p.layout}} child percent over 100%: ${{pcts.map(v => v.toFixed(3))}}`);

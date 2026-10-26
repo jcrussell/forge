@@ -3,7 +3,9 @@
 
 Each step is one random action a user could take: open or close a window, focus, a Forge
 shortcut (split, layout toggles, tabbed/stacked, move, swap, float, gaps, ...), a held resize
-shortcut, or a mouse drag of a window edge. After every step the layout must be valid
+shortcut, a mouse drag of a window edge, a window dragged by its title bar (or with Super held)
+onto another window's drop zone, a click on a tab, maximize and restore (Alt+F10 or a
+double-click on the title bar), minimize and restore, or a trip to the next workspace and back. After every step the layout must be valid
 (harness.layout_problems()), held keys and drags must not overlap or leave the screen while in
 progress (harness.timeline_problems()), and Forge must not log a JS ERROR. The first failure
 stops the run and prints the seed and the steps so far, so it can be replayed exactly.
@@ -47,10 +49,20 @@ def close(win_id):
 
 def tap(win_id, binding):
     try:
-        keys = h.chord(binding)
+        keys = h.accel_keys(binding) if binding.startswith("<") else h.chord(binding)
     except RuntimeError:
         return None                      # shortcut not set in these settings
     return h.hold_keys(win_id, keys, 0)
+
+
+def win_js(win_id, body):
+    return h.js(f"""(() => {{ const w = global.display.list_all_windows().find(w => w.get_id() === {win_id});
+        if (!w) return null; {body} }})()""")
+
+
+# Where a drop lands on the target window, as fractions of its width and height
+ZONES = {"left": (0.12, 0.5), "right": (0.88, 0.5), "top": (0.5, 0.12), "bottom": (0.5, 0.88),
+         "center": (0.5, 0.5)}
 
 
 class Fuzzer:
@@ -68,26 +80,32 @@ class Fuzzer:
         """Do one random action. Returns (description, timeline log or None)."""
         ws = h.windows()
         roll = self.rng.random()
-        if not ws or (roll < 0.15 and len(ws) < MAX_WINDOWS):
+        if not ws or (roll < 0.12 and len(ws) < MAX_WINDOWS):
             h.open_editor()
             return "open a window", None
         win = self.pick_window()
         wid = win["id"]
         tag = f"w{wid % 1000}"
-        if roll < 0.22 and len(ws) > 1:
+        if win_js(wid, "return w.minimized;"):
+            win_js(wid, 'w.unminimize(); w.activate(global.get_current_time()); return "ok";')
+            time.sleep(0.8)
+            return f"restore minimized {tag}", None
+        if roll < 0.18 and len(ws) > 1:
             close(wid)
             return f"close {tag}", None
-        if roll < 0.30:
+        if roll < 0.23:
             focus(wid)
             return f"focus {tag}", None
-        if roll < 0.60:
+        if roll >= 0.72:
+            return self.window_action(win, roll), None
+        if roll < 0.48:
             binding = self.rng.choice(SHORTCUTS)
             focus(wid)
             tap(wid, binding)
             # layout changes move several windows at once and each app redraws at its own pace,
             # so only the end state is checked (in-progress checks are for resizes and drags)
             return f"{binding} on {tag}", None
-        if roll < 0.85:
+        if roll < 0.62:
             side = self.rng.choice(SIDES)
             kind = self.rng.choice(["increase", "decrease"])
             ms = self.rng.choice([0, 150, 400, 900, 2000])
@@ -112,6 +130,55 @@ class Fuzzer:
         grab = next((l for l in log if "SIGNAL grab-op-begin" in l), "")
         self.dragged = int(grab.split("win=")[1].split()[0]) if "win=" in grab else wid
         return f"drag {tag}'s {side} edge {delta:+d} px", log if grabbed else None
+
+    def window_action(self, win, roll):
+        """The mouse and window-manager actions (roll in [0.72, 1))."""
+        wid = win["id"]
+        tag = f"w{wid % 1000}"
+        if roll < 0.82:
+            others = [w for w in h.windows() if w["id"] != wid and not w.get("float")
+                      and not win_js(w["id"], "return w.minimized || w.is_maximized();")]
+            if not others or win.get("float") or win_js(wid, "return w.is_maximized();"):
+                return f"(skip title drag of {tag})"
+            target = self.rng.choice(others)
+            zone = self.rng.choice(list(ZONES))
+            fx, fy = ZONES[zone]
+            to = (target["x"] + int(target["w"] * fx), target["y"] + int(target["h"] * fy))
+            if self.rng.random() < 0.3:
+                h.drag_window(wid, *to, modifier=0xffeb)
+                return f"Super+drag {tag} onto w{target['id'] % 1000}'s {zone}"
+            h.drag_window(wid, *to)
+            return f"drag {tag} by its title onto w{target['id'] % 1000}'s {zone}"
+        if roll < 0.87:
+            tap(wid, "<Alt>F10")
+            time.sleep(0.5)
+            return f"Alt+F10 (maximize/restore) on {tag}"
+        if roll < 0.90:
+            if win.get("float"):
+                return f"(skip double-click on floating {tag})"
+            focus(wid)
+            w = h.find(h.windows(), wid)
+            h.click(*h.title_point(w), count=2)
+            return f"double-click {tag}'s title bar"
+        if roll < 0.93:
+            win_js(wid, 'w.minimize(); return "ok";')
+            time.sleep(0.8)
+            return f"minimize {tag}"
+        if roll < 0.97:
+            tap(wid, "<Super><Shift>Page_Down")
+            time.sleep(0.8)
+            h.settle()
+            tap(wid, "<Super><Shift>Page_Up")
+            time.sleep(0.8)
+            if h.js("global.workspace_manager.get_active_workspace_index()") != 0:
+                tap(wid, "<Super>Page_Up")
+                time.sleep(0.8)
+            return f"send {tag} to the next workspace and back"
+        tab = h.tab_center(wid)
+        if not tab:
+            return f"(no tab to click for {tag})"
+        h.click(*tab)
+        return f"click {tag}'s tab"
 
     def check(self, log):
         probs = h.layout_problems()
