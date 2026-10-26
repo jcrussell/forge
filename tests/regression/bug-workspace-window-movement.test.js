@@ -331,3 +331,68 @@ describe("Bug: Workspace window movement - remaining windows should expand", () 
     });
   });
 });
+
+describe("Bug: a window coming back to a workspace gets a share of it", () => {
+  let ctx;
+  let tree;
+
+  beforeEach(() => {
+    ctx = createTreeFixture({
+      globals: { workspaceManager: { workspaceCount: 2, activeWorkspaceIndex: 0 } },
+      fullExtWm: true,
+    });
+    tree = ctx.tree;
+  });
+
+  afterEach(() => ctx.cleanup());
+
+  function tiled(monitor, ids, percents) {
+    return ids.map((id, i) => {
+      const w = createMockWindow({ id });
+      const node = tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, w);
+      node.mode = WINDOW_MODES.TILE;
+      node.percent = percents[i];
+      return node;
+    });
+  }
+
+  it("carves an equal share when the windows here fill the workspace", () => {
+    const { monitor: here } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: there } = getWorkspaceAndMonitor(ctx, 1, 0);
+    // A | C after B left (redistributed to 0.5 each); B alone on the other workspace
+    const [a, c] = tiled(here, ["A", "C"], [0.5, 0.5]);
+    const [b] = tiled(there, ["B"], [0]);
+
+    here.appendChild(b);
+    tree.adoptChildPercent(here, b);
+
+    const sum = [a, c, b].reduce((s, n) => s + n.percent, 0);
+    expect(sum).toBeCloseTo(1, 5);
+    [a, c, b].forEach((n) => expect(n.percent).toBeCloseTo(1 / 3, 5));
+  });
+
+  it("keeps an equal split equal", () => {
+    const { monitor: here } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: there } = getWorkspaceAndMonitor(ctx, 1, 0);
+    tiled(here, ["A", "C"], [0, 0]);
+    const [b] = tiled(there, ["B"], [0.5]);
+
+    here.appendChild(b);
+    tree.adoptChildPercent(here, b);
+
+    expect(b.percent).toBe(0);
+  });
+
+  it("keeps the proportions of a layout that is still arriving", () => {
+    const { monitor: here } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: there } = getWorkspaceAndMonitor(ctx, 1, 0);
+    const [a, b, c] = tiled(there, ["A", "B", "C"], [0.25, 0.5, 0.25]);
+
+    [a, b, c].forEach((n) => {
+      here.appendChild(n);
+      tree.adoptChildPercent(here, n);
+    });
+
+    expect([a.percent, b.percent, c.percent]).toEqual([0.25, 0.5, 0.25]);
+  });
+});
