@@ -67,7 +67,23 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
     expect(metaWindow.is_maximized()).toBe(true);
   });
 
-  it("still re-tiles (unmaximizes) a maximized window when it is NOT alone", () => {
+  it("keeps a full maximize when the window is NOT alone", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
+
+    const { metaWindow: win1, node: node1 } = tileWindow(monitor, 7201);
+    tileWindow(monitor, 7202);
+    node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
+
+    win1.maximize();
+
+    expect(ctx.windowManager._isKeptMaximizedTile(node1)).toBe(true);
+    ctx.tree.apply(ctx.tree);
+    expect(win1.is_maximized()).toBe(true);
+  });
+
+  it("still re-tiles (unmaximizes) an edge-snapped window when it is NOT alone", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     monitor.layout = LAYOUT_TYPES.HSPLIT;
     monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -76,11 +92,11 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
     tileWindow(monitor, 7102); // second tiled window -> not lone
     node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
 
-    win1.maximize();
+    win1.maximized_vertically = true; // half-tiling: one axis
 
     // With a sibling present the lone exemption does not apply; apply re-slices it.
-    expect(ctx.windowManager._isLoneMaximizedTile(node1)).toBe(false);
+    expect(ctx.windowManager._isKeptMaximizedTile(node1)).toBe(false);
     ctx.tree.apply(ctx.tree);
-    expect(win1.is_maximized()).toBe(false);
+    expect(win1.maximized_vertically).toBe(false);
   });
 });

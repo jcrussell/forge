@@ -70,7 +70,7 @@ describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", 
     return { metaWindow1, node1, node2 };
   }
 
-  it("rejects the maximize instead of skewing the split", () => {
+  it("keeps the maximize without skewing the split", () => {
     const { metaWindow1, node1, node2 } = buildResizingSplit();
 
     // The window maximizes mid-resize: full-monitor frame + maximized flags.
@@ -82,8 +82,8 @@ describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", 
     // Percents stay ~50/50 (before the fix: ~0.67/0.33).
     expect(node1.percent).toBeCloseTo(0.5, 5);
     expect(node2.percent).toBeCloseTo(0.5, 5);
-    // The maximize was rejected and the synthesized grab ended.
-    expect(metaWindow1.is_maximized()).toBe(false);
+    // The maximize is kept (only edge-snaps are undone) and the synthesized grab ended.
+    expect(metaWindow1.is_maximized()).toBe(true);
     expect(node1.grabMode).toBeNull();
   });
 

@@ -7,7 +7,7 @@ import {
 } from "../mocks/helpers/index.js";
 
 /**
- * Bug #461 (forge-9yo): Window can be edge-snapped/maximized while tiled.
+ * Bug #461 (forge-9yo): Window can be edge-snapped while tiled.
  *
  * Problem: GNOME's native edge-snap (super+Left/Right) or maximize (super+Up) on a
  * tiled window changes its geometry. `size-changed` fires -> updateMetaPositionSize(),
@@ -15,9 +15,10 @@ import {
  * A natively-maximized window fails that guard, so renderTree is skipped and the window
  * stays snapped/maximized, desynced from its tiled tree slot.
  *
- * Fix: when the *changed* window is a TILE window that was externally maximized/snapped
- * (any direction) AND it is not the sole tiled window on its monitor (so the legitimate
- * window-maximize-on-single case is preserved), unmaximize it and re-tile.
+ * Fix: when the *changed* window is a TILE window that was externally snapped (one
+ * axis) AND it is not the sole tiled window on its monitor (so the legitimate
+ * window-maximize-on-single case is preserved), unmaximize it and re-tile. A full
+ * maximize is the user's and is kept until the window is restored.
  *
  * Note: native edge-snap maximizes only one axis, so the BOTH-only `isNotMaximized`
  * helper does not catch it — the reject check must look at any maximize direction.
@@ -44,7 +45,7 @@ describe("Bug #461: reject external maximize/edge-snap on a tiled window", () =>
 
   const wm = () => ctx.windowManager;
 
-  it("unmaximizes a fully-maximized tiled window that has tiled siblings", () => {
+  it("keeps a full maximize of a tiled window that has tiled siblings", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first, second] = createHorizontalLayout(ctx.tree, monitor, 2);
 
@@ -52,12 +53,14 @@ describe("Bug #461: reject external maximize/edge-snap on a tiled window", () =>
     maxed.maximize(); // both axes -> is_maximized() true
     ctx.display.get_focus_window.mockReturnValue(maxed);
 
-    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+    vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
     wm().updateMetaPositionSize(maxed, "size-changed");
 
-    expect(maxed.is_maximized()).toBe(false); // Compat.unmaximize was applied
-    expect(renderSpy).toHaveBeenCalled();
+    // The user maximized it (button, double-click, Super+Up): only edge-snaps are undone
+    expect(maxed.is_maximized()).toBe(true);
+    // ...and rendering doesn't put it back in its slot either
+    expect(wm()._isKeptMaximizedTile(first.nodeWindow)).toBe(true);
   });
 
   it("unmaximizes an edge-snapped (single-axis) tiled window that has tiled siblings", () => {
