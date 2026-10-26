@@ -260,12 +260,12 @@
         </key>
 
         <key type="as" name="window-gap-size-increase">
-            <default><![CDATA[['<Ctrl><Super>plus']]]></default>
+            <default><![CDATA[['<Ctrl><Super>equal', '<Ctrl><Super><Shift>plus', '<Ctrl><Super>KP_Add']]]></default>
             <summary>Increase gap size</summary>
         </key>
 
         <key type="as" name="window-gap-size-decrease">
-            <default><![CDATA[['<Ctrl><Super>minus']]]></default>
+            <default><![CDATA[['<Ctrl><Super>minus', '<Ctrl><Super>KP_Subtract']]]></default>
             <summary>Decrease gap size</summary>
         </key>
 
