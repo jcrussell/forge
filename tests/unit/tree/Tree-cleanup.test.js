@@ -275,14 +275,22 @@ describe("Tree Cleanup and Container Management", () => {
       node1.percent = 0.6;
       node2.percent = 0.4;
 
+      const window3 = createMockWindow();
+      const node3 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, window3);
+      node1.percent = 0.5;
+      node2.percent = 0.3;
+      node3.percent = 0.2;
+
       // Remove node1 - since the parent is a MONITOR, the boundary guard
       // (tree.js: !isWorkspace() && !isMonitor()) must skip resetSiblingPercent.
       ctx.tree.removeNode(node1);
 
-      // node2 survives AND keeps its percent untouched (Bug #470): zeroing it
-      // here is what disrupted tiling in other workspaces.
+      // The survivors are never zeroed (Bug #470: zeroing them is what disrupted
+      // tiling in other workspaces); they keep their proportions, scaled to fill
+      // the space node1 left.
       expect(monitor.childNodes).toContain(node2);
-      expect(node2.percent).toBe(0.4);
+      expect(node2.percent).toBeCloseTo(0.6, 5);
+      expect(node3.percent).toBeCloseTo(0.4, 5);
     });
   });
 
