@@ -105,6 +105,44 @@ def open_editor():
     open_app("gnome-text-editor", "--standalone")
 
 
+def open_slow_app(delay_ms=150, x11=False, title="Slow app", **opts):
+    """Open lib/slowapp.py, a test app that takes `delay_ms` to follow every new size (so on Wayland it
+    takes its new place that long after Forge asks). `x11`: run it on the sandbox's Xwayland,
+    where the window moves at once and only its content lags. `opts`: --min-width etc."""
+    argv = [sys.executable, os.path.join(LIB, "slowapp.py"), "--delay-ms", str(delay_ms), "--title", title]
+    for k, v in opts.items():
+        argv += [f"--{k.replace('_', '-')}", str(v)]
+    if x11:
+        display = js('GLib.getenv("DISPLAY")')
+        xauth = js('GLib.getenv("XAUTHORITY")')
+        argv = ["env", "GDK_BACKEND=x11", f"DISPLAY={display}", f"XAUTHORITY={xauth}", *argv]
+    open_app(*argv, timeout=20)
+
+
+def watch_start(name="__watchnow"):
+    """Start the continuous watcher's rule (lib/watchdog.js) under its own name, so that it doesn't
+    disturb a watcher running for the whole scenario. Read it with watch_stop()."""
+    js(open(os.path.join(LIB, "watchdog.js")).read().replace("__watchdog", name))
+
+
+def watch_stop(name="__watchnow", min_ms=0):
+    """Stop a watch_start() watcher and return what it saw: windows partly covered by others (inside
+    a tabbed/stacked group too), covered by a window outside their group, or off-screen, as
+    [(duration_ms, text)] for episodes of at least `min_ms`, longest first."""
+    rep = json.loads(js(f"(() => {{ const r = globalThis.{name}.report(); globalThis.{name}.stop(); "
+                        f"delete globalThis.{name}; return r; }})()"))
+    eps = sorted(rep["episodes"], key=lambda e: -e["duration_ms"])
+    return [(e["duration_ms"], f"{e['what']} for {e['duration_ms']} ms ({e['max_px']} px, {e['kind']})")
+            for e in eps if e["duration_ms"] >= min_ms]
+
+
+def visible_problems(ms=200):
+    """What a person would see wrong right now, over `ms` (see watch_stop()). Returns a list of strings."""
+    watch_start()
+    time.sleep(ms / 1000)
+    return [text for _d, text in watch_stop()]
+
+
 def run_js_file(name, subs, flag, during=None):
     code = open(os.path.join(LIB, name)).read()
     for k, v in subs.items():
