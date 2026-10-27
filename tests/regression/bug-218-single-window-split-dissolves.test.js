@@ -77,6 +77,21 @@ describe("#218: a split left with one window gives way to it", () => {
     expect(a.parentNode).toBe(column);
   });
 
+  it("keeps the split when a floating window in it closes", () => {
+    const { monitor, a, b } = build();
+    ctx.tree.removeNode(b);
+    // Split on A, then a dialog of A's app opens (floating) in that split
+    const split = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    split.layout = LAYOUT_TYPES.VSPLIT;
+    split.appendChild(a);
+    const dialog = tiled(split, "D");
+    dialog.mode = WINDOW_MODES.FLOAT;
+
+    ctx.tree.removeNode(dialog);
+
+    expect(a.parentNode).toBe(split);
+  });
+
   it("keeps a container the user split for one window while others close", () => {
     const { monitor, w, a, b } = build();
     ctx.tree.removeNode(b);
