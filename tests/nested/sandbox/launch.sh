@@ -82,7 +82,7 @@ unzip -q -o "$FORGE_SRC/$FORGE_UUID.zip" -d "$SANDBOX_DIR/data/gnome-shell/exten
 cp -r "$REPRO_ROOT/sandbox/sandbox-unsafe@local" "$SANDBOX_DIR/data/gnome-shell/extensions/"
 git -C "$FORGE_SRC" log -1 --format='forge: %h %s (%D)' > "$SANDBOX_DIR/forge-version"
 
-export XDG_DATA_HOME=$SANDBOX_DIR/data XDG_CONFIG_HOME=$SANDBOX_DIR/config GSETTINGS_BACKEND=keyfile
+export XDG_DATA_HOME=$SANDBOX_DIR/data XDG_CONFIG_HOME=$SANDBOX_DIR/config XDG_STATE_HOME=$SANDBOX_DIR/state GSETTINGS_BACKEND=keyfile
 if [[ $PROFILE == real ]]; then
   python3 - "$HOST_ENABLED" "$HOST_DISABLED" "$HOST_FORGE" "$SANDBOX_DIR/data/gnome-shell/extensions/$FORGE_UUID/schemas" <<'PY'
 import ast, configparser, subprocess, sys
@@ -115,6 +115,12 @@ if [[ $PROFILE == plain ]]; then
   gsettings --schemadir "$SANDBOX_DIR/data/gnome-shell/extensions/$FORGE_UUID/schemas" \
     set org.gnome.shell.extensions.forge auto-split-enabled true
 fi
+# The diagnostic log runs in every test (its errors would show up as JS errors), and its
+# first-run question, which would take the focus, is already answered
+gsettings --schemadir "$SANDBOX_DIR/data/gnome-shell/extensions/$FORGE_UUID/schemas" \
+  set org.gnome.shell.extensions.forge diagnostic-log-asked true 2>/dev/null || true
+gsettings --schemadir "$SANDBOX_DIR/data/gnome-shell/extensions/$FORGE_UUID/schemas" \
+  set org.gnome.shell.extensions.forge diagnostic-log-enabled true 2>/dev/null || true
 gsettings set org.gnome.desktop.wm.preferences num-workspaces 4
 gsettings set org.gnome.shell welcome-dialog-last-shown-version '999'
 # The helper extension (and Forge) load on any GNOME Shell version

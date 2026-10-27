@@ -235,6 +235,16 @@
             <summary>Application to launch with hotkey</summary>
         </key>
 
+        <key type="b" name="diagnostic-log-enabled">
+            <default>false</default>
+            <summary>Keep a local log of the last actions and what came of them, for problem reports</summary>
+        </key>
+
+        <key type="b" name="diagnostic-log-asked">
+            <default>false</default>
+            <summary>Whether the user was already asked to turn on the diagnostic log</summary>
+        </key>
+
         <!-- Portable Config Sync Settings -->
         <key type="t" name="config-last-import">
             <default>0</default>

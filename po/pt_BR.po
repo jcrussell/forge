@@ -728,6 +728,70 @@ msgid "Invalid input"
 msgstr ""
 
 #, fuzzy
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Help make Forge better"
+msgstr "Ajude a deixar o Forge melhor"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "When a window doesn't behave as you expect, it is hard to tell a bug from a different setting. With the diagnostic log on, Forge notes your last actions (shortcuts, drags and which apps were on screen), without window titles or content. The log stays on your computer. It only leaves it if you click “Report a problem” in Forge's settings, and you see everything before sending."
+msgstr "Quando uma janela não se comporta como você espera, é difícil saber se foi um bug ou um ajuste diferente. Com o registro de diagnóstico ligado, o Forge anota suas últimas ações (atalhos, arrastos e quais aplicativos estavam na tela), sem títulos de janela nem conteúdo. Esse registro fica só no seu computador. Ele só sai daí se você mesmo clicar em “Relatar problema” nas configurações do Forge, e você vê tudo antes de enviar."
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Not now"
+msgstr "Agora não"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Turn on log"
+msgstr "Ligar registro"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "(The diagnostic log is off, so there are no actions here.)"
+msgstr "(O registro de diagnóstico está desligado, então não há ações aqui.)"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "(Nothing logged yet: the extension writes the log a few seconds after each action.)"
+msgstr "(Nada registrado ainda: a extensão grava o registro alguns segundos depois de cada ação.)"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Report a problem"
+msgstr "Relatar problema"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "This is everything the report contains. Nothing has been sent. You can edit it here; then copy it, or open a new issue on GitHub (the report is copied too, in case it doesn't fit in the link)."
+msgstr "Isto é tudo o que o relatório contém. Nada foi enviado. Você pode editá-lo aqui; depois, copie-o ou abra uma nova issue no GitHub (o relatório também é copiado, caso não caiba no link)."
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Copy"
+msgstr "Copiar"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Open GitHub issue"
+msgstr "Abrir issue no GitHub"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "See what a report contains, then copy it or open an issue on GitHub"
+msgstr "Veja o que o relatório contém e depois copie-o ou abra uma issue no GitHub"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Report…"
+msgstr "Relatar…"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Diagnostics"
+msgstr "Diagnóstico"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "The log keeps your last 100 actions on this computer, without window titles or content, to tell a bug from a setting. Turning it off deletes it."
+msgstr "O registro guarda suas últimas 100 ações neste computador, sem títulos de janela nem conteúdo, para distinguir um bug de um ajuste. Desligá-lo apaga o registro."
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Diagnostic log"
+msgstr "Registro de diagnóstico"
+
+#: lib/extension/diagnostics-prompt.js lib/prefs/diagnostics.js
+msgid "Note shortcuts, drags and which apps were on screen"
+msgstr "Anota atalhos, arrastos e quais aplicativos estavam na tela"
+
 #~ msgid "Add Window"
 #~ msgstr "Adicionar Janela"
 

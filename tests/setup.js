@@ -55,6 +55,41 @@ vi.mock("resource:///org/gnome/shell/extensions/extension.js", () => ({
   gettext: (str) => str,
 }));
 
+// The diagnostic log's first-run question (lib/extension/diagnostics-prompt.js)
+vi.mock("resource:///org/gnome/shell/ui/dialog.js", () => ({
+  MessageDialogContent: class MessageDialogContent {
+    constructor(params) {
+      Object.assign(this, params);
+    }
+  },
+}));
+
+vi.mock("resource:///org/gnome/shell/ui/modalDialog.js", () => ({
+  ModalDialog: class ModalDialog {
+    constructor() {
+      this.contentLayout = { add_child: () => {} };
+      this.buttons = [];
+      this._closed = [];
+    }
+    setButtons(buttons) {
+      this.buttons = buttons;
+    }
+    connect(signal, callback) {
+      if (signal === "closed") this._closed.push(callback);
+      return this._closed.length;
+    }
+    open() {
+      this.opened = true;
+      return true;
+    }
+    close() {
+      this.opened = false;
+      this._closed.forEach((callback) => callback());
+    }
+    destroy() {}
+  },
+}));
+
 vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   overview: mockOverview,
   wm: mockWm,

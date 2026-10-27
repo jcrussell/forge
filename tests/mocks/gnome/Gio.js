@@ -32,6 +32,10 @@ export class File {
     return true;
   }
 
+  delete(cancellable) {
+    return true;
+  }
+
   make_directory_with_parents(cancellable) {
     // Mock directory creation
     return true;

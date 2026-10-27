@@ -38,6 +38,8 @@ import { Keybindings } from "./lib/extension/keybindings.js";
 import { WindowManager } from "./lib/extension/window.js";
 import { FeatureIndicator, FeatureMenuToggle } from "./lib/extension/indicator.js";
 import { ExtensionThemeManager } from "./lib/extension/extension-theme-manager.js";
+import { Diagnostics } from "./lib/extension/diagnostics.js";
+import { DiagnosticsPrompt } from "./lib/extension/diagnostics-prompt.js";
 
 // SETTINGS_OVERRIDES + shouldApplyOverride live in lib/shared/gnome-overrides.js
 // (GTK-free) so the gating policy is unit-testable.
@@ -101,6 +103,8 @@ export default class ForgeExtension extends Extension {
       this.configSync.init();
 
       this.theme = new ExtensionThemeManager(this);
+      this.diagnostics = new Diagnostics(this);
+      this.diagnosticsPrompt = new DiagnosticsPrompt(this.settings);
       this.extWm = new WindowManager(this);
       this.keybindings = new Keybindings(this);
       this.cheatsheet = new Cheatsheet(this);
@@ -240,6 +244,10 @@ export default class ForgeExtension extends Extension {
     this.keybindings?.disable();
     this.cheatsheet?.destroy();
     this.configSync?.destroy();
+    this.diagnosticsPrompt?.destroy();
+    this.diagnostics?.destroy();
+    this.diagnosticsPrompt = null;
+    this.diagnostics = null;
     this.keybindings = null;
     this.cheatsheet = null;
     this.extWm = null;
@@ -271,6 +279,7 @@ export default class ForgeExtension extends Extension {
       Logger.info("user on session change");
       this._addIndicator();
       this.keybindings?.enable();
+      this.diagnosticsPrompt?.schedule();
     }
   }
 

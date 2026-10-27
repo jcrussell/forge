@@ -29,6 +29,9 @@ const INTERNAL_MAIN_KEYS = [
   "config-last-import",
   "config-last-export",
   "config-file-sync-enabled",
+  // Consent to keep a diagnostic log is given on each computer, never synced
+  "diagnostic-log-enabled",
+  "diagnostic-log-asked",
 ];
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");

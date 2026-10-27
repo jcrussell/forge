@@ -22,6 +22,15 @@ export function get_user_config_dir() {
   return "/home/test/.config";
 }
 
+export function get_user_state_dir() {
+  return "/home/test/.local/state";
+}
+
+// Tests spy on this to see what would be written
+export function file_set_contents(path, contents) {
+  return true;
+}
+
 export function build_filenamev(paths) {
   return paths.join("/");
 }
@@ -48,6 +57,10 @@ export const SOURCE_REMOVE = false;
 
 export function timeout_add(priority, interval, callback) {
   // Mock timeout - return a fake ID
+  return Math.random();
+}
+
+export function timeout_add_seconds(priority, interval, callback) {
   return Math.random();
 }
 
@@ -83,6 +96,8 @@ export default {
   get_home_dir,
   get_user_data_dir,
   get_user_config_dir,
+  get_user_state_dir,
+  file_set_contents,
   build_filenamev,
   file_test,
   FileTest,
@@ -92,6 +107,7 @@ export default {
   PRIORITY_LOW,
   SOURCE_REMOVE,
   timeout_add,
+  timeout_add_seconds,
   idle_add,
   source_remove,
   Source,
