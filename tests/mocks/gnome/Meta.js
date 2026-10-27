@@ -57,6 +57,7 @@ export class Window extends withSignals() {
     this.maximized_horizontally = params.maximized_horizontally ?? false;
     this.maximized_vertically = params.maximized_vertically ?? false;
     this.minimized = params.minimized ?? false;
+    this.skipTaskbar = params.skip_taskbar ?? false;
     this.fullscreen = params.fullscreen ?? false;
     this._window_type = "window_type" in params ? params.window_type : WindowType.NORMAL;
     this._transient_for = "transient_for" in params ? params.transient_for : null;
@@ -221,6 +222,10 @@ export class Window extends withSignals() {
 
   is_above() {
     return this.above || false;
+  }
+
+  is_skip_taskbar() {
+    return this.skipTaskbar;
   }
 
   make_above() {
