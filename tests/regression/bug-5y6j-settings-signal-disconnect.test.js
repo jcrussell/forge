@@ -41,15 +41,15 @@ describe("forge-5y6j: settings 'changed' handler is disconnected on disable", ()
 
     // Sanity: while bound, a settings change reaches the real handler.
     const renderSpy = vi.spyOn(wm, "renderTree").mockImplementation(() => {});
-    settings.emit("changed", settings, "tiling-mode-enabled");
-    expect(renderSpy).toHaveBeenCalledWith("tiling-mode-enabled");
+    settings.emit("changed", settings, "window-gap-size");
+    expect(renderSpy).toHaveBeenCalledWith("window-gap-size", true);
 
     wm._removeSignals();
     renderSpy.mockClear();
 
     // After teardown the handler must be gone — this is what crashed with
     // `this.ext.settings is null` when the extension nulled its settings.
-    settings.emit("changed", settings, "tiling-mode-enabled");
+    settings.emit("changed", settings, "window-gap-size");
     expect(renderSpy).not.toHaveBeenCalled();
     expect(settings.hasHandlers("changed")).toBe(false);
   });
