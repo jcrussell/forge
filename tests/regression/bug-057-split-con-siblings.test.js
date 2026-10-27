@@ -120,6 +120,10 @@ describe("Bug #57: nested split-con siblings in tabbed/stacked containers", () =
 
     it("_ensureConTab() rebuilds when the representative window changes", () => {
       const { nestedCon, nodeA } = buildNestedTree();
+      // A third window, so the container still splits two once A is gone
+      // (a split left with one window gives way to it, forge-ext/forge#218)
+      const cWin = createMockWindow({ id: "C", title: "Window C" });
+      ctx.tree.createNode(nestedCon.nodeValue, NODE_TYPES.WINDOW, cWin).mode = WINDOW_MODES.TILE;
       nestedCon._ensureConTab();
       const firstTab = nestedCon.tab;
 
