@@ -54,6 +54,7 @@ export const PRIORITY_HIGH = -100;
 export const PRIORITY_LOW = 100;
 
 export const SOURCE_REMOVE = false;
+export const SOURCE_CONTINUE = true;
 
 export function timeout_add(priority, interval, callback) {
   // Mock timeout - return a fake ID
@@ -106,6 +107,7 @@ export default {
   PRIORITY_HIGH,
   PRIORITY_LOW,
   SOURCE_REMOVE,
+  SOURCE_CONTINUE,
   timeout_add,
   timeout_add_seconds,
   idle_add,
