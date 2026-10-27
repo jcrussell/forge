@@ -67,15 +67,75 @@ add or change a string, run `make update-pot` and commit `po/forge.pot`. Catalog
 translation through Weblate is planned but not yet active (pending upstreaming).
 Full workflow: [docs/dev/translations.md](docs/dev/translations.md).
 
-## Submitting changes
+## Getting your change merged
 
-1. Branch off `main`.
-2. Make the change with a test; run `npm test` and `npm run lint`.
-3. Open a PR with a clear description of the problem and the fix.
+Every PR (human- or agent-written) is reviewed against this section, and each
+change in it ends in one of four outcomes:
 
-GNOME compatibility matters: changes should work on GNOME 45+ across X11 and
-Wayland. Mutter API differences belong in `lib/extension/compat.js`
-([docs/dev/compat.md](docs/dev/compat.md)), not scattered through the codebase.
+| Outcome          | When                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| **Merge as-is**  | Fits the project, right mechanism, tested. Your commits land unchanged.   |
+| **Fix-merge**    | Right idea and mechanism, small gaps. Your commits land plus one maintainer follow-up commit. |
+| **Reimplement**  | Right idea, wrong mechanism. The maintainer rewrites it and credits you with `Co-authored-by`; the PR is closed. |
+| **Decline**      | Doesn't fit the project. The PR is closed with the reason.                |
+
+If you (or your agent) build to the three checks below, you get **Merge as-is**.
+
+### 1. Fit
+
+- Does it behave like i3/sway would? Forge follows i3/sway semantics.
+- Does it work on GNOME 45+ on both X11 and Wayland?
+- Is it worth maintaining? Choose the smallest change that solves a real problem.
+  Speculative options, settings and abstractions get declined.
+
+Not sure? Open an issue first.
+
+### 2. Mechanism
+
+Most fixes are judged on this check. A change that fixes the right thing in the
+wrong way is reimplemented.
+
+- **Fix the root cause, not the symptom.** State the cause in one sentence. A
+  timeout or idle delay, retry, swallowed `try/catch`, extra null guard or one-off
+  flag that only hides the failure is a symptom patch.
+- **Use the mechanism that already exists** instead of adding a parallel cache,
+  state flag or event path:
+
+  | Problem                                   | Mechanism                                                    |
+  | ----------------------------------------- | ------------------------------------------------------------ |
+  | Mutter/Shell API differs between versions | a `Compat` shim in `compat.js` ([compat.md](docs/dev/compat.md)) |
+  | Window position/size is wrong             | the render pipeline and `move()` ([rendering.md](docs/dev/rendering.md)) |
+  | Layout or structure is wrong              | tree mutations in `tree.js` ([architecture.md](docs/dev/architecture.md)) |
+  | New user action                           | command dispatch ([architecture.md](docs/dev/architecture.md#command-dispatch-flow)) |
+  | Signals, timers, actors                   | tracked IDs released in `disable()` ([hazards.md](docs/dev/hazards.md)) |
+  | Per-user behavior                         | GSettings or the config files ([architecture.md](docs/dev/architecture.md#configuration-sources)) |
+
+- **Fix it at the right layer.** A tree bug gets fixed in the tree, not
+  special-cased in a command handler or a signal callback.
+- **Fix the whole class.** If the bug belongs to a class in
+  [hazards.md](docs/dev/hazards.md), fix every site that has it, and add or extend
+  the guardrail (an ESLint rule in `eslint-rules/`, a shim or a test) so it can't
+  come back.
+
+### 3. Correctness
+
+- The new tests fail without your change and pass with it. Use a unit test that drives
+  real `lib/` code ([tests/README.md](tests/README.md)), or an e2e test when the bug
+  only shows in a real shell.
+- `npm test`, `npm run lint`, `npm run lint:src` and `npm run typecheck` pass (the
+  pre-commit hook runs them).
+- Docs, version lists and the CI matrix are updated if the change affects them.
+
+### Shape of the PR
+
+- Branch off `main`. Make **one concern per commit**, so each change can be accepted
+  on its own. Bundled PRs are judged commit by commit.
+- Fill in the [PR template](.github/pull_request_template.md). It asks for the root
+  cause and why you chose that layer.
+- Commit messages say what changed and why, not the story of how you got there.
+- Your PR is rebased onto `main` and lands with linear history. Clean commits that
+  each pass the tests are kept as you wrote them. Messy commits are squashed, one
+  commit per change. Either way you stay the author.
 
 ## Releasing
 
@@ -83,4 +143,4 @@ Maintainers: cutting a release and submitting to extensions.gnome.org is
 documented in [RELEASING.md](RELEASING.md).
 
 > Maintainers: this repo tracks work with **bd** (beads) and additional automation
-> conventions documented in [CLAUDE.md](CLAUDE.md).
+> conventions documented in [AGENTS.md](AGENTS.md).

@@ -40,6 +40,10 @@ See **[docs/dev/](docs/dev/)** for the detailed reference: [architecture.md](doc
 
 - **Signal Connections**: Track signal IDs for proper cleanup in disable().
 
+## Making changes
+
+Before implementing, read **[CONTRIBUTING.md § Getting your change merged](CONTRIBUTING.md#getting-your-change-merged)**. It is the rubric every PR is reviewed against: fit, mechanism (fix the root cause using the mechanism that already exists, at the right layer) and correctness. Build to it and the change merges as-is. Put one concern in each commit and fill in `.github/pull_request_template.md`.
+
 ## Configuration Files
 
 - GSettings schemas: `org.gnome.shell.extensions.forge` and `org.gnome.shell.extensions.forge.keybindings`
