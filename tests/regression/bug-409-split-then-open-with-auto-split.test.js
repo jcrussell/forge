@@ -76,6 +76,18 @@ describe("#409: the next window opens the way the user split", () => {
     expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
   });
 
+  it("a dialog that becomes transient only once shown doesn't use it up either", () => {
+    const { monitor } = loneWindow();
+
+    wm().command({ name: "Split", orientation: "vertical" });
+    // On Wayland the dialog has no parent yet when it is tracked; it floats later
+    open(6);
+    ctx.tree.findNode(ctx.tree.nodeWindows.at(-1).nodeValue).mode = WINDOW_MODES.FLOAT;
+    open(7);
+
+    expect(monitor.layout).toBe(LAYOUT_TYPES.VSPLIT);
+  });
+
   it("without a Split, auto-split still goes by the window's shape", () => {
     const { monitor } = loneWindow();
     monitor.layout = LAYOUT_TYPES.VSPLIT;
