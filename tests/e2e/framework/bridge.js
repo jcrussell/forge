@@ -427,9 +427,15 @@
       try {
         const r = root();
         if (!r) return JSON.stringify({ error: "Tree not available" });
+        // WORKSPACE nodes carry an HSPLIT layout too and hold one MONITOR child per
+        // output, so on a two-monitor session they matched first and the "last child"
+        // was a MONITOR, not a window. Only window containers qualify.
         const container = firstMatch(
           r,
-          (n) => n.layout === layout && (n.childNodes || []).length >= 2
+          (n) =>
+            (n.nodeType === "CON" || n.nodeType === "MONITOR") &&
+            n.layout === layout &&
+            (n.childNodes || []).length >= 2
         );
         if (!container) {
           return JSON.stringify({ error: "No >=2-child " + layout + " container" });
