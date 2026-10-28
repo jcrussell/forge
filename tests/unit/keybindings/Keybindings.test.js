@@ -309,6 +309,23 @@ describe("Keybindings", () => {
         mockExt.extWm.getPointer.mockReturnValue([0, 0, 4]);
         expect(keybindings.allowDragDropTile()).toBe(false);
       });
+
+      it("allows tiling with Num Lock or Caps Lock on (Alt+grabbed+NumLock=280, +CapsLock=266)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 280]);
+        expect(keybindings.allowDragDropTile()).toBe(true);
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 266]);
+        expect(keybindings.allowDragDropTile()).toBe(true);
+      });
+
+      it("should not allow tiling with only Num Lock on while dragging (state=272)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 272]);
+        expect(keybindings.allowDragDropTile()).toBe(false);
+      });
+
+      it("should not allow tiling with Alt+Ctrl held (state=12)", () => {
+        mockExt.extWm.getPointer.mockReturnValue([0, 0, 12]);
+        expect(keybindings.allowDragDropTile()).toBe(false);
+      });
     });
 
     describe("Ctrl modifier", () => {
