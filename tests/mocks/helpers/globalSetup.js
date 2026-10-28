@@ -20,10 +20,16 @@ export const DEFAULT_MONITOR_GEOMETRY = { x: 0, y: 0, width: 1920, height: 1080 
  * @param {number} [options.monitorCount=1] - Number of monitors
  * @param {Object[]} [options.monitorGeometries] - Array of monitor geometries
  * @param {Function} [options.getFocusWindow] - Custom get_focus_window implementation
+ * @param {number} [options.primaryMonitor=0] - Index returned by get_primary_monitor()
  * @returns {Object} Mock display object
  */
 export function createMockDisplay(options = {}) {
-  const { monitorCount = 1, monitorGeometries = null, getFocusWindow = () => null } = options;
+  const {
+    monitorCount = 1,
+    monitorGeometries = null,
+    getFocusWindow = () => null,
+    primaryMonitor = 0,
+  } = options;
 
   // Generate geometries for each monitor if not provided
   const geometries =
@@ -40,6 +46,7 @@ export function createMockDisplay(options = {}) {
     get_n_monitors: vi.fn(() => monitorCount),
     get_focus_window: vi.fn(getFocusWindow),
     get_current_monitor: vi.fn(() => 0),
+    get_primary_monitor: vi.fn(() => primaryMonitor),
     get_current_time: vi.fn(() => 12345),
     get_monitor_geometry: vi.fn((index) => {
       // A real Display returns null for an invalid index. Honor an explicit null

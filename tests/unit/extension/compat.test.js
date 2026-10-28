@@ -299,3 +299,32 @@ describe("compat acceptance: removed GNOME 51 APIs are only reached via compat.j
     }
   );
 });
+
+// Mutter makes every window on a non-primary monitor implicitly sticky when
+// workspaces-only-on-primary is set; Forge reads the preference through this shim.
+describe("workspacesOnlyOnPrimary", () => {
+  let Meta;
+  beforeEach(async () => {
+    ({ default: Meta } = await import("gi://Meta"));
+  });
+  afterEach(() => {
+    Meta.__setWorkspacesOnlyOnPrimary(false);
+  });
+
+  it.each([true, false])("returns Mutter's preference (%s)", async (value) => {
+    const Compat = await loadCompat("51.0");
+    Meta.__setWorkspacesOnlyOnPrimary(value);
+    expect(Compat.workspacesOnlyOnPrimary()).toBe(value);
+  });
+
+  it("reports false when Mutter does not expose the preference", async () => {
+    const Compat = await loadCompat("51.0");
+    const original = Meta.prefs_get_workspaces_only_on_primary;
+    Meta.prefs_get_workspaces_only_on_primary = undefined;
+    try {
+      expect(Compat.workspacesOnlyOnPrimary()).toBe(false);
+    } finally {
+      Meta.prefs_get_workspaces_only_on_primary = original;
+    }
+  });
+});
