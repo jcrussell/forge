@@ -81,4 +81,25 @@ describe("Bug forge-n0a7: middle child crosses monitors in the move direction", 
     expect(ctx.tree.move(c, MotionDirection.RIGHT)).toBe(true);
     expect(rightMon.contains(c)).toBe(true);
   });
+
+  it("a window in a container on a perpendicular monitor split crosses at once", () => {
+    // VSPLIT monitor [HSPLIT con [A, B], C]: moving B right out of its container
+    // would put it below C, a vertical move on a "right" command
+    leftMon.layout = LAYOUT_TYPES.VSPLIT;
+    const con = ctx.tree.createNode(leftMon.nodeValue, NODE_TYPES.CON, null);
+    con.layout = LAYOUT_TYPES.HSPLIT;
+    const mk = (parent, id) =>
+      ctx.tree.createNode(
+        parent,
+        NODE_TYPES.WINDOW,
+        createMockWindow({ id, monitor: 0, workspace: ctx.workspaces[0] })
+      );
+    const a = mk(con.nodeValue, 1);
+    const b = mk(con.nodeValue, 2);
+    const c = mk(leftMon.nodeValue, 3);
+    [a, b, c].forEach((w) => (w.mode = WINDOW_MODES.TILE));
+
+    expect(ctx.tree.move(b, MotionDirection.RIGHT)).toBe(true);
+    expect(rightMon.contains(b)).toBe(true);
+  });
 });
