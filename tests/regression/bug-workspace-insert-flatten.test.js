@@ -126,4 +126,31 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     expect(mo0ws3.childNodes).toContain(nodeD); // flattened onto destination monitor
     expect(nodeE.parentNode).toBe(con); // winE stays nested on the source
   });
+
+  it("keeps every layout's proportions when the insert shifts several workspaces", () => {
+    // ws1 [A .7, B .3] -> ws2, ws2 [C .4, D .6] -> ws3: ws1's layout lands on the
+    // ws2 node while ws2's own windows are still there, on their way out
+    const { monitor: mon0ws1 } = getWorkspaceAndMonitor(ctx, 1, 0);
+    const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
+    const { win: winA, node: nodeA } = addWindow("A", mon0ws1.nodeValue, ctx.workspaces[1], 0.7);
+    const { win: winB, node: nodeB } = addWindow("B", mon0ws1.nodeValue, ctx.workspaces[1], 0.3);
+    const { win: winC, node: nodeC } = addWindow("C", mon0ws2.nodeValue, ctx.workspaces[2], 0.4);
+    const { win: winD, node: nodeD } = addWindow("D", mon0ws2.nodeValue, ctx.workspaces[2], 0.6);
+
+    const ws3 = new Workspace({ index: 3 });
+    ctx.workspaces.push(ws3);
+    tree.addWorkspace(3);
+    winA._workspace = ctx.workspaces[2];
+    winB._workspace = ctx.workspaces[2];
+    winC._workspace = ws3;
+    winD._workspace = ws3;
+    wm._reconcileWindowHomes();
+
+    expect(tree.findNode("mo0ws2").childNodes).toEqual([nodeA, nodeB]);
+    expect(tree.findNode("mo0ws3").childNodes).toEqual([nodeC, nodeD]);
+    expect(nodeA.percent).toBeCloseTo(0.7, 5);
+    expect(nodeB.percent).toBeCloseTo(0.3, 5);
+    expect(nodeC.percent).toBeCloseTo(0.4, 5);
+    expect(nodeD.percent).toBeCloseTo(0.6, 5);
+  });
 });
