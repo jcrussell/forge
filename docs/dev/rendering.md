@@ -8,8 +8,11 @@ How a tree mutation becomes on-screen geometry. Entry point: `renderTree()` in
 Renders are **debounced** through a single `GLib.idle_add` source so the bursts of
 GNOME signals that follow one user action collapse into one layout pass.
 
-- If render is frozen (mid-grab) or `tiling-mode-enabled` is off, it only refreshes
-  decorations/borders and returns.
+- If render is frozen (mid-drag: only a **move** grab freezes it) or
+  `tiling-mode-enabled` is off, it only refreshes decorations/borders and returns.
+  A **resize** grab doesn't freeze: once `_handleResizing` has turned the
+  resized window's size into percents, a normal render lays its neighbours out
+  live, and `move()` skips the grabbed window itself.
 - Otherwise it schedules the idle body **once** (guarded by `_renderTreeSrcId`).
 
 The idle body (`window.js`) runs this exact order — **the order is
@@ -56,7 +59,11 @@ float decision is never re-evaluated.
 
 Every tiled window is positioned here. It early-returns on a missing/grabbed/
 **fullscreen** window and otherwise always calls `Compat.unmaximize()` before
-`move_resize_frame`.
+`move_resize_frame`. The exception to "grabbed" is a keyboard resize of a tiled
+window with a resize pair (`node.grabLaidOut`, cleared in `_grabCleanup`):
+`resize()` sets the percents from the size it asks for and the render places
+that window with its neighbours, so a held key stops at a neighbour's minimum
+size. A float or a lone window is moved directly and the render leaves it alone.
 
 ### Fullscreen / maximize gotchas
 
