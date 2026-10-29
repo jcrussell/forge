@@ -47,16 +47,23 @@ describe("WindowManager - Movement & Positioning", () => {
       let onFirstFrame;
       vi.spyOn(windowActor, "connect").mockImplementation((signal, callback) => {
         if (signal === "first-frame") onFirstFrame = callback;
-        return 1;
+        return 77;
       });
       const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
       const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
       const queueEventSpy = vi.spyOn(wm(), "queueEvent").mockImplementation(() => {});
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
-      wm()._awaitFirstFrame(metaWindow);
+      wm()._awaitFirstFrame(metaWindow, () => {
+        // Tracking can already move the window (moveCenter of the prefs window)
+        wm().move(metaWindow, rect);
+        // ...and binds the actor's tracked signals
+        windowActor.actorSignals = [1];
+      });
       wm().move(metaWindow, rect);
 
+      // disable() releases the handler with the actor's other signals
+      expect(windowActor.actorSignals).toEqual([1, 77]);
       expect(moveResizeSpy).not.toHaveBeenCalled();
       expect(unmaximizeSpy).not.toHaveBeenCalled();
 
@@ -67,6 +74,18 @@ describe("WindowManager - Movement & Positioning", () => {
       );
       wm().move(metaWindow, rect);
       expect(moveResizeSpy).toHaveBeenCalled();
+    });
+
+    it("drops the guard for a window Forge doesn't track", () => {
+      const metaWindow = createMockWindow();
+      const windowActor = metaWindow.get_compositor_private();
+      vi.spyOn(windowActor, "connect").mockReturnValue(77);
+      const disconnectSpy = vi.spyOn(windowActor, "disconnect");
+
+      wm()._awaitFirstFrame(metaWindow, () => {});
+
+      expect(disconnectSpy).toHaveBeenCalledWith(77);
+      expect(metaWindow.forgeAwaitingFirstFrame).toBe(false);
     });
   });
 

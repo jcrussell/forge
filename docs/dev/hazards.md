@@ -42,6 +42,19 @@ before an async hop may be dead by the time the handler runs.
 - **Gap:** no static rule — many raw getters (`get_frame_rect`, `get_title`, …)
   rely on the caller's context being "known live". Hard to prove statically.
 
+### 2a. Unmanaged but not finalized window
+Between Mutter's `unmanaged` and the actor's `destroy` (the close animation), the
+tree still holds the window and its wrapper is alive, so `isWindowAlive()`
+passes. `raise()`/`focus()`/`activate()` on it fail Mutter assertions
+(`meta_window_set_stack_position_no_sync: 'window->stack_position >= 0'`,
+forge-ext/forge#524) on close, alt-tab and swap.
+
+- **Guardrail (runtime):** `Utils.isWindowManaged()` also requires a compositor
+  actor; `Utils.safeRaise` / `safeFocus` / `safeActivate` check it first.
+- **Guardrail (blocking):** `local/no-raw-window-activation` bans the raw calls
+  in `lib/extension/` outside `utils.js` (calls with two or more arguments, such
+  as `Tree.focus(node, direction)`, aren't the window API and pass).
+
 ### 3. Signal connect/disconnect discipline
 A handler connected to a **long-lived external** object (`global.display`,
 settings, a shared actor) whose id is discarded outlives Forge's teardown and

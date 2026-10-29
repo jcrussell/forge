@@ -79,6 +79,22 @@ Global mocks available: `global.display`, `global.get_pointer()`, `global.stage`
 
 When tests need missing functionality, add it to the appropriate mock file. Keep mocks minimal - only implement what tests actually use.
 
+### Version-gated behaviour
+
+The suite runs as GNOME 47 (`PACKAGE_VERSION` in `tests/setup.js`), so the
+`Compat` shims take their 47 branch. A test of an API that GNOME 47 lacks is
+vacuous: it exercises code that never runs there (how Forge's call to a
+`get_size_hints()` that no Mutter has went unnoticed).
+
+- **One version-specific assertion:** `vi.resetModules()`, `vi.doMock` the
+  `resource:///org/gnome/shell/misc/config.js` module with the version, dynamically
+  `import()` the module under test, and `vi.doUnmock` + `vi.resetModules()` in
+  `finally` (see the GNOME 51 case in `tests/unit/tree/Tree-layout.test.js`).
+- **A whole file that needs a newer API** (e.g. window minimum sizes, Mutter 50+):
+  a file-level `vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({
+  PACKAGE_VERSION: "50.0" }))`, which replaces the setup default for that file
+  (see `tests/regression/bug-s6g-minsize-redistribution.test.js`).
+
 ## What's Excluded From Coverage
 
 Coverage measures `lib/**/*.js`. The `coverage.exclude` list in `vitest.config.js` drops

@@ -140,7 +140,7 @@
       }
     },
 
-    // forge-kvao/forge-s6g: shadow get_min_size on the LEFTMOST window of a
+    // forge-kvao/forge-s6g: shadow get_min_size (a client size) on the LEFTMOST window of a
     // class so the min-size redistribution can be exercised deterministically in
     // e2e (no headless app reports a large min-width). The own-property override
     // lives on the live Meta.Window and so survives the async render cycle. A
@@ -166,7 +166,20 @@
         win.get_min_size = () => [true, minWidth, minHeight];
         const ext = forgeExt();
         if (ext && ext.extWm) ext.extWm.renderTree("e2e-minsize");
-        return JSON.stringify({ ok: true, id: win.get_id(), rect: rect(win.get_frame_rect()) });
+        // get_min_size() is a client size; Forge lays out frames. Report the
+        // window's real frame-minus-client extents (negative for CSD shadows)
+        // so the caller can tell which frame size the minimum amounts to.
+        const frame = win.get_frame_rect();
+        const client = win.frame_rect_to_client_rect(frame);
+        return JSON.stringify({
+          ok: true,
+          id: win.get_id(),
+          rect: rect(frame),
+          frameExtents: {
+            width: frame.width - client.width,
+            height: frame.height - client.height,
+          },
+        });
       } catch (e) {
         return JSON.stringify({ error: e.message });
       }

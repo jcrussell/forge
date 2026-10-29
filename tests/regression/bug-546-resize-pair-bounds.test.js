@@ -5,8 +5,12 @@ import {
   createMockWindow,
   createWindowManagerFixture,
   getWorkspaceAndMonitor,
+  createTreeFixture,
 } from "../mocks/helpers/index.js";
 import { Rectangle, MotionDirection, GrabOp } from "../mocks/gnome/Meta.js";
+
+// Window minimum sizes come from Meta.Window.get_min_size(), Mutter 50+ (compat.md)
+vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({ PACKAGE_VERSION: "50.0" }));
 
 /**
  * forge-ext/forge#546, #550: a resize must stop where the neighbour reaches its
@@ -194,5 +198,20 @@ describe("Keyboard resize lays the window out with its neighbour", () => {
     wm.move(win, { x: 0, y: 0, width: 1920, height: 1080 });
 
     expect(frameSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("Minimum size of a window that died mid-resize", () => {
+  it("counts as no minimum instead of throwing", () => {
+    const ctx = createTreeFixture();
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const win = createMockWindow({ id: 5501, size_hints: { min_width: 400, min_height: 0 } });
+    const node = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, win);
+    win.get_id = () => {
+      throw new Error("Meta.Window has been already deallocated");
+    };
+
+    expect(ctx.tree._minSizeInOrientation(node, ORIENTATION_TYPES.HORIZONTAL)).toBe(0);
+    ctx.cleanup();
   });
 });

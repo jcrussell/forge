@@ -68,11 +68,6 @@ export const Source = {
   remove: (id) => true,
 };
 
-// Microseconds, like GLib's
-export function get_monotonic_time() {
-  return Math.round(performance.now() * 1000);
-}
-
 export function mkdir_with_parents(path, mode) {
   // Mock directory creation - return 0 for success
   return 0;
@@ -95,6 +90,5 @@ export default {
   idle_add,
   source_remove,
   Source,
-  get_monotonic_time,
   mkdir_with_parents,
 };

@@ -19,6 +19,7 @@ const js = require("@eslint/js");
 // window derefs). CommonJS require — this config file is CJS (no "type":"module").
 const localRules = {
   "no-raw-maximize-api": require("./eslint-rules/no-raw-maximize-api"),
+  "no-raw-window-activation": require("./eslint-rules/no-raw-window-activation"),
   "no-untracked-connect": require("./eslint-rules/no-untracked-connect"),
   "no-unguarded-window-deref": require("./eslint-rules/no-unguarded-window-deref"),
 };
@@ -101,6 +102,7 @@ module.exports = [
       "local/no-raw-maximize-api": "error",
       "local/no-untracked-connect": "error",
       "local/no-unguarded-window-deref": "error",
+      "local/no-raw-window-activation": "error",
       // GNOME 51 removed St's `vertical` and Clutter.get_default_backend(); both are
       // reached only through compat.js shims (Compat.stBoxOrientation /
       // Compat.getClutterBackend), which is exempted below.

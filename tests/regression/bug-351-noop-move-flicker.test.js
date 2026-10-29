@@ -10,6 +10,9 @@ import * as Meta from "../mocks/gnome/Meta.js";
 import * as St from "../mocks/gnome/St.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 
+// Window minimum sizes come from Meta.Window.get_min_size(), Mutter 50+ (compat.md)
+vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({ PACKAGE_VERSION: "50.0" }));
+
 /**
  * forge-wsc (#351) / forge-05l (#454) regression: renderTree fires on every
  * tracked-window focus change (and workspace events), and tree.apply() calls

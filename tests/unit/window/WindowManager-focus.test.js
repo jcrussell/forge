@@ -183,6 +183,26 @@ describe("WindowManager - Pointer & Focus Management", () => {
       expect(result).toBe(false);
     });
 
+    it("aims at a tiled window's laid-out rect while its frame catches up", () => {
+      // forge-ext/forge#544: on Wayland a tile's new position only arrives with its
+      // new size, once the app has drawn it; the warp targets where it is going
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const { nodeWindow } = createWindowNode(ctx.tree, monitor, {
+        windowOverrides: {
+          rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+          workspace: workspace0(),
+          minimized: false,
+        },
+      });
+      nodeWindow.mode = WINDOW_MODES.TILE;
+      nodeWindow.renderRect = { x: 960, y: 0, width: 960, height: 1080 };
+
+      // Inside the old frame, outside the laid-out rect
+      global.get_pointer.mockReturnValue([480, 540]);
+
+      expect(wm().canMovePointerInsideNodeWindow(nodeWindow)).toBe(true);
+    });
+
     it("should return false when window is minimized", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const { nodeWindow } = createWindowNode(ctx.tree, monitor, {

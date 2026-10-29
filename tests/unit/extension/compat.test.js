@@ -292,9 +292,13 @@ describe("compat getMinFrameSize", () => {
     expect(Compat.getMinFrameSize(win)).toEqual({ min_width: 400, min_height: 330 });
   });
 
-  it("is null when the window has no get_min_size", () => {
-    const win = new Window({});
-    win.get_min_size = undefined;
-    expect(Compat.getMinFrameSize(win)).toBe(null);
+  it.each(["45.0", "49.5"])("is null on GNOME %s, which has no get_min_size", async (v) => {
+    const OldCompat = await loadCompat(v);
+    const win = new Window({ size_hints: { min_width: 400, min_height: 300 } });
+    win.get_min_size = vi.fn(() => {
+      throw new Error("Meta.Window has no get_min_size before Mutter 50");
+    });
+    expect(OldCompat.getMinFrameSize(win)).toBe(null);
+    expect(win.get_min_size).not.toHaveBeenCalled();
   });
 });

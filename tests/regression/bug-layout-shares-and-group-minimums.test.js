@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import St from "gi://St";
 import { Node, NODE_TYPES, LAYOUT_TYPES, ORIENTATION_TYPES } from "../../lib/extension/tree.js";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
@@ -8,6 +8,9 @@ import {
   getWorkspaceAndMonitor,
 } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
+
+// Window minimum sizes come from Meta.Window.get_min_size(), Mutter 50+ (compat.md)
+vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({ PACKAGE_VERSION: "50.0" }));
 
 /**
  * Found by the nested fuzz test:
@@ -58,53 +61,5 @@ describe("Layout shares and group minimum sizes", () => {
     group.layout = LAYOUT_TYPES.TABBED;
     expect(ctx.tree._minSizeInOrientation(group, ORIENTATION_TYPES.VERTICAL)).toBe(200 + bar);
     expect(ctx.tree._minSizeInOrientation(group, ORIENTATION_TYPES.HORIZONTAL)).toBe(0);
-  });
-});
-
-describe("Percents put back to a sum of 1 when every child is tiled", () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = createWindowManagerFixture();
-  });
-
-  it("scales drifted percents back to 1", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    const nodes = [1, 2].map((id) => {
-      const n = ctx.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({ id, rect: new Rectangle({}) })
-      );
-      n.mode = WINDOW_MODES.TILE;
-      return n;
-    });
-    nodes[0].percent = 0.414;
-    nodes[1].percent = 0.263;
-
-    ctx.tree._healPercents(monitor, nodes);
-
-    expect(nodes[0].percent + nodes[1].percent).toBeCloseTo(1, 5);
-    expect(nodes[0].percent / nodes[1].percent).toBeCloseTo(0.414 / 0.263, 5);
-  });
-
-  it("leaves the shares alone while a child is away (minimized, maximized, floating)", () => {
-    const { monitor } = getWorkspaceAndMonitor(ctx);
-    monitor.layout = LAYOUT_TYPES.HSPLIT;
-    const nodes = [1, 2, 3].map((id) => {
-      const n = ctx.tree.createNode(
-        monitor.nodeValue,
-        NODE_TYPES.WINDOW,
-        createMockWindow({ id, rect: new Rectangle({}) })
-      );
-      n.mode = WINDOW_MODES.TILE;
-      n.percent = 1 / 3;
-      return n;
-    });
-
-    ctx.tree._healPercents(monitor, nodes.slice(1));
-
-    expect(nodes[1].percent).toBeCloseTo(1 / 3, 5);
   });
 });

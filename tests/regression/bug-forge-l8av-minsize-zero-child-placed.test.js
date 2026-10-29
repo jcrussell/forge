@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
 import { createTreeFixture, createMockWindow } from "../mocks/helpers/index.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
+
+// Window minimum sizes come from Meta.Window.get_min_size(), Mutter 50+ (compat.md)
+vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({ PACKAGE_VERSION: "50.0" }));
 
 /**
  * Bug forge-l8av (audit-2026-07 / C11): when the sum of children's minimum sizes

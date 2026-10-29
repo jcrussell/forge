@@ -372,6 +372,15 @@ class ShellProxy:
         except (ValueError, TypeError):
             return -1
 
+    def get_shell_major_version(self) -> int:
+        """Return GNOME Shell's major version (its D-Bus ShellVersion property)."""
+        if not self._proxy:
+            raise ShellProxyError("Not connected to GNOME Shell")
+        version = self._proxy.get_cached_property("ShellVersion")
+        if version is None:
+            raise ShellProxyError("GNOME Shell reports no ShellVersion")
+        return int(version.unpack().split(".")[0])
+
     def move_focused_window_to_monitor(self, monitor_index: int) -> str:
         """Move the focused window to another monitor via Mutter (move_to_monitor)."""
         self._ensure_bridge()

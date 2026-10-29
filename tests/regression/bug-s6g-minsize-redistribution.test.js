@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Node, LAYOUT_TYPES, NODE_TYPES } from "../../lib/extension/tree.js";
 import { createTreeFixture } from "../mocks/helpers/index.js";
 import { createMockWindow } from "../mocks/helpers/mockWindow.js";
 import { Rectangle } from "../mocks/gnome/Meta.js";
 import { Bin } from "../mocks/gnome/St.js";
+
+// Window minimum sizes come from Meta.Window.get_min_size(), Mutter 50+ (compat.md)
+vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({ PACKAGE_VERSION: "50.0" }));
 
 /**
  * forge-s6g / forge-mk4 (gh-378, also #117/#271): minimum-size-aware tiling.

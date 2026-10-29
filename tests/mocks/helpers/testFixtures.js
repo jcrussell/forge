@@ -263,6 +263,8 @@ export function createTreeFixture(options = {}) {
         : LAYOUT_TYPES[defaultLayout] || LAYOUT_TYPES.HSPLIT
     ),
     bindWorkspaceSignals: vi.fn(),
+    // Tree's minimum-size math counts the gaps around each window
+    calculateGaps: vi.fn(() => 0),
   };
 
   // Add extended methods for operation tests (move, split, etc.)
@@ -276,7 +278,6 @@ export function createTreeFixture(options = {}) {
       rectForMonitor: vi.fn(() => ({ x: 0, y: 0, width: 1920, height: 1080 })),
       sameParentMonitor: vi.fn(() => true),
       floatingWindow: vi.fn(() => false),
-      calculateGaps: vi.fn(() => 0),
     });
   }
 

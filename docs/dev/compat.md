@@ -33,6 +33,7 @@ GNOME 48/51 St and Clutter shims (also in `compat.js`):
 | --- | --- | --- |
 | `stBoxOrientation(vertical)` | `{ vertical }` (≤ 47) | `{ orientation: Clutter.Orientation.* }` (48+; `vertical` removed at 51) |
 | `getClutterBackend()` | `Clutter.get_default_backend()` (≤ 50) | `global.stage.context.get_backend()` (51+) |
+| `getMinFrameSize(w)` | `null`: no API (≤ 49) | `get_min_size()` (50+), converted from a client to a frame size |
 
 ## Drift map (reference)
 
@@ -55,6 +56,13 @@ GNOME 48/51 St and Clutter shims (also in `compat.js`):
 - `meta_window_untile` is `META_EXPORT_TEST` (private, not callable from GJS) across
   48/49/50 — the API gap that forces Forge's 1px-shave geometry workaround for the
   Wayland tile-inference bug.
+- `get_min_size` / `get_max_size`: **added at 50** (mutter 881a00d25f). Before that
+  no `meta_window_*` API exposes a window's size hints, so minimum-size-aware tiling
+  (`Tree._minSizeInOrientation`) is off on 45–49. There never was a
+  `get_size_hints()`; the e2e `test_real_window_reports_min_size` asserts both on
+  every lane, and the min-size layout test skips before 50. The hints are a **client** size (Wayland adds the CSD
+  `custom_frame_extents`, `meta-window-wayland.c`), and Mutter's own constraints
+  convert them with `client_rect_to_frame_rect`; `getMinFrameSize` does the same.
 - `begin_grab_op` signature changed at 49, but Forge doesn't call it from GJS — no
   impact.
 

@@ -122,6 +122,14 @@ export function createMockWindowGroup() {
       if (index !== -1) children.splice(index, 1);
       if (child && child._parent === group) child._parent = null;
     }),
+    // Clutter restacks a child just above `sibling` (or on top when it's null)
+    set_child_above_sibling: vi.fn((child, sibling) => {
+      const index = children.indexOf(child);
+      if (index === -1) return;
+      children.splice(index, 1);
+      const at = sibling ? children.indexOf(sibling) + 1 : children.length;
+      children.splice(at, 0, child);
+    }),
   };
   return group;
 }
