@@ -144,8 +144,7 @@ wrong way is reimplemented.
 
 ## Releasing
 
-Maintainers: cutting a release and submitting to extensions.gnome.org is
-documented in [RELEASING.md](RELEASING.md).
+Maintainers: cutting a release is documented in [RELEASING.md](RELEASING.md).
 
 > Maintainers: this repo tracks work with **bd** (beads) and additional automation
 > conventions documented in [AGENTS.md](AGENTS.md).
