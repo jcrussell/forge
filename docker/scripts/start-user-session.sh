@@ -131,7 +131,7 @@ DBUS_ENV="$BASE_ENV DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET"
 
 # Enable Forge extension via gsettings before starting GNOME Shell
 echo "Pre-enabling Forge extension via gsettings..."
-su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.shell enabled-extensions \"['forge@jmmaranan.com']\"" 2>/dev/null || true
+su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.shell enabled-extensions \"['forge@jcrussell.github.io']\"" 2>/dev/null || true
 
 # Configure GNOME Shell for headless testing (applies to both X11 and Wayland)
 echo "Configuring GNOME Shell for headless testing..."
@@ -387,7 +387,7 @@ fi
 
 # Enable the Forge extension via gnome-extensions CLI
 echo "Enabling Forge extension..."
-FORGE_UUID="forge@jmmaranan.com"
+FORGE_UUID="forge@jcrussell.github.io"
 
 su - gnomeshell -c "$DBUS_ENV gnome-extensions enable ${FORGE_UUID}" 2>&1 || true
 

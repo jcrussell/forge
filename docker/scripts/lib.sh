@@ -92,7 +92,7 @@ check_forge_extension() {
         --dest org.gnome.Shell \
         --object-path /org/gnome/Shell \
         --method org.gnome.Shell.Eval \
-        "try { const ext = Main.extensionManager.lookup('forge@jmmaranan.com'); ext && ext.stateObj && ext.stateObj.extWm && ext.stateObj.extWm.tree ? 'tree_ready' : (ext && ext.stateObj ? 'stateObj_only' : (ext ? 'ext_state_' + ext.state : 'not_found')); } catch(e) { 'error:' + e; }" 2>/dev/null || echo "(false, 'dbus_error')")
+        "try { const ext = Main.extensionManager.lookup('forge@jcrussell.github.io'); ext && ext.stateObj && ext.stateObj.extWm && ext.stateObj.extWm.tree ? 'tree_ready' : (ext && ext.stateObj ? 'stateObj_only' : (ext ? 'ext_state_' + ext.state : 'not_found')); } catch(e) { 'error:' + e; }" 2>/dev/null || echo "(false, 'dbus_error')")
 
     echo "$status"
     if echo "$status" | grep -q "tree_ready"; then
@@ -107,7 +107,7 @@ check_forge_extension() {
 wait_for_forge_extension() {
     local max_wait=${1:-180}
     local waited=0
-    local uuid="forge@jmmaranan.com"
+    local uuid="forge@jcrussell.github.io"
 
     echo "Waiting for Forge extension to initialize (max ${max_wait}s)..."
 

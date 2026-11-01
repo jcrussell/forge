@@ -24,7 +24,7 @@ def _ext_sees_tabbed_enabled(shell_proxy) -> bool:
     """True once the extension's in-process settings see tabbed mode enabled."""
     js = (
         "(function(){"
-        "const e=Main.extensionManager.lookup('forge@jmmaranan.com');"
+        "const e=Main.extensionManager.lookup('forge@jcrussell.github.io');"
         "if(!e||!e.stateObj||!e.stateObj.settings) return 'false';"
         "return String(e.stateObj.settings.get_boolean('tabbed-tiling-mode-enabled'));"
         "})();"

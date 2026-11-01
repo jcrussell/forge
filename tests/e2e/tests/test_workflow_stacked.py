@@ -30,7 +30,7 @@ _STACKED_DECORATION_PROBE = r"""
   // version, whereas St.BoxLayout only gained `orientation` at 48 (`vertical` was
   // removed at 51). Reading d.orientation on 45-47 would see a stale JS expando.
   const Clutter = imports.gi.Clutter;
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+  const ext = Main.extensionManager.lookup('forge@jcrussell.github.io').stateObj;
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
   let con = null;

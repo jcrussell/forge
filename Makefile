@@ -1,4 +1,4 @@
-UUID = forge@jmmaranan.com
+UUID = forge@jcrussell.github.io
 INSTALL_PATH = $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 MSGSRC = $(wildcard po/*.po)
 

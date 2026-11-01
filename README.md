@@ -67,25 +67,30 @@ This fork includes significant improvements over the upstream version:
 
 ### From a pre-built release
 
-Download `forge@jmmaranan.com.zip` from the
+Download `forge@jcrussell.github.io.zip` from the
 [latest release](https://github.com/jcrussell/forge/releases/latest), then:
 
 ```bash
 # (optional) verify the checksum and build provenance
 sha256sum -c SHA256SUMS
-gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
+gh attestation verify forge@jcrussell.github.io.zip --repo jcrussell/forge
 
 # install
-gnome-extensions install --force forge@jmmaranan.com.zip
+gnome-extensions install --force forge@jcrussell.github.io.zip
 
 # then log out and back in (X11: Alt+F2, then r) so the shell picks it up
 
 # ...and enable
-gnome-extensions enable forge@jmmaranan.com
+gnome-extensions enable forge@jcrussell.github.io
 ```
 
 `enable` fails with "does not exist" until the shell has re-scanned — that's why the
 log-out/restart step comes between install and enable, not after.
+
+**Upgrading from upstream Forge or a release before `v2026.11.0`:** those used the
+UUID `forge@jmmaranan.com`. Remove that copy first with
+`gnome-extensions uninstall forge@jmmaranan.com`, or both load and fight over
+windows. Your settings and `~/.config/forge` carry over.
 
 ### Build from source
 

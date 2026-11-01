@@ -105,7 +105,7 @@ RUN systemctl unmask systemd-logind.service && \
 RUN systemctl mask user@1000.service user-runtime-dir@1000.service
 
 # Set up extension directory
-ARG UUID=forge@jmmaranan.com
+ARG UUID=forge@jcrussell.github.io
 ENV EXTENSION_PATH=/home/gnomeshell/.local/share/gnome-shell/extensions/${UUID}
 
 # Stamp the host git SHA the image was built from so E2E results are traceable
@@ -135,7 +135,7 @@ RUN mkdir -p /home/gnomeshell/.config/dconf && \
 # Pre-enable the extension by writing to dconf database directly
 # Create a keyfile and compile it to binary format
 RUN mkdir -p /tmp/dconf-db && \
-    echo -e "[org/gnome/shell]\nenabled-extensions=['forge@jmmaranan.com']" > /tmp/dconf-db/00-forge && \
+    echo -e "[org/gnome/shell]\nenabled-extensions=['forge@jcrussell.github.io']" > /tmp/dconf-db/00-forge && \
     dconf compile /home/gnomeshell/.config/dconf/user /tmp/dconf-db && \
     chown gnomeshell:gnomeshell /home/gnomeshell/.config/dconf/user && \
     rm -rf /tmp/dconf-db

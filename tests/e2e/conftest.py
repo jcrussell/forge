@@ -148,7 +148,7 @@ def check_forge_ready(shell_proxy):
     js = """
     (function() {
         try {
-            const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
+            const ext = Main.extensionManager.lookup('forge@jcrussell.github.io');
             return ext && ext.stateObj ? 'ready' : 'not_ready';
         } catch(e) { return 'error'; }
     })();
@@ -218,7 +218,7 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
     js = """
     (function() {
         try {
-            const ext = Main.extensionManager.lookup('forge@jmmaranan.com');
+            const ext = Main.extensionManager.lookup('forge@jcrussell.github.io');
             const settings = ext && ext.stateObj && ext.stateObj.settings;
             if (!settings) return 'no_settings';
             settings.set_boolean('logging-enabled', true);

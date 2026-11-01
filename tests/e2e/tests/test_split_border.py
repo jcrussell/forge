@@ -19,7 +19,7 @@ import json
 # splitBorder actor + its St theme node's computed per-side border widths.
 PROBE_JS = r"""
 (() => {
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+  const ext = Main.extensionManager.lookup('forge@jcrussell.github.io').stateObj;
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
   try { wm.updateBorderLayout(); } catch (e) { return JSON.stringify({err: 'ublayout:' + e}); }
