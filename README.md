@@ -87,11 +87,6 @@ gnome-extensions enable forge@jcrussell.github.io
 `enable` fails with "does not exist" until the shell has re-scanned — that's why the
 log-out/restart step comes between install and enable, not after.
 
-**Upgrading from upstream Forge or a release before `v2026.11.0`:** those used the
-UUID `forge@jmmaranan.com`. Remove that copy first with
-`gnome-extensions uninstall forge@jmmaranan.com`, or both load and fight over
-windows. Your settings and `~/.config/forge` carry over.
-
 ### Build from source
 
 ```bash
@@ -106,6 +101,20 @@ make prod
 ```
 
 After installation, log out and log back in (or restart GNOME Shell on X11 with `Alt+F2`, then `r`).
+
+### Upgrading from `forge@jmmaranan.com`
+
+Upstream Forge and this fork's releases before `v2026.11.0` used the UUID
+`forge@jmmaranan.com`. Remove that copy before installing either way above, or both
+load and fight over windows:
+
+```bash
+gnome-extensions uninstall forge@jmmaranan.com
+```
+
+If it came from a distro package, uninstall the package instead (or run
+`gnome-extensions disable forge@jmmaranan.com`). Your settings and
+`~/.config/forge` carry over.
 
 ![image](https://user-images.githubusercontent.com/348125/146386593-8f53ea8b-2cf3-4d44-a613-bbcaf89f9d4a.png)
 

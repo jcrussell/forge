@@ -2,7 +2,7 @@
 # Generate release notes for a tag from conventional-commit subjects.
 #
 # GitHub's built-in generate_release_notes is PR-derived, and this repo lands
-# commits directly on dev with no PRs — so it produced empty bodies (v49-90-beta.1
+# commits directly on main with no PRs — so it produced empty bodies (v49-90-beta.1
 # and beta.2 shipped with nothing but a compare link). Commit subjects here follow
 # conventional commits, so bucket those instead.
 #
@@ -10,7 +10,7 @@
 # Writes markdown to stdout.
 #
 # If the tag is annotated, its message is used as a prelude — that is where
-# upgrade notes belong (`git tag -a v49-90 -m "..."`), so nothing release-specific
+# upgrade notes belong (`git tag -a v2026.11.0 -m "..."`), so nothing release-specific
 # is ever hardcoded here.
 set -euo pipefail
 
@@ -70,7 +70,7 @@ if [ -n "$OTHER" ]; then
   printf '### Other\n\n%s\n\n' "$OTHER"
 fi
 
-REPO_URL="https://github.com/${GITHUB_REPOSITORY:-forge-ext/forge}"
+REPO_URL="https://github.com/${GITHUB_REPOSITORY:-jcrussell/forge}"
 if [ -n "$PREV" ]; then
   printf '**Full Changelog**: %s/compare/%s...%s\n' "$REPO_URL" "$PREV" "$TAG"
 else

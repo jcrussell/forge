@@ -48,7 +48,7 @@ body:
     id: forge-version
     attributes:
       label: Forge version
-      description: Put the extensions.gnome.org version or the commit sha if compiled from source.
+      description: Put the release tag (e.g. v2026.11.0, the Version in Forge's About dialog) or the commit sha if compiled from source.
       placeholder: "00"
     validations:
       required: true

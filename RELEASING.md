@@ -1,8 +1,8 @@
 # Releasing Forge
 
 How to cut a release. Releases are distributed only as GitHub Releases; this
-fork is not published on extensions.gnome.org (EGO). Releases are automated by [`.github/workflows/publish.yml`](.github/workflows/publish.yml):
-pushing a tag builds the extension, checksums it, attaches a keyless
+fork is not published on extensions.gnome.org (EGO). Releases are automated by
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml): pushing a tag builds the extension, checksums it, attaches a keyless
 build-provenance attestation, and publishes a GitHub Release.
 
 ## Versioning & tags
@@ -41,10 +41,9 @@ Notes are generated from **commit subjects**, not PRs, by
 since the previous `v*` tag (for a stable tag, the previous *stable* tag, so
 betas don't hide earlier changes) are bucketed by conventional-commit type into
 Features / Bug Fixes / Documentation & Translations / Maintenance (plus Breaking
-Changes for `type!:` commits, listed first), with anything
-that doesn't parse listed under Other so nothing is silently dropped. GitHub's
+Changes for `type!:` commits, listed first), with anything that doesn't parse listed under Other so nothing is silently dropped. GitHub's
 built-in `generate_release_notes` is PR-derived and this repo commits straight to
-`dev`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
+`main`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
 a compare link).
 
 Nothing needs maintaining per release. When a release *does* need a human note —
@@ -59,7 +58,7 @@ git push origin v2026.11.0
 Preview any range locally:
 
 ```bash
-./.github/scripts/release-notes.sh v2026.11.0 v49-89
+./.github/scripts/release-notes.sh HEAD v49-89   # <tag> [previous-tag]
 ```
 
 ## Pre-releases (betas)
@@ -73,12 +72,14 @@ git push origin v2026.11.0-beta.1
 ```
 
 CI builds and attests the same zip but marks the GitHub Release as a
-**pre-release** (never shown as "Latest").
+**pre-release** (never shown as "Latest"). Only `-beta` and `-rc` are recognised:
+any other suffix (`-alpha.1`) would publish as a stable release.
 
 ## extensions.gnome.org
 
-Not a distribution channel for this fork: EGO's review policy does not accept
-AI-generated extensions. The zip is still EGO-shaped (`make dist`), so nothing
+Not a distribution channel for this fork: EGO's
+[review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#extensions-must-not-be-ai-generated)
+reject AI-generated extensions, and this fork is developed largely with AI agents. The zip is still EGO-shaped (`make dist`), so nothing
 here precludes it. The GitHub attestation and checksum secure the side-load path;
 GNOME's ecosystem has no author-signing mechanism.
 

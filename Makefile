@@ -4,7 +4,7 @@ MSGSRC = $(wildcard po/*.po)
 
 # Version stamped into the built metadata.json's version-name. CI sets this to the
 # exact tag (github.ref_name); locally it defaults to `git describe` (tag, or
-# v49-90-beta.1-3-gabc123 between tags, plus -dirty for uncommitted changes).
+# v2026.11.0-beta.1-3-gabc123 between tags, plus -dirty for uncommitted changes).
 FORGE_VERSION_NAME ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 
 # Shell configuration - explicitly use bash for portability across distros
@@ -66,7 +66,7 @@ build: clean metadata.json schemas compilemsgs metadata
 	mkdir -p temp
 	cp metadata.json temp
 	@# Stamp a git-derived version-name into the built metadata.json so the About
-	@# dialog and GNOME Extensions app show it (e.g. v49-90, or v49-90-beta.1-3-gabc123
+	@# dialog and GNOME Extensions app show it (e.g. v2026.11.0, or v2026.11.0-beta.1-3-gabc123
 	@# between tags). CI overrides FORGE_VERSION_NAME with the exact tag; local builds
 	@# fall back to `git describe`. Only temp/ is touched — committed metadata.json
 	@# stays clean. See .github/workflows/publish.yml.
@@ -183,6 +183,12 @@ disable:
 install:
 	mkdir -p $(INSTALL_PATH)
 	cp -r temp/* $(INSTALL_PATH)
+	@# Upstream and pre-v2026.11.0 builds used the old UUID; with both loaded, two
+	@# copies tile at once. `list` sees system (distro-packaged) installs too.
+	@if gnome-extensions list 2>/dev/null | grep -qx "forge@jmmaranan.com"; then \
+		echo "WARNING: forge@jmmaranan.com is also installed and will tile alongside $(UUID)."; \
+		echo "Remove it: gnome-extensions uninstall forge@jmmaranan.com (or uninstall the distro package)"; \
+	fi
 
 uninstall:
 	rm -rf $(INSTALL_PATH)

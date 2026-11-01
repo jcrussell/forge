@@ -18,7 +18,7 @@
 ARG FEDORA_VERSION=42
 FROM registry.fedoraproject.org/fedora:${FEDORA_VERSION}
 
-LABEL maintainer="Forge <forge@jmmaranan.com>"
+LABEL maintainer="Forge <https://github.com/jcrussell/forge>"
 LABEL description="E2E testing environment for Forge GNOME Shell extension"
 
 # Install GNOME Shell + test dependencies in a single layer.

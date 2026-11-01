@@ -23,7 +23,7 @@ import json
 import time
 from pathlib import Path
 
-from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, Timing
+from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, FORGE_UUID, Timing
 from framework.shell_proxy import ShellProxyError
 from framework.wait import WaitTimeoutError
 from framework.window_helper import drain_all_windows
@@ -60,7 +60,7 @@ LOG_ERROR_MARKERS = (
 
 # A GJS stack frame referencing the Forge extension. A *-CRITICAL whose trailing stack has no
 # such frame is GNOME-shell-core noise (not a Forge bug) — see LogScanner.new_errors.
-FORGE_FRAME_MARKER = "forge@jmmaranan"
+FORGE_FRAME_MARKER = FORGE_UUID
 
 
 class LogScanner:

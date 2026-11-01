@@ -9,7 +9,8 @@
 - **Check it's enabled** — `gnome-extensions list --enabled` should include
   `forge@jcrussell.github.io`. If it also lists `forge@jmmaranan.com` (upstream
   Forge, or this fork before `v2026.11.0`), two copies are tiling at once:
-  `gnome-extensions uninstall forge@jmmaranan.com`.
+  `gnome-extensions uninstall forge@jmmaranan.com`, or for a distro-packaged copy,
+  uninstall the package or `gnome-extensions disable forge@jmmaranan.com`.
 
 ## A window won't tile (or won't float)
 
