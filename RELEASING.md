@@ -1,24 +1,30 @@
 # Releasing Forge
 
-How to cut a release and submit it to extensions.gnome.org (EGO). Releases are
-automated by [`.github/workflows/publish.yml`](.github/workflows/publish.yml):
+How to cut a release. Releases are distributed only as GitHub Releases; this
+fork is not published on extensions.gnome.org (EGO). Releases are automated by [`.github/workflows/publish.yml`](.github/workflows/publish.yml):
 pushing a tag builds the extension, checksums it, attaches a keyless
 build-provenance attestation, and publishes a GitHub Release.
 
 ## Versioning & tags
 
-- **Tag scheme:** `v<gnome-major>-<ego-build>`, e.g. `v49-90`. The build number
-  tracks the incrementing version EGO assigns on upload.
-- EGO assigns the integer `version` in `metadata.json` itself, so we don't set it
-  there. `package.json`'s `version` is npm dev-manifest bookkeeping only — not
-  shipped in the zip, not read at runtime — so bumping it is optional.
+- **Tag scheme:** CalVer, `vYYYY.M.N` — e.g. `v2026.11.0`, then `v2026.11.1`
+  for the next release that month, `v2026.12.0` for the first in December. The
+  four-digit year keeps these tags sorting after upstream's old
+  `v<gnome-major>-<ego-build>` tags (`v49-90-beta.4`) under version sort.
+- The version says *when*, not *what*: breaking changes (a changed default
+  keybinding, a config format change, a dropped GNOME version) are flagged in the
+  notes instead. Mark the commit `type!:` (e.g. `feat!: ...`) and it is listed
+  under **Breaking Changes**; add migration steps in an annotated tag (below).
+- We don't set `version` in `metadata.json` (it is EGO's upload counter).
+  `package.json`'s `version` is npm dev-manifest bookkeeping only — not shipped
+  in the zip, not read at runtime — so bumping it is optional.
 - Lightweight tags are fine; signing is optional and CI does not check it.
 
 ## Cut a release
 
 ```bash
-git tag v49-90
-git push origin v49-90
+git tag v2026.11.0
+git push origin v2026.11.0
 ```
 
 CI then builds `forge@jmmaranan.com.zip`, generates `SHA256SUMS`, attests
@@ -32,8 +38,10 @@ tag would publish.
 
 Notes are generated from **commit subjects**, not PRs, by
 [`.github/scripts/release-notes.sh`](.github/scripts/release-notes.sh): commits
-since the previous `v*` tag are bucketed by conventional-commit type into
-Features / Bug Fixes / Documentation & Translations / Maintenance, with anything
+since the previous `v*` tag (for a stable tag, the previous *stable* tag, so
+betas don't hide earlier changes) are bucketed by conventional-commit type into
+Features / Bug Fixes / Documentation & Translations / Maintenance (plus Breaking
+Changes for `type!:` commits, listed first), with anything
 that doesn't parse listed under Other so nothing is silently dropped. GitHub's
 built-in `generate_release_notes` is PR-derived and this repo commits straight to
 `dev`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
@@ -44,47 +52,35 @@ a changed default, a migration step — put it in an **annotated** tag and it
 becomes the prelude above the generated sections:
 
 ```bash
-git tag -a v49-90 -m "Stacked/tabbed layouts are now enabled by default."
-git push origin v49-90
+git tag -a v2026.11.0 -m "Stacked/tabbed layouts are now enabled by default."
+git push origin v2026.11.0
 ```
 
 Preview any range locally:
 
 ```bash
-./.github/scripts/release-notes.sh v49-90 v49-89
+./.github/scripts/release-notes.sh v2026.11.0 v49-89
 ```
 
 ## Pre-releases (betas)
 
-To ship a build for testing without sending it to EGO, add a `-beta.N` or
-`-rc.N` suffix to the tag you're heading toward:
+To ship a build for testing, add a `-beta.N` or `-rc.N` suffix to the tag you're
+heading toward:
 
 ```bash
-git tag v49-90-beta.1
-git push origin v49-90-beta.1
+git tag v2026.11.0-beta.1
+git push origin v2026.11.0-beta.1
 ```
 
 CI builds and attests the same zip but marks the GitHub Release as a
-**pre-release** (never shown as "Latest"). The suffix keeps the EGO counter
-clean: betas never touch EGO, so the eventual bare `v49-90` cut still becomes EGO
-build 90.
+**pre-release** (never shown as "Latest").
 
-**Do not upload a beta to EGO.** Only the bare, suffix-free tag is the EGO-bound
-release.
+## extensions.gnome.org
 
-## Submit to extensions.gnome.org
-
-EGO has no upload API and human-reviews every submission, so this step is manual:
-
-1. Grab the release's `forge@jmmaranan.com.zip` (or run `make dist` locally — same
-   artifact).
-2. Upload it at <https://extensions.gnome.org/upload/>, marking the ToS and
-   shell-license compliance boxes.
-3. EGO assigns the integer `version` and queues the zip for review.
-
-The GitHub attestation and checksum secure the side-load path only; they do not
-appear on EGO. GNOME's ecosystem has no author-signing mechanism — EGO
-distribution trust comes from its review.
+Not a distribution channel for this fork: EGO's review policy does not accept
+AI-generated extensions. The zip is still EGO-shaped (`make dist`), so nothing
+here precludes it. The GitHub attestation and checksum secure the side-load path;
+GNOME's ecosystem has no author-signing mechanism.
 
 ## Verify a published release
 

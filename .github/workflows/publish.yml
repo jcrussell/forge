@@ -1,14 +1,13 @@
 # Release workflow: build the GNOME Shell extension, attest its provenance, and
 # publish it as a GitHub Release.
 #
-# Trigger: push a tag matching v* (the repo's v<gnome>-<ego-build> scheme, e.g.
-# v49-90). The tagged commit is built into forge@jmmaranan.com.zip — the same
-# EGO-shaped zip a maintainer uploads to extensions.gnome.org (see RELEASING.md).
+# Trigger: push a tag matching v* (the repo's CalVer vYYYY.M.N scheme, e.g.
+# v2026.11.0). The tagged commit is built into forge@jmmaranan.com.zip, the
+# extension zip users install with `gnome-extensions install` (see RELEASING.md).
 #
 # The zip is checksummed (SHA256SUMS) and gets a keyless build-provenance
 # attestation (Sigstore via GitHub OIDC — no signing keys to manage), verifiable
-# by users with `gh attestation verify`. NOTE: this secures the GitHub side-load
-# path only; extensions.gnome.org has no author-signing mechanism.
+# by users with `gh attestation verify`.
 #
 # workflow_dispatch on a BRANCH is a dry run: same build + attest, no Release (the
 # release step is gated on a tag ref). Dispatching with a tag selected does create
@@ -99,10 +98,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
-          # A -beta/-rc tag (v49-90-beta.1, v49-90-rc.1) is a pre-release:
-          # flagged as such and never shown as "Latest". A bare tag (v49-90 — the
-          # hyphen is the gnome-major/ego-build separator, not a suffix) is the
-          # stable, EGO-bound cut. See RELEASING.md.
+          # A -beta/-rc tag (v2026.11.0-beta.1, v2026.11.0-rc.1) is a
+          # pre-release: flagged as such and never shown as "Latest". A bare tag
+          # (v2026.11.0) is the stable cut. See RELEASING.md.
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           files: |
             forge@jmmaranan.com.zip
