@@ -71,7 +71,7 @@ class RetryConfig:
 
 
 # Forge extension constants
-FORGE_UUID = "forge@jmmaranan.com"
+FORGE_UUID = "forge@jcrussell.github.io"
 # Test windows come from apps/forge_test_window.py: one GTK4 toplevel per process, with no
 # D-Bus name, so a window lives exactly as long as its process (forge-obka). The app name is
 # also the window's class (X11 WM_CLASS / Wayland app_id).

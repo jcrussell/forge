@@ -231,7 +231,7 @@ because this list used to stop at step 4.
 
 | Path | Description |
 |------|-------------|
-| `/home/gnomeshell/.local/share/gnome-shell/extensions/forge@jmmaranan.com/` | Pre-installed Forge extension |
+| `/home/gnomeshell/.local/share/gnome-shell/extensions/forge@jcrussell.github.io/` | Pre-installed Forge extension |
 | `/app/tests/e2e/` | Test framework and test files |
 | `/app/scripts/` | Shell scripts (run-tests.sh, lib.sh, etc.) |
 | `/app/e2e-results/` | Test results and screenshots |

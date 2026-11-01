@@ -150,7 +150,7 @@ class TestFloatToggle:
         # the idle-scheduled render. On buggy code the method strips the live wmId
         # override regardless of the arg; the following render then tiles the float.
         shell_proxy.eval(
-            'const ext = Main.extensionManager.lookup("forge@jmmaranan.com").stateObj;'
+            'const ext = Main.extensionManager.lookup("forge@jcrussell.github.io").stateObj;'
             "ext.extWm.reloadWindowOverrides(false);"
             'ext.extWm.renderTree("e2e-8rm6", true); true;'
         )

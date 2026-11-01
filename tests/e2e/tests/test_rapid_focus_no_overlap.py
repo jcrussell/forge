@@ -18,7 +18,7 @@ import time
 # how many windows are left always-on-top immediately after.
 BURST_JS = r"""
 (() => {
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+  const ext = Main.extensionManager.lookup('forge@jcrussell.github.io').stateObj;
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
   for (let i = 0; i < 10; i++) {
@@ -35,7 +35,7 @@ BURST_JS = r"""
 # After the timers settle: no window should remain above, and we report rects.
 SETTLE_JS = r"""
 (() => {
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+  const ext = Main.extensionManager.lookup('forge@jcrussell.github.io').stateObj;
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
   const wins = wm.tree.nodeWindows.filter((n) => n.nodeValue).map((n) => n.nodeValue);

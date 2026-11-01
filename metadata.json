@@ -2,7 +2,7 @@
   "name": "Forge",
   "description": "Tiling and window manager for GNOME\n- Please report bugs/issues on https://github.com/jcrussell/forge/issues",
   "gettext-domain": "forge",
-  "uuid": "forge@jmmaranan.com",
+  "uuid": "forge@jcrussell.github.io",
   "settings-schema": "org.gnome.shell.extensions.forge",
   "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
   "session-modes": ["user", "unlock-dialog"],
