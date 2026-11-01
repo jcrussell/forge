@@ -14,7 +14,8 @@ build-provenance attestation, and publishes a GitHub Release.
 - The version says *when*, not *what*: breaking changes (a changed default
   keybinding, a config format change, a dropped GNOME version) are flagged in the
   notes instead. Mark the commit `type!:` (e.g. `feat!: ...`) and it is listed
-  under **Breaking Changes**; add migration steps in an annotated tag (below).
+  under **Breaking Changes**; a `BREAKING CHANGE:` footer alone is not picked up.
+  Add migration steps in an annotated tag (below).
 - We don't set `version` in `metadata.json` (it is EGO's upload counter).
   `package.json`'s `version` is npm dev-manifest bookkeeping only — not shipped
   in the zip, not read at runtime — so bumping it is optional.

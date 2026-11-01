@@ -18,8 +18,13 @@ TAG="${1:?usage: release-notes.sh <tag> [previous-tag]}"
 PREV="${2:-}"
 
 if [ -z "$PREV" ]; then
-  # Nearest preceding v* tag. Empty on the very first tag, which we handle below.
-  PREV="$(git describe --tags --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)"
+  # Nearest preceding v* tag. A stable tag skips pre-releases, so its notes cover
+  # everything its betas shipped too. Empty on the very first tag, handled below.
+  case "$TAG" in
+    *-beta* | *-rc*) SKIP=() ;;
+    *) SKIP=(--exclude '*-beta*' --exclude '*-rc*') ;;
+  esac
+  PREV="$(git describe --tags --abbrev=0 --match 'v*' ${SKIP[@]+"${SKIP[@]}"} "${TAG}^" 2>/dev/null || true)"
 fi
 
 if [ -n "$PREV" ]; then
@@ -40,15 +45,17 @@ if [ "$(git cat-file -t "refs/tags/${TAG}" 2>/dev/null || true)" = "tag" ]; then
   fi
 fi
 
-emit() { # emit <heading> <type-regex>
-  local heading="$1" types="$2" body
+emit() { # emit <heading> <type-regex> [bang-regex]
+  local heading="$1" types="$2" bang="${3:-!?}" body
   body="$(git log --no-merges --format='%s' "$RANGE" |
-    sed -nE "s/^(${types})(\([^)]*\))?!?: (.*)$/- \3/p" || true)"
+    sed -nE "s/^(${types})(\([^)]*\))?${bang}: (.*)$/- \3/p" || true)"
   if [ -n "$body" ]; then
     printf '### %s\n\n%s\n\n' "$heading" "$body"
   fi
 }
 
+# `type!:` marks a breaking change; it is listed here and under its own type.
+emit "Breaking Changes" '[a-z]+' '!'
 emit "Features" 'feat'
 emit "Bug Fixes" 'fix'
 emit "Documentation & Translations" 'docs|i18n'
