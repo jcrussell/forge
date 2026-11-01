@@ -70,7 +70,7 @@ if [ -n "$OTHER" ]; then
   printf '### Other\n\n%s\n\n' "$OTHER"
 fi
 
-REPO_URL="https://github.com/${GITHUB_REPOSITORY:-forge-ext/forge}"
+REPO_URL="https://github.com/${GITHUB_REPOSITORY:-jcrussell/forge}"
 if [ -n "$PREV" ]; then
   printf '**Full Changelog**: %s/compare/%s...%s\n' "$REPO_URL" "$PREV" "$TAG"
 else
