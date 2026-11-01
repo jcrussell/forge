@@ -65,13 +65,6 @@ This fork includes significant improvements over the upstream version:
 
 ## Installation
 
-### From extensions.gnome.org
-
-_Listing pending review — this fork is not yet published on extensions.gnome.org._
-Once it is, install it from the [GNOME Extensions](https://extensions.gnome.org)
-website (with the browser integration) or the **Extensions** / **Extension Manager**
-app by searching for "Forge".
-
 ### From a pre-built release
 
 Download `forge@jmmaranan.com.zip` from the
