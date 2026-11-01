@@ -108,7 +108,7 @@ class TestFocusNavigation:
         js = """
         (function() {
             try {
-                const forge = Main.extensionManager.lookup('forge@jmmaranan.com');
+                const forge = Main.extensionManager.lookup('forge@jcrussell.github.io');
                 if (!forge || !forge.stateObj) return JSON.stringify({error: 'Forge not loaded'});
                 const ext = forge.stateObj;
                 if (!ext.extWm) return JSON.stringify({error: 'extWm not available'});

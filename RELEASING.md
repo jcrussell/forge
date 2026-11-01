@@ -28,7 +28,7 @@ git tag v2026.11.0
 git push origin v2026.11.0
 ```
 
-CI then builds `forge@jmmaranan.com.zip`, generates `SHA256SUMS`, attests
+CI then builds `forge@jcrussell.github.io.zip`, generates `SHA256SUMS`, attests
 provenance, and creates the GitHub Release with auto-generated notes. To rehearse
 without releasing, run the workflow via **Actions → release → Run workflow**
 (`workflow_dispatch`) on a branch — it builds and attests but creates no Release.
@@ -88,5 +88,5 @@ GNOME's ecosystem has no author-signing mechanism.
 
 ```bash
 sha256sum -c SHA256SUMS
-gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
+gh attestation verify forge@jcrussell.github.io.zip --repo jcrussell/forge
 ```

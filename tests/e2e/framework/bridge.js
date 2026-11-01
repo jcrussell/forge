@@ -26,7 +26,7 @@
 (function () {
   if (globalThis._forgeTestBridge) return "ok"; // idempotency belt-and-suspenders (Python flag is primary guard)
 
-  const FORGE_UUID = "forge@jmmaranan.com";
+  const FORGE_UUID = "forge@jcrussell.github.io";
 
   // One-shot GLib sources Forge keeps on its WindowManager; each id is zeroed when its
   // callback runs, so a non-zero id is work Forge still has to do. pendingState() treats any

@@ -52,7 +52,7 @@ describe("forge-wwn8: ExtensionThemeManager.unloadStylesheet", () => {
     const defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css");
 
     const extension = {
-      metadata: { uuid: "forge@jmmaranan.com" },
+      metadata: { uuid: "forge@jcrussell.github.io" },
       configMgr: { stylesheetFile, defaultStylesheetFile },
       settings: {},
     };
@@ -115,7 +115,7 @@ describe("ExtensionThemeManager.reloadStylesheet", () => {
     defaultStylesheetFile = createMockStylesheetFile("/mock/default-stylesheet.css");
 
     const extension = {
-      metadata: { uuid: "forge@jmmaranan.com" },
+      metadata: { uuid: "forge@jcrussell.github.io" },
       configMgr: { stylesheetFile, defaultStylesheetFile },
       settings: {},
     };

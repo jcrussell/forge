@@ -1,4 +1,4 @@
-UUID = forge@jmmaranan.com
+UUID = forge@jcrussell.github.io
 INSTALL_PATH = $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 MSGSRC = $(wildcard po/*.po)
 
@@ -180,6 +180,12 @@ disable:
 install:
 	mkdir -p $(INSTALL_PATH)
 	cp -r temp/* $(INSTALL_PATH)
+	@# Upstream and pre-v2026.11.0 builds used the old UUID; with both enabled, two
+	@# copies tile at once. `list` sees system (distro-packaged) installs too.
+	@if gnome-extensions list 2>/dev/null | grep -qx "forge@jmmaranan.com"; then \
+		echo "WARNING: forge@jmmaranan.com is also installed; if both are enabled, both tile at once."; \
+		echo "Remove it: gnome-extensions uninstall forge@jmmaranan.com (or uninstall the distro package)"; \
+	fi
 
 uninstall:
 	rm -rf $(INSTALL_PATH)

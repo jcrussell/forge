@@ -11,9 +11,10 @@ re-anchored on display::restacked. A mocked window_group cannot show the Mutter
 restack, so this compares the real window_group child order.
 """
 
+import json
 import time
 
-from framework.constants import Timing
+from framework.constants import FORGE_UUID, Timing
 from framework.wait import wait_for, wait_for_layout
 
 FLOAT_TOGGLE = {
@@ -25,8 +26,9 @@ FLOAT_TOGGLE = {
     "height": 0.4,
 }
 
-_PRELUDE = r"""
-  const ext = Main.extensionManager.lookup('forge@jmmaranan.com').stateObj;
+_PRELUDE = (
+    ("\n  const ext = Main.extensionManager.lookup(%s).stateObj;" % json.dumps(FORGE_UUID))
+    + r"""
   const wm = ext && ext.extWm;
   if (!wm) return JSON.stringify({err: 'no-wm'});
   const con = wm.tree.getNodeByLayout('TABBED').find((c) => c.decoration);
@@ -36,6 +38,7 @@ _PRELUDE = r"""
   const float = others.find((n) => n.isFloat());
   const tiled = others.find((n) => n.isTile());
 """
+)
 
 # Put the float over the tabbed container's bar and raise it above the container.
 _COVER_BAR = (

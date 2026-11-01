@@ -2,7 +2,7 @@
 # publish it as a GitHub Release.
 #
 # Trigger: push a tag matching v* (the repo's CalVer vYYYY.M.N scheme, e.g.
-# v2026.11.0). The tagged commit is built into forge@jmmaranan.com.zip, the
+# v2026.11.0). The tagged commit is built into forge@jcrussell.github.io.zip, the
 # extension zip users install with `gnome-extensions install` (see RELEASING.md).
 #
 # The zip is checksummed (SHA256SUMS) and gets a keyless build-provenance
@@ -69,19 +69,19 @@ jobs:
         run: make dist
 
       - name: Generate checksum
-        run: sha256sum "forge@jmmaranan.com.zip" > SHA256SUMS
+        run: sha256sum "forge@jcrussell.github.io.zip" > SHA256SUMS
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: "forge@jmmaranan.com.zip"
+          subject-path: "forge@jcrussell.github.io.zip"
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: forge-gnome-extension
           path: |
-            forge@jmmaranan.com.zip
+            forge@jcrussell.github.io.zip
             SHA256SUMS
 
       - name: Generate release notes
@@ -103,7 +103,7 @@ jobs:
           # (v2026.11.0) is the stable cut. See RELEASING.md.
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           files: |
-            forge@jmmaranan.com.zip
+            forge@jcrussell.github.io.zip
             SHA256SUMS
           # Notes come from conventional-commit subjects, not PRs: GitHub's
           # generate_release_notes is PR-derived and this repo commits straight to

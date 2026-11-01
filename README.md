@@ -67,21 +67,21 @@ This fork includes significant improvements over the upstream version:
 
 ### From a pre-built release
 
-Download `forge@jmmaranan.com.zip` from the
+Download `forge@jcrussell.github.io.zip` from the
 [latest release](https://github.com/jcrussell/forge/releases/latest), then:
 
 ```bash
 # (optional) verify the checksum and build provenance
 sha256sum -c SHA256SUMS
-gh attestation verify forge@jmmaranan.com.zip --repo jcrussell/forge
+gh attestation verify forge@jcrussell.github.io.zip --repo jcrussell/forge
 
 # install
-gnome-extensions install --force forge@jmmaranan.com.zip
+gnome-extensions install --force forge@jcrussell.github.io.zip
 
 # then log out and back in (X11: Alt+F2, then r) so the shell picks it up
 
 # ...and enable
-gnome-extensions enable forge@jmmaranan.com
+gnome-extensions enable forge@jcrussell.github.io
 ```
 
 `enable` fails with "does not exist" until the shell has re-scanned — that's why the
@@ -101,6 +101,20 @@ make prod
 ```
 
 After installation, log out and log back in (or restart GNOME Shell on X11 with `Alt+F2`, then `r`).
+
+### Upgrading from `forge@jmmaranan.com`
+
+Upstream Forge and this fork's releases before `v2026.11.0` used the UUID
+`forge@jmmaranan.com`. Remove that copy before installing either way above, or both
+load and fight over windows:
+
+```bash
+gnome-extensions uninstall forge@jmmaranan.com
+```
+
+If it came from a distro package, uninstall the package instead (or run
+`gnome-extensions disable forge@jmmaranan.com`). Your settings and
+`~/.config/forge` carry over.
 
 ![image](https://user-images.githubusercontent.com/348125/146386593-8f53ea8b-2cf3-4d44-a613-bbcaf89f9d4a.png)
 
