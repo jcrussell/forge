@@ -328,3 +328,26 @@ describe("workspacesOnlyOnPrimary", () => {
     }
   });
 });
+
+describe("isFixedSize", () => {
+  it.each(["47.0", "51.0"])("is false for a resizable window (Mutter %s)", async (version) => {
+    const Compat = await loadCompat(version);
+    expect(Compat.isFixedSize(new Window({ allows_resize: true }))).toBe(false);
+  });
+
+  it.each(["47.0", "51.0"])("is true for a fixed-size window (Mutter %s)", async (version) => {
+    const Compat = await loadCompat(version);
+    expect(Compat.isFixedSize(new Window({ allows_resize: false }))).toBe(true);
+  });
+
+  it.each(["47.0", "51.0"])(
+    "is false for a maximized window although allows_resize() is false (Mutter %s)",
+    async (version) => {
+      const Compat = await loadCompat(version);
+      const window = new Window({ allows_resize: true });
+      window.set_maximize_flags(MaximizeFlags.BOTH);
+      expect(window.allows_resize()).toBe(false);
+      expect(Compat.isFixedSize(window)).toBe(false);
+    }
+  );
+});

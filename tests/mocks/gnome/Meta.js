@@ -244,8 +244,10 @@ export class Window extends withSignals() {
     // Mock delete operation
   }
 
+  // Mirrors meta_window_allows_resize() (mutter src/core/window.c): false while
+  // the window is maximized or fullscreen, whatever its size hints say.
   allows_resize() {
-    return this._allows_resize;
+    return this._allows_resize && !this.is_maximized() && !this.fullscreen;
   }
 
   get_window_type() {
