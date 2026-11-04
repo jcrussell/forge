@@ -22,6 +22,14 @@ If windows open on the "wrong" monitor, try switching this setting.
 workspaces by index. Use these for a monitor dedicated to a floating app (chat,
 media) — or as a workaround for the vertical-monitor limitation below.
 
+## Workspaces on the primary monitor only
+
+Under GNOME's default `workspaces-only-on-primary=true`, the other monitors do not
+switch workspaces: their windows stay visible on every workspace. Forge carries
+those monitors' layouts along to the active workspace on every switch, so
+directional focus and moves between the primary and the other monitors keep working
+on all workspaces.
+
 ## Known limitations
 
 - **Vertical / portrait monitor setups are not fully supported** — focus and

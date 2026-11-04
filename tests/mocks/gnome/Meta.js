@@ -126,7 +126,12 @@ export class Window extends withSignals() {
     return this.title;
   }
 
+  // Mirrors meta_window_get_workspace(): a sticky window reports the active
+  // workspace.
   get_workspace() {
+    if (this._on_all_workspaces && global.workspace_manager) {
+      return global.workspace_manager.get_active_workspace();
+    }
     return this._workspace;
   }
 

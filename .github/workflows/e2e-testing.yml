@@ -199,7 +199,7 @@ jobs:
           path: e2e-results/
           retention-days: 14
 
-  # Multi-monitor lane (forge-wrt). test_window_retiles_across_monitors self-skips
+  # Multi-monitor lane (forge-wrt). The multimonitor-marked tests self-skip
   # unless global.display.get_n_monitors() >= 2, which needs a 2nd --virtual-monitor
   # at session boot (FORGE_E2E_VIRTUAL_MONITORS=2, read in start-user-session.sh).
   # The default matrix never sets it, so multi-monitor tiling had zero CI signal.
@@ -222,7 +222,7 @@ jobs:
         fedora: [43, 44, 45]
     env:
       MM_FEDORA_VERSION: ${{ matrix.fedora }}
-      MM_TEST: test_window_retiles_across_monitors
+      MM_MARKER: multimonitor
     steps:
       - name: Checkout source code
         uses: actions/checkout@v7
@@ -246,7 +246,7 @@ jobs:
             --build-arg GIT_SHA=${{ github.sha }} \
             .
 
-      - name: Run multi-monitor test (gating)
+      - name: Run multi-monitor tests (gating)
         run: |
           mkdir -p e2e-results
           POD=$(docker run --rm -td \
@@ -263,16 +263,18 @@ jobs:
           # DISPATCH_MODE in the keybinding lane, which goes on the run-tests exec.)
           docker exec -e FORGE_E2E_VIRTUAL_MONITORS=2 $POD /usr/local/bin/start-user-session.sh 99
           docker exec $POD chown -R gnomeshell:gnomeshell /app/e2e-results
-          # -k isolates the single multimonitor test; -rs reports skip reasons.
-          docker exec --user gnomeshell -e DISPLAY=:99 $POD \
-            set-env.sh /app/scripts/run-tests.sh -k ${MM_TEST} -rs
+          # PYTEST_MARKER selects the multimonitor-marked tests (run-tests.sh turns it
+          # into -m; a -m passed as an argument would be overridden by its default
+          # -m "not fuzz"); -rs reports skip reasons.
+          docker exec --user gnomeshell -e DISPLAY=:99 -e PYTEST_MARKER=${MM_MARKER} $POD \
+            set-env.sh /app/scripts/run-tests.sh -rs
 
-      - name: Assert the multi-monitor test actually ran (not skipped)
+      - name: Assert the multi-monitor tests actually ran (not skipped)
         run: |
           # A skipped test exits 0, so the run step alone would pass GREEN while
           # exercising nothing — e.g. if the session came up single-screen and the test
           # self-skipped on get_monitor_count() < 2. Parse junit.xml and fail unless
-          # exactly one test passed with zero skips. This makes the gate non-vacuous.
+          # at least one test ran, with zero skips and zero failures. This makes the gate non-vacuous.
           python3 - "$PWD/e2e-results/junit.xml" <<'EOF'
           import sys, xml.etree.ElementTree as ET
           path = sys.argv[1]
@@ -288,14 +290,14 @@ jobs:
           errors = sum(int(s.get("errors", 0)) for s in suites)
           print(f"tests={tests} skipped={skipped} failures={failures} errors={errors}")
           if tests == 0:
-              sys.exit("::error::Multi-monitor test was not collected — check the -k filter.")
+              sys.exit("::error::No multi-monitor tests were collected — check the -m filter.")
           if skipped:
-              sys.exit("::error::Multi-monitor test SKIPPED (needs 2 monitors). Did the session "
+              sys.exit("::error::Multi-monitor tests SKIPPED (need 2 monitors). Did the session "
                        "boot Wayland-headless with FORGE_E2E_VIRTUAL_MONITORS=2? A skip here means the "
                        "lane exercised nothing.")
           if failures or errors:
-              sys.exit("::error::Multi-monitor test failed.")
-          print("Multi-monitor test ran and passed.")
+              sys.exit("::error::Multi-monitor tests failed.")
+          print("Multi-monitor tests ran and passed.")
           EOF
 
       - name: Upload multimonitor-gate results
