@@ -40,6 +40,31 @@ class TestMaximizeCompat:
             message="single remaining window should be maximized via the compat shim",
         )
 
+    def test_maximized_lone_window_stays_tiled(self, shell_proxy, restore_settings, two_windows):
+        """A window maximize-on-single maximized stays a TILE node.
+
+        Mutter's meta_window_allows_resize() is false while a window is maximized,
+        so Forge decides "fixed size" from the `resizeable` property instead.
+        """
+        restore_settings.set("window-maximize-on-single", True)
+        time.sleep(Timing.SETTINGS_SETTLE)
+
+        shell_proxy.close_one_window()
+        windows = wait_for_window_count(shell_proxy, 1)
+        wm_class = windows[0].get("wmClass")
+        wait_for(
+            shell_proxy.count_maximized_windows,
+            predicate=lambda n: n >= 1,
+            message="precondition: lone window should be maximized",
+        )
+
+        shell_proxy.fuzz_render_now()
+        time.sleep(Timing.SETTINGS_SETTLE)
+
+        assert not shell_proxy.is_window_floating(wm_class), (
+            "a maximized lone window must stay tiled, not float"
+        )
+
     def test_unmaximize_on_retile(self, shell_proxy, restore_settings, two_windows):
         """Re-tiling a maximized window unmaximizes it (Compat.unmaximize via move()).
 
