@@ -38,5 +38,6 @@ on all workspaces.
 - **Dynamic workspaces are not supported** — use a fixed number of workspaces.
 
 Hot-plugging a monitor is handled (the tree adds/repairs monitor nodes on
-`monitors-changed`); if a layout looks wrong after a display change, reload with
-`Super+Shift+r` and see [troubleshooting.md](troubleshooting.md).
+`monitors-changed`). If a layout looks wrong after a display change, disable and
+re-enable Forge to rebuild the tree (`Super+Shift+r` only reloads the config files,
+not the tree) and see [troubleshooting.md](troubleshooting.md).
