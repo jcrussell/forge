@@ -41,7 +41,7 @@ describe("Feature #462: a new window unmaximizes its maximized siblings", () => 
   });
 });
 
-describe("Feature #462: a maximized window counts as floating, and is still unmaximized", () => {
+describe("Feature #462: a maximized tiled window is unmaximized, a maximized float is not", () => {
   let ctx;
 
   beforeEach(() => {
@@ -50,10 +50,11 @@ describe("Feature #462: a maximized window counts as floating, and is still unma
 
   afterEach(() => ctx.cleanup());
 
-  it("unmaximizes a window floated only by its maximize (not resizable while maximized)", () => {
+  it("unmaximizes a window that stays tiled while maximized", () => {
     const { metaWindow: maxed, nodeWindow: maxedNode } = createTiledWindow(ctx, { id: 9601 });
     maxed.maximize();
-    maxedNode.mode = WINDOW_MODES.FLOAT; // processFloats: allows_resize() is false while maximized
+    ctx.windowManager.processFloats(); // a maximized window stays TILE
+    expect(maxedNode.isTile()).toBe(true);
     const { nodeWindow: newNode } = createTiledWindow(ctx, { id: 9602 });
 
     ctx.windowManager.handleUnmaximizeForTiling(newNode);
