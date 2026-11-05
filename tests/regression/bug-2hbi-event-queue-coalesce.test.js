@@ -8,7 +8,7 @@ import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/i
  * "focus-update" one tick at a time, and a new window's "window-first-frame"
  * waited behind the whole backlog.
  *
- * Fix: idempotent events (focus-update, raise-float, render-focus-stack) opt in
+ * Fix: idempotent events (focus-update, raise-float) opt in
  * to coalescing by name; window-first-frame is per window and never coalesces.
  * The queue's timeout is captured so each test can step it one tick at a time.
  */

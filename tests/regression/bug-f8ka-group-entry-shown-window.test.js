@@ -92,11 +92,19 @@ describe("forge-f8ka: entering a group lands on the window it shows", () => {
     });
   }
 
-  it("falls back to the entry-side window once the shown window is minimized", () => {
-    const { X, A, B } = buildGroup(LAYOUT_TYPES.TABBED);
-    B.nodeValue.minimized = true;
-    expect(ctx.tree.focus(X, MotionDirection.RIGHT)).toBe(A);
-  });
+  for (const layout of [LAYOUT_TYPES.TABBED, LAYOUT_TYPES.STACKED]) {
+    it(`${layout}: once the shown window is gone, enters at the member Mutter stacks highest`, () => {
+      const { X, Y, A, B } = buildGroup(layout);
+      B.nodeValue.minimized = true;
+      // Mutter has A on top of C, whatever the tree order (forge-0ym6).
+      ctx.display.sort_windows_by_stacking.mockImplementation((wins) => [
+        ...wins.filter((w) => w !== A.nodeValue),
+        ...wins.filter((w) => w === A.nodeValue),
+      ]);
+      expect(ctx.tree.focus(X, MotionDirection.RIGHT)).toBe(A);
+      expect(ctx.tree.focus(Y, MotionDirection.LEFT)).toBe(A);
+    });
+  }
 
   it("enters a split that holds a group at the group's shown window", () => {
     // HSPLIT[X, VSPLIT[TABBED[A, B], D]]: entering the VSPLIT walks into the tabs.
