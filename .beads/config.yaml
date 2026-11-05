@@ -39,7 +39,7 @@
 # JSONL backup (periodic export for off-machine recovery)
 # Auto-enabled when a git remote exists. Override explicitly:
 backup:
-  git-push: false # never let beads auto-push; user controls remote sync
+    git-push: false # never let beads auto-push; user controls remote sync
 # Other knobs (left at defaults):
 #   enabled: false     # Disable auto-backup entirely
 #   interval: 15m      # Minimum time between auto-exports
@@ -53,5 +53,6 @@ backup:
 # - linear.api-key
 # - github.org
 # - github.repo
-
 no-git-ops: true
+sync:
+    remote: "git+ssh://git@github.com/jcrussell/forge.git"

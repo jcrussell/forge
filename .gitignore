@@ -22,6 +22,7 @@ coverage/
 .dolt/
 *.db
 .beads-credential-key
+.beads.gate.lock
 
 # Local scratch / debugging artifacts (gitignored to prevent accidental commits)
 .scratch/
