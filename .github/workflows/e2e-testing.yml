@@ -361,22 +361,25 @@ jobs:
           fi
       - name: Check E2E test results
         run: |
-          # e2e-multimonitor-gate (forge-wrt/forge-1zn) is now BLOCKING: a failure on
-          # any leg (the matrix result is `failure` if any leg fails)
-          # gates the merge, same as the keybinding gate. Promoted after it ran green
-          # on both legs (forge-1zn part 1).
-          if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
-            echo "::error::Some E2E tests failed"
-            exit 1
-          elif [ "${{ needs.e2e-keybinding-gate.result }}" == "failure" ]; then
-            echo "::error::Keybinding-dispatch gate failed"
-            exit 1
-          elif [ "${{ needs.e2e-multimonitor-gate.result }}" == "failure" ]; then
-            echo "::error::Multi-monitor gate failed"
-            exit 1
-          elif [ "${{ needs.e2e-tests.result }}" == "cancelled" ]; then
-            echo "::warning::E2E tests were cancelled"
+          # Every lane must succeed. A cancelled or skipped lane (e.g. setup
+          # failed) exercised nothing, so it fails the summary too (forge-52hu).
+          # Draft PRs skip the lanes on purpose.
+          if [ "${{ github.event.pull_request.draft }}" == "true" ]; then
+            echo "Draft PR: E2E lanes skipped"
             exit 0
-          else
-            echo "All E2E tests passed!"
           fi
+          failed=0
+          for lane in \
+            "setup=${{ needs.setup.result }}" \
+            "e2e-tests=${{ needs.e2e-tests.result }}" \
+            "e2e-keybinding-gate=${{ needs.e2e-keybinding-gate.result }}" \
+            "e2e-multimonitor-gate=${{ needs.e2e-multimonitor-gate.result }}"; do
+            if [ "${lane#*=}" != "success" ]; then
+              echo "::error::${lane%%=*} result: ${lane#*=}"
+              failed=1
+            fi
+          done
+          if [ "$failed" = 1 ]; then
+            exit 1
+          fi
+          echo "All E2E tests passed!"

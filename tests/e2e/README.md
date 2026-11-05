@@ -205,7 +205,8 @@ make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
 Every one of these must move together — the sites below drifted apart historically
 because this list used to stop at step 4.
 
-1. Add the Fedora-to-GNOME mapping in `gnome-versions.json` (`fedora_to_gnome`)
+1. Add the Fedora-to-GNOME mapping in `gnome-versions.json` (`fedora_to_gnome`).
+   `run-tests.sh` fails any lane whose running shell major differs from this entry.
 2. Add the Fedora version to `supported_fedora` if it should run in CI
 3. Add the GNOME-to-Fedora mapping in the Makefile's `ifdef GNOME_VERSION` block
 4. Update `SUPPORTED_FEDORA_VERSIONS` in the Makefile if added to CI
