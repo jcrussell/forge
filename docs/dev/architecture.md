@@ -19,8 +19,10 @@ for Mutter API drift.
 - **`enable()`** (`extension.js`): loads the two GSettings schemas (main +
   `…forge.keybindings`); saves and overrides conflicting GNOME settings
   (`SETTINGS_OVERRIDES`, `lib/shared/gnome-overrides.js` — e.g. Mutter `edge-tiling`,
-  `auto-maximize`, native maximize/tile keybindings; each original is restored on
-  disable); then constructs, in order: `ConfigManager` → `ConfigSync` → theme →
+  `auto-maximize`, native maximize/tile keybindings). The originals are saved in
+  the internal `gnome-overrides-snapshot` key before the overrides are written, so
+  they survive an exit that skips disable(); the next enable() reuses them and
+  disable restores them and clears the key. Then it constructs, in order: `ConfigManager` → `ConfigSync` → theme →
   `WindowManager` → `Keybindings` → `Cheatsheet`; finally `extWm.enable()`.
 - **`disable()`** (`extension.js`): restores the saved GNOME settings, then
   tears down each subsystem and nulls every reference. Order mirrors construction.
