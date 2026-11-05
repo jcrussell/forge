@@ -108,6 +108,20 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     expect(nodeB.percent).toBe(0.4);
   });
 
+  it("carries the monitor layout when the whole workspace shifts into an empty one (forge-u1x4)", () => {
+    const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
+    mon0ws2.layout = LAYOUT_TYPES.VSPLIT;
+    mon0ws2.layout = LAYOUT_TYPES.TABBED; // remembers VSPLIT as its splitLayout
+    const { win: winA } = addWindow("A", mon0ws2.nodeValue, ctx.workspaces[2]);
+    const { win: winB } = addWindow("B", mon0ws2.nodeValue, ctx.workspaces[2]);
+
+    simulateInsertShift([winA, winB], new Workspace({ index: 3 }));
+
+    const mo0ws3 = tree.findNode("mo0ws3");
+    expect(mo0ws3.layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(mo0ws3.splitLayout).toBe(LAYOUT_TYPES.VSPLIT);
+  });
+
   it("still flattens a single window sent to another workspace (partial migration)", () => {
     const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
     const con = tree.createNode(mon0ws2.nodeValue, NODE_TYPES.CON, "con-ws2");
@@ -152,5 +166,59 @@ describe("Bug forge-6pe: cross-workspace migration preserves nested layout", () 
     expect(nodeB.percent).toBeCloseTo(0.3, 5);
     expect(nodeC.percent).toBeCloseTo(0.4, 5);
     expect(nodeD.percent).toBeCloseTo(0.6, 5);
+  });
+
+  it("carries every shifted workspace's layout when the insert shifts several (forge-h7pc)", () => {
+    const { monitor: mon0ws1 } = getWorkspaceAndMonitor(ctx, 1, 0);
+    const { monitor: mon0ws2 } = getWorkspaceAndMonitor(ctx, 2, 0);
+    mon0ws1.layout = LAYOUT_TYPES.TABBED;
+    mon0ws2.layout = LAYOUT_TYPES.VSPLIT;
+    const { win: winA } = addWindow("A", mon0ws1.nodeValue, ctx.workspaces[1]);
+    const { win: winB } = addWindow("B", mon0ws1.nodeValue, ctx.workspaces[1]);
+    const { win: winC } = addWindow("C", mon0ws2.nodeValue, ctx.workspaces[2]);
+    const { win: winD } = addWindow("D", mon0ws2.nodeValue, ctx.workspaces[2]);
+
+    const ws3 = new Workspace({ index: 3 });
+    ctx.workspaces.push(ws3);
+    tree.addWorkspace(3);
+    winA._workspace = ctx.workspaces[2];
+    winB._workspace = ctx.workspaces[2];
+    winC._workspace = ws3;
+    winD._workspace = ws3;
+    wm._reconcileWindowHomes();
+
+    expect(tree.findNode("mo0ws2").layout).toBe(LAYOUT_TYPES.TABBED);
+    expect(tree.findNode("mo0ws3").layout).toBe(LAYOUT_TYPES.VSPLIT);
+  });
+});
+
+describe("forge-h7pc: a lone window moved to another monitor keeps that monitor's layout", () => {
+  let ctx, tree, wm;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({ globals: { display: { monitorCount: 2 } } });
+    tree = ctx.tree;
+    wm = ctx.windowManager;
+    vi.spyOn(wm, "renderTree").mockImplementation(() => {});
+    vi.spyOn(wm, "trackCurrentMonWs").mockImplementation(() => {});
+  });
+
+  afterEach(() => ctx.cleanup());
+
+  it("does not copy a portrait monitor's VSPLIT onto an empty landscape monitor", () => {
+    const { monitor: mon0 } = getWorkspaceAndMonitor(ctx, 0, 0);
+    const { monitor: mon1 } = getWorkspaceAndMonitor(ctx, 0, 1);
+    mon0.layout = LAYOUT_TYPES.VSPLIT;
+    mon1.layout = LAYOUT_TYPES.HSPLIT;
+    const win = createMockWindow({ id: "A" });
+    win._workspace = ctx.workspaces[0];
+    win._monitor = 0;
+    tree.createNode(mon0.nodeValue, NODE_TYPES.WINDOW, win).mode = WINDOW_MODES.TILE;
+
+    win._monitor = 1;
+    wm._reconcileWindowHomes();
+
+    expect(tree.findNode("mo1ws0").contains(tree.findNode(win))).toBe(true);
+    expect(tree.findNode("mo1ws0").layout).toBe(LAYOUT_TYPES.HSPLIT);
   });
 });
