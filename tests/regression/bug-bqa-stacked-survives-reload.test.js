@@ -91,6 +91,41 @@ describe("forge-bqa: stacked/tabbed layout survives a tree reload", () => {
     expect(tabbed[0].lastTabFocus).toBe(windows[1]);
   });
 
+  // forge-f8ka: a STACKED group remembers its shown window too, and a group's
+  // shown window can sit inside a nested split.
+  it("restores the shown window of a STACKED group", () => {
+    const { monitor, con, windows } = buildGroup(LAYOUT_TYPES.STACKED, 3);
+    con.lastTabFocus = windows[1];
+
+    const snapshot = ctx.tree.snapshotLayoutGroups();
+    flattenUnderMonitor(monitor, windows);
+    ctx.tree.restoreLayoutGroups(snapshot);
+
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.STACKED)[0].lastTabFocus).toBe(windows[1]);
+  });
+
+  it("restores a shown window that sits inside a nested split", () => {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    // TABBED -> [ w0, HSPLIT -> [w1, w2] ], showing w2.
+    const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+    outer.layout = LAYOUT_TYPES.TABBED;
+    const w0 = makeWindow(0);
+    ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, w0);
+    const inner = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
+    inner.layout = LAYOUT_TYPES.HSPLIT;
+    const w1 = makeWindow(1);
+    const w2 = makeWindow(2);
+    ctx.tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, w1);
+    ctx.tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, w2);
+    outer.lastTabFocus = w2;
+
+    const snapshot = ctx.tree.snapshotLayoutGroups();
+    flattenUnderMonitor(monitor, [w0, w1, w2]);
+    ctx.tree.restoreLayoutGroups(snapshot);
+
+    expect(ctx.tree.getNodeByLayout(LAYOUT_TYPES.TABBED)[0].lastTabFocus).toBe(w2);
+  });
+
   it("falls back to a survivor when the snapshotted lastTabFocus window is gone", () => {
     const { monitor, con, windows } = buildGroup(LAYOUT_TYPES.TABBED, 3);
     // The focused tab is windows[2]; it does not come back after the reload.

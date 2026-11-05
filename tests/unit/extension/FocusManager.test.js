@@ -238,7 +238,7 @@ describe("FocusManager", () => {
     });
   });
 
-  describe("updateStackedFocus() / updateTabbedFocus() - _freezeRender no-op", () => {
+  describe("updateGroupFocus() - _freezeRender no-op", () => {
     const stackedNode = (layout) => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
@@ -253,24 +253,24 @@ describe("FocusManager", () => {
       return nodeWindow;
     };
 
-    it("updateStackedFocus is a no-op when _freezeRender is true", () => {
+    it("is a no-op in a STACKED group when _freezeRender is true", () => {
       const nodeWindow = stackedNode(LAYOUT_TYPES.STACKED);
       const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
       const queueSpy = vi.spyOn(wm(), "queueEvent");
       wm()._freezeRender = true;
 
-      wm().updateStackedFocus(nodeWindow);
+      wm().updateGroupFocus(nodeWindow);
 
       expect(raiseSpy).not.toHaveBeenCalled();
       expect(queueSpy).not.toHaveBeenCalled();
     });
 
-    it("updateTabbedFocus is a no-op when _freezeRender is true", () => {
+    it("is a no-op in a TABBED group when _freezeRender is true", () => {
       const nodeWindow = stackedNode(LAYOUT_TYPES.TABBED);
       const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
       wm()._freezeRender = true;
 
-      wm().updateTabbedFocus(nodeWindow);
+      wm().updateGroupFocus(nodeWindow);
 
       expect(raiseSpy).not.toHaveBeenCalled();
     });
