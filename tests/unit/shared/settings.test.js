@@ -450,6 +450,17 @@ describe("ConfigManager", () => {
         expect(userFile.replace_contents).not.toHaveBeenCalled();
       });
 
+      it("forge-45tv: also backs up a file whose malformed entries the getter drops", () => {
+        const userFile = setup(
+          JSON.stringify({ overrides: [null, { wmClass: ["Mine"], mode: "float" }] })
+        );
+
+        addRule();
+
+        expect(userFile.copy).toHaveBeenCalledTimes(1);
+        expect(userFile.replace_contents).toHaveBeenCalled();
+      });
+
       it("makes no backup of an empty file, keeping an earlier .bak", () => {
         const userFile = setup("  \n");
 
