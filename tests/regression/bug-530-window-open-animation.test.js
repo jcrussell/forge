@@ -65,9 +65,8 @@ describe("Bug #530: first placement preserves the window-open animation", () => 
   });
 
   it("the skip is one-shot even when the window is never tiled by render", () => {
-    // A permanently floating window never goes through tree.apply(), which is
-    // where firstRender is otherwise cleared - move() must consume the flag
-    // itself so only the FIRST placement skips the strip.
+    // move() consumes the flag itself, so only the FIRST placement skips the
+    // strip, whichever path (render or a floating window's own move) places it.
     const { meta } = newTrackedWindow();
     const spy = vi.spyOn(meta.get_compositor_private(), "remove_all_transitions");
 
@@ -90,5 +89,36 @@ describe("Bug #530: first placement preserves the window-open animation", () => 
     meta.move_resize_frame(false, 5, 5, 300, 300);
     ctx.tree.render("test-second");
     expect(spy).toHaveBeenCalled();
+  });
+
+  it("a render before the first frame leaves firstRender for the real placement (forge-b2f9)", () => {
+    // On Wayland window-created (and the wm-class render) arrive before the
+    // first buffer; move() sends no geometry then, so it must not consume the flag.
+    const { meta } = newTrackedWindow();
+    const spy = vi.spyOn(meta.get_compositor_private(), "remove_all_transitions");
+    const moveResizeSpy = vi.spyOn(meta, "move_resize_frame");
+    meta.firstRender = true;
+    meta.forgeAwaitingFirstFrame = true;
+
+    ctx.tree.render("before-first-frame");
+    expect(moveResizeSpy).not.toHaveBeenCalled();
+    expect(meta.firstRender).toBe(true);
+
+    meta.forgeAwaitingFirstFrame = false;
+    ctx.tree.render("window-first-frame");
+    expect(moveResizeSpy).toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("a first placement that finds the window already in place still consumes firstRender", () => {
+    const { meta } = newTrackedWindow();
+    const spy = vi.spyOn(meta.get_compositor_private(), "remove_all_transitions");
+    meta.firstRender = true;
+
+    wm().move(meta, rect); // already there: no geometry sent
+    expect(meta.firstRender).toBe(false);
+
+    wm().move(meta, otherRect);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
