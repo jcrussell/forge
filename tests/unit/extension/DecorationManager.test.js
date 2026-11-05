@@ -117,6 +117,82 @@ describe("DecorationManager.updateDecorationLayout", () => {
   });
 });
 
+// forge-zhms: a tab/stack bar was restacked directly below the FOCUSED window, so
+// focusing an unrelated tiled window lifted every bar over a float covering it.
+// Unit-level guard only: the Mutter restack effect itself needs the e2e check.
+describe("DecorationManager tab/stack bar stacking (forge-zhms)", () => {
+  let ctx;
+
+  afterEach(() => {
+    ctx.cleanup();
+    vi.restoreAllMocks();
+  });
+
+  // window_group (bottom -> top): [tab-a, tab-b, float, other]; `other` (a tiled
+  // window outside the group) has focus. The float covers the group's bar.
+  function build() {
+    ctx = createWindowManagerFixture({
+      settings: { "tiling-mode-enabled": true, "showtab-decoration-enabled": true },
+    });
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    const con = createContainerNode(monitor, LAYOUT_TYPES.TABBED);
+    const { nodeWindow: a } = createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-a" } });
+    const { nodeWindow: b } = createWindowNode(ctx.tree, con, { windowOverrides: { id: "tab-b" } });
+    const { nodeWindow: float } = createWindowNode(ctx.tree, monitor, {
+      windowOverrides: { id: "float" },
+      mode: "FLOAT",
+    });
+    const { nodeWindow: other, metaWindow: otherMeta } = createWindowNode(ctx.tree, monitor, {
+      windowOverrides: { id: "other" },
+    });
+    con.decoration = { show: vi.fn(), hide: vi.fn() };
+    const group = ctx.windowGroup;
+    [con.decoration, a, b, float, other].forEach((n) => group.add_child(n.windowActor ?? n));
+    ctx.display.get_focus_window.mockReturnValue(otherMeta);
+    const stack = () => group.get_children();
+    return { con, a, b, float, other, stack };
+  }
+
+  it("anchors the bar below its own container's topmost window, not the focused one", () => {
+    const { con, b, float, stack } = build();
+
+    ctx.windowManager.updateDecorationLayout();
+
+    const order = stack();
+    expect(order.indexOf(con.decoration)).toBe(order.indexOf(b.windowActor) - 1);
+    expect(order.indexOf(con.decoration)).toBeLessThan(order.indexOf(float.windowActor));
+  });
+
+  it("re-anchors the bars after Mutter lowers every window actor under them", () => {
+    const { con, a, b, float, other, stack } = build();
+    // sync_actor_stacking lowers each window actor to the bottom in turn,
+    // leaving the bar on top of every window.
+    [other, float, b, a].forEach((n) =>
+      ctx.windowGroup.set_child_below_sibling(n.windowActor, null)
+    );
+    expect(stack().at(-1)).toBe(con.decoration);
+
+    ctx.windowManager.decorationManager.restackDecorations();
+
+    const order = stack();
+    expect(order.indexOf(con.decoration)).toBe(order.indexOf(b.windowActor) - 1);
+    expect(order.indexOf(con.decoration)).toBeLessThan(order.indexOf(float.windowActor));
+  });
+
+  it("ignores a minimized member stacked above the float", () => {
+    const { con, a, b, float, stack } = build();
+    // b was raised over the float, then minimized: the group shows only a.
+    ctx.windowGroup.set_child_above_sibling(b.windowActor, null);
+    b.nodeValue.minimized = true;
+
+    ctx.windowManager.decorationManager.restackDecorations();
+
+    const order = stack();
+    expect(order.indexOf(con.decoration)).toBe(order.indexOf(a.windowActor) - 1);
+    expect(order.indexOf(con.decoration)).toBeLessThan(order.indexOf(float.windowActor));
+  });
+});
+
 describe("DecorationManager border lifecycle", () => {
   let ctx;
 
