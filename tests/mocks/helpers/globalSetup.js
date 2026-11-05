@@ -130,6 +130,14 @@ export function createMockWindowGroup() {
       const at = sibling ? children.indexOf(sibling) + 1 : children.length;
       children.splice(at, 0, child);
     }),
+    // ...and just below `sibling` (or at the bottom when it's null)
+    set_child_below_sibling: vi.fn((child, sibling) => {
+      const index = children.indexOf(child);
+      if (index === -1) return;
+      children.splice(index, 1);
+      const at = sibling ? children.indexOf(sibling) : 0;
+      children.splice(at, 0, child);
+    }),
   };
   return group;
 }
