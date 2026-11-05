@@ -114,6 +114,12 @@ ENV EXTENSION_PATH=/home/gnomeshell/.local/share/gnome-shell/extensions/${UUID}
 ARG GIT_SHA=unknown
 ENV FORGE_BUILD_SHA=${GIT_SHA}
 
+# run-tests.sh checks the running GNOME Shell against this release's entry in
+# gnome-versions.json (forge-52hu). An ARG declared before FROM must be
+# re-declared to be visible here.
+ARG FEDORA_VERSION
+ENV FORGE_FEDORA_VERSION=${FEDORA_VERSION}
+
 # Copy pre-built extension (build on host first with: make build)
 COPY --chown=gnomeshell:gnomeshell temp/ ${EXTENSION_PATH}/
 

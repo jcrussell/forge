@@ -89,6 +89,17 @@ if ! wait_for_shell 60; then
     exit 1
 fi
 
+# Fail when the image runs a different GNOME Shell major than its Fedora release
+# maps to in gnome-versions.json, so a lane can't pass while testing the wrong
+# version (forge-52hu). Releases with no entry (e.g. rawhide) are not checked.
+EXPECTED_GNOME=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["fedora_to_gnome"].get(sys.argv[2], ""))' \
+    "${TEST_DIR}/gnome-versions.json" "${FORGE_FEDORA_VERSION:-}")
+ACTUAL_GNOME=$(get_gnome_version)
+if [ -n "$EXPECTED_GNOME" ] && [ "${ACTUAL_GNOME%%.*}" != "$EXPECTED_GNOME" ]; then
+    echo "ERROR: Fedora ${FORGE_FEDORA_VERSION} should run GNOME ${EXPECTED_GNOME}, got '${ACTUAL_GNOME}'"
+    exit 1
+fi
+
 # Wait for Forge extension to initialize
 echo "Waiting for Forge extension..."
 if ! wait_for_forge_extension 180; then
@@ -212,8 +223,10 @@ grep '\[Forge\]' /tmp/gnome-shell.log > "${RESULTS_DIR}/forge-trace.log" 2>/dev/
 # "crashed" warning on every lane (including green ones). gdbus is always present.
 if ! gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
         --method org.gnome.Shell.Eval "1+1" 2>/dev/null | grep -q "true"; then
+    # A crash fails the run even when pytest survived it (forge-52hu).
+    TEST_EXIT=1
     echo "=========================================="
-    echo "WARNING: gnome-shell crashed during tests!"
+    echo "ERROR: gnome-shell crashed during tests!"
     echo "(Full log saved to e2e-results/gnome-shell.log)"
     echo "--- gnome-shell log (last 200 lines) ---"
     tail -200 /tmp/gnome-shell.log 2>/dev/null || echo "(no log file found)"

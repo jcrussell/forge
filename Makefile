@@ -405,12 +405,14 @@ e2e-test-record:
 
 # Run E2E tests for all supported versions
 e2e-test-all:
-	@for version in $(SUPPORTED_FEDORA_VERSIONS); do \
+	@failed=""; \
+	for version in $(SUPPORTED_FEDORA_VERSIONS); do \
 		echo "========================================"; \
 		echo "Running E2E tests for Fedora $$version..."; \
 		echo "========================================"; \
-		$(MAKE) e2e-test FEDORA_VERSION=$$version || echo "Fedora $$version tests failed"; \
-	done
+		$(MAKE) e2e-test FEDORA_VERSION=$$version || failed="$$failed $$version"; \
+	done; \
+	if [ -n "$$failed" ]; then echo "E2E tests failed for Fedora:$$failed"; exit 1; fi
 
 # Interactive debugging in E2E container
 # Starts container with GNOME Shell, then drops into bash
