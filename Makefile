@@ -43,23 +43,20 @@ schemas: schemas/gschemas.compiled
 schemas/gschemas.compiled: schemas/*.gschema.xml
 	glib-compile-schemas schemas
 
+# forge-fw33: author identities are untrusted text, so serialise them with
+# json.dumps (valid JS) rather than splicing them into JS source. HEAD, not
+# --all, so a fetched-but-unmerged PR branch can't put its authors in a build.
 metadata:
 	@echo "Generating developer metadata..."
-	@echo "export const developers = [" > lib/prefs/metadata.js
-	@git shortlog -sne --all \
-	| (grep -vE 'dependabot|noreply' || true) \
-	| awk '{ \
-		email = $$NF; \
-		if (email in seen) next; \
-		seen[email] = 1; \
-		name = ""; \
-		for (i = 2; i < NF; i++) { \
-			name = name (i == 2 ? "" : " ") $$i; \
-		} \
-		gsub(/"/, "\\\"", name); \
-		printf "  \"%s %s\",\n", name, email; \
-	}' >> lib/prefs/metadata.js
-	@echo "];" >> lib/prefs/metadata.js
+	@# Check before the redirect below truncates lib/prefs/metadata.js.
+	@command -v python3 &>/dev/null || (echo "ERROR: python3 not found (needed to generate lib/prefs/metadata.js)" && exit 1)
+	@git shortlog -sne HEAD | python3 -c 'import json, re, sys; \
+		seen = {}; \
+		matches = (re.fullmatch(r"\s*\d+\t(.*) <(.*)>", line.rstrip("\n")) for line in sys.stdin); \
+		[seen.setdefault(m[2], f"{m[1]} <{m[2]}>") for m in matches \
+			if m and not re.search("dependabot|noreply", m[0])]; \
+		print("export const developers = [\n" + "".join(f"  {json.dumps(d)},\n" for d in seen.values()) + "];")' \
+		> lib/prefs/metadata.js
 
 build: clean metadata.json schemas compilemsgs metadata
 	rm -rf temp
