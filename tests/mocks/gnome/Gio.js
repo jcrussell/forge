@@ -52,7 +52,11 @@ export class File {
   copy(destination, flags, cancellable, progressCallback) {
     // Model Gio's perm handling: by default a copy preserves the source's mode;
     // TARGET_DEFAULT_PERMS makes the destination use the (writable) umask default.
+    // Like Gio, an OVERWRITE copy onto an existing read-only file fails (forge-3pnu).
     if (destination && typeof destination === "object") {
+      if (destination.query_exists(null) && !destination._writable) {
+        throw new Error(`Error opening file "${destination.path}": Permission denied`);
+      }
       if ((flags & FileCopyFlags.TARGET_DEFAULT_PERMS) !== 0) {
         destination._writable = true;
         destination._mode = 0o644;
