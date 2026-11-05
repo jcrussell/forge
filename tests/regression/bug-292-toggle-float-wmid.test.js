@@ -178,7 +178,7 @@ describe("Bug #292: toggle-float per-window vs per-class behavior", () => {
       expect(ctx.windowManager.isFloatingExempt(terminal2)).toBe(true);
     });
 
-    it("should remove class-wide override and all associated per-window overrides", () => {
+    it("should remove the class-wide override and this window's own, keeping other windows'", () => {
       ctx.configMgr.windowProps.overrides = [
         { wmClass: "gnome-terminal", mode: "float" },
         { wmClass: "gnome-terminal", wmId: "terminal-1", mode: "float" },
@@ -192,13 +192,13 @@ describe("Bug #292: toggle-float per-window vs per-class behavior", () => {
         allows_resize: true,
       });
 
-      // Remove class-wide (should remove all for the class)
       ctx.windowManager.removeFloatOverride(terminal1, false);
 
-      // All overrides for gnome-terminal should be removed
       const overrides = ctx.configMgr.windowProps.overrides;
       const terminalOverrides = overrides.filter((o) => o.wmClass === "gnome-terminal");
-      expect(terminalOverrides.length).toBe(0);
+      expect(terminalOverrides).toEqual([
+        { wmClass: "gnome-terminal", wmId: "terminal-2", mode: "float" },
+      ]);
     });
   });
 

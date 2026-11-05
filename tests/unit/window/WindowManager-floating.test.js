@@ -853,7 +853,7 @@ describe("WindowManager - Floating Mode", () => {
         expect(configMgr().windowProps.overrides.length).toBe(1);
       });
 
-      it("should remove all matching overrides without wmId filter", () => {
+      it("should remove the class rule and this window's own without wmId filter", () => {
         configMgr().windowProps.overrides = [
           { wmClass: "TestApp", mode: "float" },
           { wmClass: "TestApp", wmId: 123, mode: "float" },
@@ -865,7 +865,7 @@ describe("WindowManager - Floating Mode", () => {
         wm().removeFloatOverride(metaWindow, false);
 
         const overrides = configMgr().windowProps.overrides;
-        expect(overrides.length).toBe(0);
+        expect(overrides).toEqual([{ wmClass: "TestApp", wmId: 456, mode: "float" }]);
       });
 
       it("should only remove matching wmId when wmId filter enabled", () => {
