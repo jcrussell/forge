@@ -241,7 +241,7 @@ describe("Tree Cleanup and Container Management", () => {
   });
 
   describe("removeNode - Percent Reset", () => {
-    it("should reset sibling percents after removal in container", () => {
+    it("should keep sibling proportions after removal in container (forge-h5nw)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
@@ -258,9 +258,55 @@ describe("Tree Cleanup and Container Management", () => {
 
       ctx.tree.removeNode(node1);
 
-      // Remaining siblings should have percents reset
-      expect(node2.percent).toBe(0);
-      expect(node3.percent).toBe(0);
+      // Like the monitor level (and i3), the survivors keep their proportions,
+      // scaled to fill the space node1 left, instead of resetting to equal.
+      expect(node2.percent).toBeCloseTo(0.6, 5);
+      expect(node3.percent).toBeCloseTo(0.4, 5);
+    });
+
+    it("should keep proportions when a closed window collapses its container (forge-h5nw)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      // VSPLIT[a 50%, b 25%, CON[c] 25%]: closing c removes its CON too.
+      const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      outer.layout = LAYOUT_TYPES.VSPLIT;
+      const a = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const b = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const inner = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
+      const c = ctx.tree.createNode(inner.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      a.percent = 0.5;
+      b.percent = 0.25;
+      inner.percent = 0.25;
+
+      ctx.tree.removeNode(c);
+
+      expect(outer.childNodes).toEqual([a, b]);
+      expect(a.percent).toBeCloseTo(2 / 3, 5);
+      expect(b.percent).toBeCloseTo(1 / 3, 5);
+    });
+
+    it("should keep the grandparent's proportions when a container is left with no tiled window (forge-h5nw)", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+
+      // HSPLIT[G:VSPLIT[E[x], m(minimized)] 20%, b 50%, c 30%]: closing x leaves G
+      // with only a minimized window.
+      const outer = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new Bin());
+      outer.layout = LAYOUT_TYPES.HSPLIT;
+      const g = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.CON, new Bin());
+      g.layout = LAYOUT_TYPES.VSPLIT;
+      const e = ctx.tree.createNode(g.nodeValue, NODE_TYPES.CON, new Bin());
+      const x = ctx.tree.createNode(e.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      ctx.tree.createNode(g.nodeValue, NODE_TYPES.WINDOW, createMockWindow({ minimized: true }));
+      const b = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const c = ctx.tree.createNode(outer.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      g.percent = 0.2;
+      b.percent = 0.5;
+      c.percent = 0.3;
+
+      ctx.tree.removeNode(x);
+
+      expect(b.percent).toBeCloseTo(0.625, 5);
+      expect(c.percent).toBeCloseTo(0.375, 5);
     });
 
     it("should not reset percents across workspace boundary", () => {
