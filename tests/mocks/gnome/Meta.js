@@ -277,6 +277,13 @@ export class Window extends withSignals() {
     return this._window_type;
   }
 
+  // Mirrors meta_window_set_type() (public since Mutter 49), which emits
+  // notify::window-type. forge-e85.
+  set_window_type(type) {
+    this._window_type = type;
+    this.emit("notify::window-type", this);
+  }
+
   get_transient_for() {
     return this._transient_for;
   }
