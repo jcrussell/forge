@@ -34,7 +34,9 @@ Each override:
 | `mode` | yes | `float` = keep out of tiling; `tile` = force into tiling. |
 | `wmId` | — | Runtime-only (written by the per-window toggle); don't set by hand. |
 
-After hand-editing, reload with **`Super+Shift+r`**.
+After hand-editing, reload with **`Super+Shift+r`**. If the file is not valid JSON,
+Forge uses the bundled rules instead, and the next rule change saves your file as
+`windows.json.bak` before replacing it.
 
 ## Finding a window's class
 
