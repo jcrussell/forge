@@ -269,6 +269,50 @@ describe("WindowManager - Borders and Focus Indicators", () => {
     });
   });
 
+  // forge-3e1x: a split inside a tabbed group has its own (CON) tab. It was only
+  // highlighted by its click handler: keyboard/alt-tab focus of a window in the
+  // split never lit it, and once clicked it stayed lit after focus moved away.
+  describe("Nested split tab follows focus (forge-3e1x)", () => {
+    // TABBED[W1, CON:HSPLIT[W2, W3]], with header-tab doubles on W1 and the CON.
+    function buildNestedSplit() {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const tabbed = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, new St.Bin());
+      tabbed.layout = LAYOUT_TYPES.TABBED;
+      const meta = {};
+      const tiled = (parent, id) => {
+        meta[id] = createMockWindow({ id, wm_class: id, workspace: ctx.workspaces[0] });
+        const node = ctx.tree.createNode(parent.nodeValue, NODE_TYPES.WINDOW, meta[id]);
+        node.mode = WINDOW_MODES.TILE;
+        return node;
+      };
+      const w1 = tiled(tabbed, "W1");
+      const split = ctx.tree.createNode(tabbed.nodeValue, NODE_TYPES.CON, new St.Bin());
+      split.layout = LAYOUT_TYPES.HSPLIT;
+      tiled(split, "W2");
+      tiled(split, "W3");
+      w1.tab = makeTab();
+      split.tab = makeTab();
+      return { meta, w1Tab: w1.tab, splitTab: split.tab };
+    }
+
+    const focus = (metaWindow) => {
+      global.display.get_focus_window.mockReturnValue(metaWindow);
+      wm().updateBorderLayout();
+    };
+
+    it("lights the split's tab when a window in it has focus, and clears it after", () => {
+      const { meta, w1Tab, splitTab } = buildNestedSplit();
+
+      focus(meta.W2);
+      expect(splitTab.has_style_class_name(ACTIVE)).toBe(true);
+      expect(w1Tab.has_style_class_name(ACTIVE)).toBe(false);
+
+      focus(meta.W1);
+      expect(splitTab.has_style_class_name(ACTIVE)).toBe(false);
+      expect(w1Tab.has_style_class_name(ACTIVE)).toBe(true);
+    });
+  });
+
   describe("Focus Border Hidden on Single Window", () => {
     it("should skip border when single window on single monitor with setting enabled", () => {
       ctx.settings.get_boolean.mockImplementation((key) => {
