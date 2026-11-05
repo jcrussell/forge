@@ -16,8 +16,8 @@ import {
  * resets the dragged node, so the reference node is stranded in GRAB_TILE (excluded
  * from tiling, forces equal splits). Masked today only by forge-te9o's clobber.
  *
- * Fix: swapPairs normalizes GRAB_TILE -> TILE so neither node keeps GRAB_TILE,
- * while still exchanging TILE/FLOAT modes as before.
+ * Fix: swapPairs normalizes GRAB_TILE -> TILE so neither node keeps GRAB_TILE.
+ * (It no longer exchanges modes at all: floats are not swappable, forge-no5x.)
  */
 describe("Bug forge-j9fo: swapPairs never leaves a node in GRAB_TILE", () => {
   let ctx;
