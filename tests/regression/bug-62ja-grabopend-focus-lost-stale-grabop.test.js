@@ -12,7 +12,7 @@ import { GrabOp, MotionDirection } from "../mocks/gnome/Meta.js";
  * node's preview hint, skipping `this.nodeWinAtPointer = null` and the forge-leqs
  * `this.grabOp = null`. The stale grabOp survived until the next grab-op-begin,
  * so the WINDOW_BASE guard in updateMetaWorkspaceMonitor read a finished drag's
- * op and wrongly skipped updateTabbedFocus on a subsequent re-home.
+ * op and wrongly skipped updateGroupFocus on a subsequent re-home.
  *
  * Fix: clear grabOp + nodeWinAtPointer on the focus-lost exit path too.
  */

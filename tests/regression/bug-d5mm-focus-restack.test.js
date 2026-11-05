@@ -40,19 +40,17 @@ describe("forge-d5mm: focus handler re-stacks the focused window", () => {
     return update.callback;
   }
 
-  it("passes the focused node to updateStackedFocus/updateTabbedFocus (not undefined)", () => {
+  it("passes the focused node to updateGroupFocus (not undefined)", () => {
     const metaWindow = createMockWindow({ wm_class: "App", workspace: ctx.workspaces[0] });
     wm().trackWindow(null, metaWindow);
     const node = wm().tree.findNode(metaWindow);
     expect(node).toBeTruthy();
 
-    const stackedSpy = vi.spyOn(wm(), "updateStackedFocus");
-    const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
+    const groupSpy = vi.spyOn(wm(), "updateGroupFocus");
 
     fireFocusAndGetUpdate(metaWindow)();
 
-    expect(stackedSpy).toHaveBeenCalledWith(node);
-    expect(tabbedSpy).toHaveBeenCalledWith(node);
+    expect(groupSpy).toHaveBeenCalledWith(node);
   });
 
   it("re-appends the focused window to the end of its STACKED container", () => {
