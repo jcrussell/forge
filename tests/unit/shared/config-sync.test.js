@@ -215,6 +215,7 @@ describe("ConfigSync", () => {
       settings.set_boolean("css-updated", true);
       settings.set_string("css-last-update", "2024-01-01");
       settings.set_string("window-overrides-reload-trigger", "trigger");
+      settings.set_string("gnome-overrides-snapshot", '{"org.gnome.mutter::edge-tiling":true}');
 
       configSync.exportSettings();
 
@@ -233,6 +234,21 @@ describe("ConfigSync", () => {
       expect(allExportedKeys).not.toContain("css-updated");
       expect(allExportedKeys).not.toContain("css-last-update");
       expect(allExportedKeys).not.toContain("window-overrides-reload-trigger");
+      expect(allExportedKeys).not.toContain("gnome-overrides-snapshot");
+    });
+
+    // forge-7t96: enable()/disable() write the GNOME overrides snapshot; that
+    // must not schedule an auto-export of the portable config.
+    it("a gnome-overrides-snapshot change does not schedule an export", () => {
+      configMgr.hasPortableConfig = () => true;
+      configSync.configFilesLoaded = true;
+      configSync._connectSettingsSignals();
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+
+      settings._emit("changed", "gnome-overrides-snapshot");
+
+      expect(timeoutSpy).not.toHaveBeenCalled();
+      timeoutSpy.mockRestore();
     });
   });
 

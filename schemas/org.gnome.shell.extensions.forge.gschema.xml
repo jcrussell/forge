@@ -143,6 +143,11 @@
             <default>1</default>
         </key>
 
+        <key type="s" name="gnome-overrides-snapshot">
+            <default>''</default>
+            <summary>Internal: original values of the GNOME settings Forge overrides, restored on disable</summary>
+        </key>
+
         <key type="s" name="dnd-center-layout">
             <default>'tabbed'</default>
             <summary>

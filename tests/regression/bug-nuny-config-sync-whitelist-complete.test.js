@@ -25,6 +25,7 @@ import {
 const INTERNAL_MAIN_KEYS = [
   "css-updated",
   "css-last-update",
+  "gnome-overrides-snapshot",
   "window-overrides-reload-trigger",
   "config-last-import",
   "config-last-export",

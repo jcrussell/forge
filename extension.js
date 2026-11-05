@@ -27,6 +27,9 @@ import { ConfigManager } from "./lib/shared/settings.js";
 import { ConfigSync } from "./lib/shared/config-sync.js";
 import {
   SETTINGS_OVERRIDES,
+  SNAPSHOT_KEY,
+  overrideId,
+  parseSnapshot,
   shouldApplyOverride,
   overridesGatedBy,
   reconcileAction,
@@ -56,9 +59,11 @@ export default class ForgeExtension extends Extension {
       for (const desc of SETTINGS_OVERRIDES) {
         // Skip overrides the user has opted out of (forge-9fo). A gated-off
         // override is neither applied nor saved, so disable() has nothing to
-        // restore for it — handled before any Gio.Settings construction.
+        // restore for it. One still in the snapshot was left applied by an
+        // unclean exit before the user opted out, so restore it now (forge-7t96).
         if (!shouldApplyOverride(desc, this.settings)) {
           Logger.info(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' disabled in prefs`);
+          this._restoreOverride(desc);
           continue;
         }
         this._applyOverride(desc);
@@ -127,54 +132,91 @@ export default class ForgeExtension extends Extension {
   }
 
   /**
-   * Apply one GNOME settings override: save its current value (for restore) and
-   * write the override value. Probes the schema/key first — constructing
-   * Gio.Settings for an absent schema, or reading/writing an absent key, raises
-   * a C-level g_error that TERMINATES gnome-shell and is NOT a catchable JS
-   * exception (forge-rj4x), so the probe is a crash guard, not optional. On a
-   * normal GNOME 45+ desktop every schema/key is present, so this is a no-op
-   * guard. Re-captures `original` fresh on every call, so a runtime re-apply
-   * (forge-abk) records the user's latest GNOME value.
+   * The cached Gio.Settings for an override's schema, or null when the schema or
+   * key is absent. Constructing Gio.Settings for an absent schema, or reading/
+   * writing an absent key, raises a C-level g_error that TERMINATES gnome-shell
+   * and is NOT a catchable JS exception (forge-rj4x), so the probe is a crash
+   * guard, not optional. On a normal GNOME 45+ desktop every schema/key is
+   * present, so this is a no-op guard.
    */
-  _applyOverride(desc) {
-    if (!this._gnomeSettings || !this._savedSettings) return; // already disabled
+  _gnomeSettingsFor(desc) {
+    if (!this._gnomeSettings) return null; // already disabled
     const schema = Gio.SettingsSchemaSource.get_default()?.lookup(desc.schemaId, true);
     if (!schema || !schema.has_key(desc.key)) {
       Logger.warn(`Skipping GNOME override: ${desc.schemaId} '${desc.key}' is unavailable`);
-      return;
+      return null;
     }
     if (!this._gnomeSettings.has(desc.schemaId)) {
       this._gnomeSettings.set(desc.schemaId, new Gio.Settings({ schemaId: desc.schemaId }));
     }
-    const gsettings = this._gnomeSettings.get(desc.schemaId);
+    return this._gnomeSettings.get(desc.schemaId) ?? null;
+  }
+
+  _readSnapshot() {
+    return parseSnapshot(this.settings?.get_string(SNAPSHOT_KEY) ?? "");
+  }
+
+  _writeSnapshot(snapshot) {
+    const text = Object.keys(snapshot).length > 0 ? JSON.stringify(snapshot) : "";
+    this.settings?.set_string(SNAPSHOT_KEY, text);
+  }
+
+  /**
+   * Apply one GNOME settings override: persist its original value in the
+   * snapshot BEFORE writing the override, so an exit that skips disable() can't
+   * lose it (forge-7t96). An original already in the snapshot was left there by
+   * such an exit and is kept: the current value is then the override itself.
+   * Otherwise the original is captured fresh, so a runtime re-apply (forge-abk)
+   * records the user's latest GNOME value.
+   */
+  _applyOverride(desc) {
+    if (!this._savedSettings) return; // already disabled
+    const gsettings = this._gnomeSettingsFor(desc);
     if (!gsettings) return;
     const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";
     const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
-    const original = gsettings[getter](desc.key);
+    const id = overrideId(desc);
+    const snapshot = this._readSnapshot();
+    if (!(id in snapshot)) {
+      snapshot[id] = gsettings[getter](desc.key);
+      this._writeSnapshot(snapshot);
+    }
     gsettings[setter](desc.key, desc.newValue);
     this._savedSettings.push({
       schemaId: desc.schemaId,
       gsettings,
       key: desc.key,
-      original,
+      original: snapshot[id],
       setter,
     });
   }
 
   /**
-   * Restore one override to its saved original and drop it from _savedSettings
-   * (so a later re-apply re-captures the current value). The cached Gio.Settings
-   * in _gnomeSettings is kept for possible re-apply (forge-abk).
+   * Restore one override to its saved original, drop it from _savedSettings
+   * and the snapshot (so a later re-apply re-captures the current value). Also
+   * restores an original that only the snapshot holds (applied in an earlier
+   * session that exited uncleanly). The cached Gio.Settings in _gnomeSettings is
+   * kept for possible re-apply (forge-abk).
    */
   _restoreOverride(desc) {
     if (!this._savedSettings) return; // already disabled
+    const id = overrideId(desc);
+    const snapshot = this._readSnapshot();
     const idx = this._savedSettings.findIndex(
       (s) => s.schemaId === desc.schemaId && s.key === desc.key
     );
-    if (idx < 0) return;
-    const saved = this._savedSettings[idx];
-    saved.gsettings[saved.setter](saved.key, saved.original);
-    this._savedSettings.splice(idx, 1);
+    if (idx >= 0) {
+      const saved = this._savedSettings[idx];
+      saved.gsettings[saved.setter](saved.key, saved.original);
+      this._savedSettings.splice(idx, 1);
+    } else if (id in snapshot) {
+      const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
+      this._gnomeSettingsFor(desc)?.[setter](desc.key, snapshot[id]);
+    } else {
+      return;
+    }
+    delete snapshot[id];
+    this._writeSnapshot(snapshot);
   }
 
   _isOverrideSaved(desc) {
@@ -227,6 +269,9 @@ export default class ForgeExtension extends Extension {
         for (const saved of this._savedSettings) {
           saved.gsettings[saved.setter](saved.key, saved.original);
         }
+        // Every original is back in dconf; a failed write above leaves the
+        // snapshot for the next enable() to restore from.
+        this._writeSnapshot({});
         Logger.info("Restored GNOME settings and keybindings");
       } catch (e) {
         Logger.warn(`Failed to restore GNOME settings: ${e}`);
