@@ -245,6 +245,7 @@ because this list used to stop at step 4.
 - **`framework/input_simulator.py`** — `InputSimulator` class wrapping `xdotool` for keyboard shortcuts, mouse clicks, and window focus simulation.
 - **`framework/window_helper.py`** — `WindowHelper` with higher-level operations: open windows, arrange layouts, verify tiling state.
 - **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
+- **`framework/geometry.py`** — Pure rect math behind the layout asserts: `layout_fill_error()` clips windows to the workspace and fails on pairwise overlap or low coverage (self-tested shell-free by `tests/test_framework_geometry.py`).
 - **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
 
 ## Formatting & Linting
