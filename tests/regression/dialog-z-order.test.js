@@ -50,7 +50,7 @@ describe("Dialog z-order: focused float raises, no permanent always-on-top pin",
       nodeWindow.float = true;
 
       expect(dialog.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
     });
 
     it("does not make_above() a MODAL_DIALOG window", () => {
@@ -66,7 +66,7 @@ describe("Dialog z-order: focused float raises, no permanent always-on-top pin",
       nodeWindow.float = true;
 
       expect(modal.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
     });
 
     it("does not make_above() a transient window", () => {
@@ -84,7 +84,7 @@ describe("Dialog z-order: focused float raises, no permanent always-on-top pin",
       nodeWindow.float = true;
 
       expect(transient.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
     });
 
     it("does not make_above() a normal window", () => {
@@ -100,7 +100,7 @@ describe("Dialog z-order: focused float raises, no permanent always-on-top pin",
       nodeWindow.float = true;
 
       expect(normal.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
     });
   });
 
@@ -120,7 +120,7 @@ describe("Dialog z-order: focused float raises, no permanent always-on-top pin",
       nodeWindow.float = true;
 
       expect(normal.is_above()).toBe(true);
-      expect(nodeWindow._forgeSetAbove).toBe(true);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(true);
     });
   });
 
