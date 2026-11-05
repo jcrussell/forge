@@ -36,7 +36,8 @@ Each override:
 
 After hand-editing, reload with **`Super+Shift+r`**. If the file is not valid JSON,
 Forge uses the bundled rules instead, and the next rule change saves your file as
-`windows.json.bak` before replacing it.
+`windows.json.bak` before replacing it. A single malformed rule (not an object, or a
+`wmClass`/`wmTitle` that is not a string) is ignored the same way.
 
 ## Finding a window's class
 
