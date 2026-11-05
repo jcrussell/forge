@@ -137,4 +137,69 @@ describe("forge-ox8 (#64): resize a MIDDLE-child tabbed container", () => {
     expect(v.nodeR.percent).toBeCloseTo((300 - 90) / 900, 5);
     expect(v.nodeL.percent).toBeCloseTo(THIRD, 5);
   });
+
+  // forge-zqcm (#561): the neighbour across the dragged edge is not the group's
+  // sibling. Layout, 900 wide:
+  //   HSPLIT[ L(1/2) | VSPLIT(1/2)[ TABBED[A, B] | Y ] ]
+  function buildNestedTabbed(layout) {
+    const { monitor } = getWorkspaceAndMonitor(ctx);
+    monitor.layout = LAYOUT_TYPES.HSPLIT;
+    monitor.rect = { x: 0, y: 0, width: 900, height: 600 };
+    const tile = (node, percent, rect) => {
+      node.settings = ctx.tree.settings;
+      node.percent = percent;
+      node.rect = rect;
+      if (node.isWindow()) node.mode = WINDOW_MODES.TILE;
+      return node;
+    };
+    const win = (id) => new Node(NODE_TYPES.WINDOW, createMockWindow({ id, allows_resize: true }));
+
+    const nodeL = tile(win(5101), 0.5, { x: 0, y: 0, width: 450, height: 600 });
+    const column = tile(new Node(NODE_TYPES.CON, new Bin()), 0.5, {
+      x: 450,
+      y: 0,
+      width: 450,
+      height: 600,
+    });
+    column.layout = LAYOUT_TYPES.VSPLIT;
+    monitor.appendChild(nodeL);
+    monitor.appendChild(column);
+
+    const group = tile(new Node(NODE_TYPES.CON, new Bin()), 0.5, {
+      x: 450,
+      y: 0,
+      width: 450,
+      height: 300,
+    });
+    group.layout = layout;
+    const nodeY = tile(win(5104), 0.5, { x: 450, y: 300, width: 450, height: 300 });
+    column.appendChild(group);
+    column.appendChild(nodeY);
+
+    const nodeA = tile(win(5102), 1, { x: 450, y: 0, width: 450, height: 300 });
+    const nodeB = tile(win(5103), 1, { x: 450, y: 0, width: 450, height: 300 });
+    group.appendChild(nodeA);
+    group.appendChild(nodeB);
+    return { nodeL, column, group, nodeY, nodeA, winA: nodeA.nodeValue };
+  }
+
+  it.each([LAYOUT_TYPES.TABBED, LAYOUT_TYPES.STACKED])(
+    "resizes a %s group against a neighbour that is not its sibling",
+    (layout) => {
+      const v = buildNestedTabbed(layout);
+      v.nodeA.initRect = { x: 450, y: 0, width: 450, height: 300 };
+      v.nodeA.initGrabOp = GrabOp.RESIZING_W;
+      ctx.windowManager.grabOp = GrabOp.RESIZING_W;
+      v.winA.get_frame_rect = () => new Rectangle({ x: 360, y: 0, width: 540, height: 300 });
+      ctx.display.get_focus_window.mockReturnValue(v.winA);
+
+      expect(ctx.windowManager._handleResizing(v.nodeA)).toBe(true);
+
+      expect(v.nodeL.percent).toBeCloseTo(360 / 900, 5);
+      expect(v.column.percent).toBeCloseTo(540 / 900, 5);
+      // The column's own split is along the other axis and does not change.
+      expect(v.group.percent).toBeCloseTo(0.5, 5);
+      expect(v.nodeY.percent).toBeCloseTo(0.5, 5);
+    }
+  );
 });
