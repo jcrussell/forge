@@ -15,7 +15,9 @@ import {
  * FLOAT/TILE pair stranded the wrong window in/out of tiling, since renderTree
  * treats node.mode as authoritative and nothing re-corrected it.
  *
- * Fix: exchange modes only AFTER both frame rects validate.
+ * Fix: change modes only AFTER both frame rects validate. Floats are no longer
+ * swappable (forge-no5x), so the mode change left is the GRAB_TILE -> TILE
+ * normalization (forge-j9fo); an aborted swap must not apply it either.
  */
 describe("Bug forge-2ngl: swapPairs leaves modes untouched on a null-rect abort", () => {
   let ctx;
@@ -26,24 +28,26 @@ describe("Bug forge-2ngl: swapPairs leaves modes untouched on a null-rect abort"
 
   afterEach(() => ctx.cleanup());
 
-  it("does not swap TILE<->FLOAT modes when a frame rect is null", () => {
+  it("does not swap TILE<->GRAB_TILE modes when a frame rect is null", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const tileWin = createMockWindow({ id: 3001 });
-    const floatWin = createMockWindow({ id: 3002 });
+    const grabWin = createMockWindow({ id: 3002 });
     const tileNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, tileWin);
-    const floatNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, floatWin);
+    const grabNode = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, grabWin);
 
     tileNode.mode = WINDOW_MODES.TILE;
-    floatNode.mode = WINDOW_MODES.FLOAT;
+    // A floating partner is rejected up front (forge-no5x); a drag-swap's
+    // GRAB_TILE is the mode that still reaches the exchange.
+    grabNode.mode = WINDOW_MODES.GRAB_TILE;
 
     // Bug #354's transient failure: one participant returns a null frame rect.
     tileWin.get_frame_rect = () => null;
 
-    ctx.tree.swapPairs(tileNode, floatNode, false);
+    ctx.tree.swapPairs(grabNode, tileNode, false);
 
     // The swap aborted, so both modes must be exactly as they were. Pre-fix the
-    // modes were already exchanged (TILE node became FLOAT and vice versa).
+    // modes were already exchanged (the TILE node became GRAB_TILE and vice versa).
     expect(tileNode.mode).toBe(WINDOW_MODES.TILE);
-    expect(floatNode.mode).toBe(WINDOW_MODES.FLOAT);
+    expect(grabNode.mode).toBe(WINDOW_MODES.GRAB_TILE);
   });
 });

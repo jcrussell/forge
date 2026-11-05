@@ -254,7 +254,7 @@ describe("Tree Operations", () => {
       expect(node2.parentNode).toBe(container1);
     });
 
-    it("should exchange modes", () => {
+    it("should not swap a floating window (forge-no5x)", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
 
       const window1 = createMockWindow();
@@ -267,8 +267,9 @@ describe("Tree Operations", () => {
 
       ctx.tree.swapPairs(node1, node2, false);
 
-      expect(node1.mode).toBe(WINDOW_MODES.FLOAT);
-      expect(node2.mode).toBe(WINDOW_MODES.TILE);
+      expect(node1.mode).toBe(WINDOW_MODES.TILE);
+      expect(node2.mode).toBe(WINDOW_MODES.FLOAT);
+      expect(monitor.childNodes).toEqual([node1, node2]);
     });
 
     it("should exchange percents", () => {
