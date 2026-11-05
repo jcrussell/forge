@@ -13,6 +13,7 @@
         </key>
 
         <key type="u" name="window-gap-size">
+            <range min="0" max="32"/>
             <default>4</default>
             <summary>
                 The size of the gap between windows in the workarea
@@ -27,6 +28,7 @@
         </key>
 
         <key type="u" name="window-gap-size-increment">
+            <range min="0" max="32"/>
             <default>1</default>
             <summary>
                 The size increment of the gaps. size-increment * gap-size
@@ -34,21 +36,25 @@
         </key>
 
         <key type="u" name="window-margin-top">
+            <range min="0" max="100"/>
             <default>0</default>
             <summary>Extra margin at top of screen (for auto-hide panels)</summary>
         </key>
 
         <key type="u" name="window-margin-bottom">
+            <range min="0" max="100"/>
             <default>0</default>
             <summary>Extra margin at bottom of screen (for auto-hide docks)</summary>
         </key>
 
         <key type="u" name="window-margin-left">
+            <range min="0" max="100"/>
             <default>0</default>
             <summary>Extra margin at left of screen</summary>
         </key>
 
         <key type="u" name="window-margin-right">
+            <range min="0" max="100"/>
             <default>0</default>
             <summary>Extra margin at right of screen</summary>
         </key>
@@ -196,11 +202,13 @@
         </key>
 
         <key type="u" name="focus-border-radius">
+            <range min="0" max="30"/>
             <default>14</default>
             <summary>The border radius of focus borders in pixels</summary>
         </key>
 
         <key type="u" name="tabbed-tab-margin">
+            <range min="0" max="10"/>
             <default>1</default>
             <summary>The margin between tabs in tabbed mode (pixels)</summary>
         </key>
