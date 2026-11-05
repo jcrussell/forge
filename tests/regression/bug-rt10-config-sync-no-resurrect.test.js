@@ -37,6 +37,7 @@ describe("Bug forge-rt10: auto-export must not resurrect deleted portable files"
       set_boolean: (k, v) => store.set(k, { type: "b", value: v }),
       get_uint: (k) => store.get(k)?.value ?? 0,
       set_uint: (k, v) => store.set(k, { type: "u", value: v }),
+      get_uint64: (k) => store.get(k)?.value ?? 0,
       set_uint64: (k, v) => store.set(k, { type: "u", value: v }),
       get_int: (k) => store.get(k)?.value ?? 0,
       set_int: (k, v) => store.set(k, { type: "i", value: v }),

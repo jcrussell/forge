@@ -39,6 +39,7 @@ describe("ConfigSync", () => {
       set_uint: (key, value) => {
         store.set(key, { type: "u", value });
       },
+      get_uint64: (key) => store.get(key)?.value ?? 0,
       set_uint64: (key, value) => {
         store.set(key, { type: "u", value });
       },
@@ -326,6 +327,15 @@ describe("ConfigSync", () => {
       expect(autoExportAfterChange()).toEqual({ settings: 1, keybindings: 0 });
     });
 
+    it("does not stamp the last export past a skipped file (forge-89yf)", () => {
+      settings.set_uint64("config-last-export", 1000);
+      configMgr._mtimes.settings += 100;
+
+      autoExportAfterChange();
+
+      expect(Number(settings.get_uint64("config-last-export"))).toBe(1000);
+    });
+
     it("resumes auto-export on the NEXT change after a skip (no permanent latch)", () => {
       // External write → first debounced export skips it (and adopts the new baseline).
       configMgr._mtimes.settings += 100;
@@ -402,6 +412,43 @@ describe("ConfigSync", () => {
       settings._emit("changed", "window-gap-size");
       expect(timeoutSpy).not.toHaveBeenCalled();
       timeoutSpy.mockRestore();
+    });
+  });
+
+  describe("startup imports only files newer than the last sync (forge-89yf)", () => {
+    const SEC = 1000000; // getConfigMtime is in microseconds; the stamps are seconds
+
+    beforeEach(() => {
+      configMgr.hasPortableConfig = () => true;
+      configMgr._settingsProps = { appearance: { "window-gap-size": 4 } };
+      configMgr._keybindingsProps = { bindings: {} };
+      settings.set_uint("window-gap-size", 12);
+    });
+
+    it("keeps GSettings when the file is older than the last export", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 1000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(12);
+    });
+
+    it("imports a file written after the last export", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 3000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
+    });
+
+    it("imports on a machine that has never synced", () => {
+      configMgr._mtimes.settings = 1000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
     });
   });
 
@@ -535,6 +582,21 @@ describe("ConfigSync", () => {
       // No export should occur
       expect(configMgr.settingsProps).toBeNull();
       expect(configMgr.keybindingsProps).toBeNull();
+    });
+
+    it("flushes a pending auto-export instead of dropping it", () => {
+      configMgr.hasPortableConfig = () => true;
+      configMgr.settingsConfigFile = {};
+      configMgr.keybindingsConfigFile = {};
+      configSync.configFilesLoaded = true;
+      configSync._connectSettingsSignals();
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+      settings._emit("changed", "window-gap-size");
+      timeoutSpy.mockRestore();
+
+      configSync.destroy();
+
+      expect(configMgr.settingsProps).not.toBeNull();
     });
   });
 });
