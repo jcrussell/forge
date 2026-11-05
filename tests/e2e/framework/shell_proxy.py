@@ -813,9 +813,9 @@ class ShellProxy:
     def fuzz_focus_mismatch(self) -> dict:
         """Return focus-correctness violations: {'violations': [{rule,detail,path}, ...]}.
 
-        Angle 3: after settle, Mutter's focused window must be the tree's active/visible child
-        of its STACKED parent (forge-d5mm class; the TABBED variant is intentionally not probed —
-        it false-positived on settle races). The probe is conservative — a transient
+        Angle 3: after settle, Mutter's focused window must be the shown window (lastTabFocus)
+        of every tabbed/stacked group around it (forge-d5mm / forge-f8ka class). The check is
+        structural, not a stacking-order read. The probe is conservative — a transient
         state (null focus, mid-close, untracked window) returns no violations. Never throws; any
         non-dict result degrades to an empty list. See bridge.fuzzFocusMismatch.
         """

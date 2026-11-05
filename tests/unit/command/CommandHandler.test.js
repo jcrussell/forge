@@ -227,13 +227,12 @@ describe("CommandHandler", () => {
       );
     });
 
-    it("should clear lastTabFocus when switching from tabbed", () => {
+    it("keeps the focused window shown when switching from tabbed (forge-0ym6)", () => {
       mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
-      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
 
       commandHandler.execute({ name: "LayoutStackedToggle" });
 
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockWm.updateGroupFocus).toHaveBeenCalledWith(mockNodeWindow);
     });
 
     it("should call unfreezeRender", () => {

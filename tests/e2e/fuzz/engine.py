@@ -305,10 +305,9 @@ class FuzzEngine:
                 % (ph["count"], ph.get("visible")),
             )
 
-        # 2c. focus-correctness (Angle 3, forge-d5mm): after settle, Mutter's focused window must
-        # be the tree's active/visible child of its STACKED parent (TABBED not probed — too flaky).
-        # The probe is itself
-        # conservative (transient states return no violations); kept OUT of AUTHORITATIVE_RULES so
+        # 2c. focus-correctness (Angle 3, forge-d5mm/forge-f8ka): after settle, Mutter's focused
+        # window must be the shown window of every tabbed/stacked group around it. The probe is
+        # itself conservative (transient states return no violations); kept OUT of AUTHORITATIVE_RULES so
         # a hit still gets check_with_retry's settle+recheck transient guard. Defensive: any
         # non-dict / error -> skip.
         try:
