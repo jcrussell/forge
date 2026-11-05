@@ -46,13 +46,13 @@ describe("Bug #319: Float always-on-top handling", () => {
       nodeWindow.mode = WINDOW_MODES.TILE;
 
       // Initially, _forgeSetAbove should be undefined or false
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
 
       // Float the window using the float setter (which toggleFloatingMode should use)
       nodeWindow.float = true;
 
       // _forgeSetAbove should be set because float-always-on-top is enabled
-      expect(nodeWindow._forgeSetAbove).toBe(true);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(true);
       expect(nautilus.is_above()).toBe(true);
     });
 
@@ -71,7 +71,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       // Float the window (sets _forgeSetAbove)
       nodeWindow.float = true;
 
-      expect(nodeWindow._forgeSetAbove).toBe(true);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(true);
       expect(nautilus.is_above()).toBe(true);
 
       // Unfloat the window
@@ -79,7 +79,7 @@ describe("Bug #319: Float always-on-top handling", () => {
 
       // Bug #319: Window should no longer be above
       expect(nautilus.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBe(false);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(false);
     });
 
     it("should not clear always-on-top if user set it manually", () => {
@@ -101,7 +101,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       // Float the window - _forgeSetAbove should NOT be set because window was already above
       nodeWindow.float = true;
 
-      expect(nodeWindow._forgeSetAbove).toBeFalsy();
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBeFalsy();
       expect(nautilus.is_above()).toBe(true);
 
       // Unfloat the window
@@ -133,7 +133,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       // Window should be floating and above
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
       expect(nautilus.is_above()).toBe(true);
-      expect(nodeWindow._forgeSetAbove).toBe(true);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(true);
     });
 
     it("should properly handle always-on-top when toggling float off", () => {
@@ -154,7 +154,7 @@ describe("Bug #319: Float always-on-top handling", () => {
 
       expect(nodeWindow.mode).toBe(WINDOW_MODES.FLOAT);
       expect(nautilus.is_above()).toBe(true);
-      expect(nodeWindow._forgeSetAbove).toBe(true);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(true);
 
       // Toggle float off
       const unfloatAction = { name: "FloatToggle", mode: WINDOW_MODES.TILE };
@@ -163,7 +163,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       // Bug #319: Window should be tiled and NOT above
       expect(nodeWindow.mode).toBe(WINDOW_MODES.TILE);
       expect(nautilus.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBe(false);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(false);
     });
 
     it("should not get stuck in always-on-top after multiple toggles", () => {
@@ -195,7 +195,7 @@ describe("Bug #319: Float always-on-top handling", () => {
       ctx.windowManager.toggleFloatingMode(unfloatAction, nautilus);
       // Bug #319: Should NOT be stuck in always-on-top
       expect(nautilus.is_above()).toBe(false);
-      expect(nodeWindow._forgeSetAbove).toBe(false);
+      expect(nodeWindow.nodeValue._forgeSetAbove).toBe(false);
     });
   });
 });
