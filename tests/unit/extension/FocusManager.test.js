@@ -73,6 +73,63 @@ describe("FocusManager", () => {
     });
   });
 
+  // forge-0wvx: the poll acts only when the window under the pointer changes,
+  // so keyboard focus moved away from a window under a still pointer stays put.
+  describe("_focusWindowUnderPointer() - acts only when the hovered window changes", () => {
+    let left;
+    let right;
+    let other;
+
+    beforeEach(() => {
+      left = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      right = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      other = createMockWindow({ workspace: workspace0() });
+      global.get_window_actors.mockReturnValue([{ meta_window: left }, { meta_window: right }]);
+      global.get_pointer.mockReturnValue([480, 540]);
+      ctx.display.focus_window = left;
+      wm().shouldFocusOnHover = true;
+    });
+
+    it("keeps keyboard focus that moved away from the window under the pointer", () => {
+      const focusSpy = vi.spyOn(left, "focus");
+      wm()._focusWindowUnderPointer();
+
+      ctx.display.focus_window = other; // e.g. Alt+Tab, pointer not moved
+      wm()._focusWindowUnderPointer();
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it("focuses the next window the pointer reaches", () => {
+      wm()._focusWindowUnderPointer();
+      ctx.display.focus_window = other;
+
+      const focusSpy = vi.spyOn(right, "focus");
+      global.get_pointer.mockReturnValue([1440, 540]);
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).toHaveBeenCalledWith(12345);
+    });
+
+    it("forgets the hovered window when the loop restarts", () => {
+      wm()._focusWindowUnderPointer();
+      ctx.display.focus_window = other;
+
+      const focusSpy = vi.spyOn(left, "focus");
+      wm().pointerLoopInit();
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).toHaveBeenCalledWith(12345);
+    });
+  });
+
   describe("_focusWindowUnderPointer() - disabling guards (return false)", () => {
     it("returns false and clears the timeout id when shouldFocusOnHover is false", () => {
       const { focusSpy, raiseSpy } = placeWindowUnderPointer();
