@@ -327,13 +327,26 @@ describe("ConfigSync", () => {
       expect(autoExportAfterChange()).toEqual({ settings: 1, keybindings: 0 });
     });
 
-    it("does not stamp the last export past a skipped file (forge-89yf)", () => {
-      settings.set_uint64("config-last-export", 1000);
+    it("persists only the written file as synced, so startup imports the skipped one (forge-89yf)", () => {
       configMgr._mtimes.settings += 100;
 
       autoExportAfterChange();
 
-      expect(Number(settings.get_uint64("config-last-export"))).toBe(1000);
+      const synced = JSON.parse(settings.get_string("config-sync-mtimes"));
+      expect(synced.settings).not.toBe(configMgr._mtimes.settings);
+      expect(synced.keybindings).toBe(configMgr._mtimes.keybindings);
+    });
+
+    it("does not persist a file as synced when its export fails (forge-89yf)", () => {
+      // A hand edit is skipped once, then the next export of that file fails:
+      // startup must still import the hand edit.
+      configMgr._mtimes.keybindings += 100;
+      autoExportAfterChange();
+      configMgr.saveKeybindingsProps = () => false;
+
+      autoExportAfterChange("window-gap-size");
+
+      expect(configSync._fileChangedSinceSync("keybindings")).toBe(true);
     });
 
     it("resumes auto-export on the NEXT change after a skip (no permanent latch)", () => {
@@ -415,7 +428,7 @@ describe("ConfigSync", () => {
     });
   });
 
-  describe("startup imports only files newer than the last sync (forge-89yf)", () => {
+  describe("startup imports only files changed outside Forge (forge-89yf)", () => {
     const SEC = 1000000; // getConfigMtime is in microseconds; the stamps are seconds
 
     beforeEach(() => {
@@ -445,6 +458,25 @@ describe("ConfigSync", () => {
 
     it("imports on a machine that has never synced", () => {
       configMgr._mtimes.settings = 1000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
+    });
+
+    it("keeps GSettings for a file unchanged since Forge wrote it, whatever the stamps", () => {
+      configMgr._mtimes.settings = 3000 * SEC;
+      settings.set_string("config-sync-mtimes", JSON.stringify({ settings: 3000 * SEC }));
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(12);
+    });
+
+    it("imports a file written since Forge last wrote it, even with an older mtime", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 1000 * SEC;
+      settings.set_string("config-sync-mtimes", JSON.stringify({ settings: 1500 * SEC }));
 
       configSync.init();
 
