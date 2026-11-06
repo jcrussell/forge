@@ -42,7 +42,7 @@ describe("forge-zo4: demote always-on-top floats under a fullscreen window", () 
     node.mode = mode;
     if (forgeAbove) {
       win.make_above();
-      node._forgeSetAbove = true;
+      win._forgeSetAbove = true;
     }
     return { win, node };
   }
@@ -58,7 +58,7 @@ describe("forge-zo4: demote always-on-top floats under a fullscreen window", () 
     expect(float.win.is_above()).toBe(false);
     expect(float.node._aboveDemotedForFullscreen).toBe(true);
     // The pin intent is preserved so the float can be restored.
-    expect(float.node._forgeSetAbove).toBe(true);
+    expect(float.win._forgeSetAbove).toBe(true);
   });
 
   it("lowers the demoted float so it drops below the fullscreen window", () => {
@@ -164,7 +164,14 @@ describe("forge-zo4: demote always-on-top floats under a fullscreen window", () 
 
   it("restores demoted floats when the fullscreen window is destroyed", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx, 0, 0);
-    const float = addWindow(monitor, { mode: WINDOW_MODES.FLOAT, forgeAbove: true });
+    // windowDestroy re-renders, so the float needs a reason to stay floating
+    // (Forge's own pin is not one, forge-5k24).
+    ctx.configMgr.windowProps.overrides = [{ wmClass: "Float", mode: "float" }];
+    const float = addWindow(monitor, {
+      mode: WINDOW_MODES.FLOAT,
+      forgeAbove: true,
+      wm_class: "Float",
+    });
     const fs = addWindow(monitor);
 
     fs.win.make_fullscreen();

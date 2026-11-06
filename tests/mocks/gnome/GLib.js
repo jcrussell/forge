@@ -52,11 +52,15 @@ export function timeout_add(priority, interval, callback) {
 }
 
 export function idle_add(priority, callback) {
-  // Mock idle_add - execute callback immediately in tests
+  // Runs the callback synchronously and returns 0 ("no pending source"). Real
+  // g_idle_add returns the id first and runs the callback later, so a callback
+  // that clears its own source id (renderTree's _renderTreeSrcId) leaves it 0.
+  // Returning a non-zero id after the callback already ran would overwrite that
+  // reset and make every later debounced call a no-op.
   if (typeof callback === "function") {
     callback();
   }
-  return Math.random();
+  return 0;
 }
 
 export function source_remove(id) {

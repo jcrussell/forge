@@ -47,8 +47,7 @@ describe("WindowManager - Command System", () => {
     wm().move = vi.fn();
     wm().movePointerWith = vi.fn();
     wm().unfreezeRender = vi.fn();
-    wm().updateTabbedFocus = vi.fn();
-    wm().updateStackedFocus = vi.fn();
+    wm().updateGroupFocus = vi.fn();
   });
 
   // Convenience accessor
@@ -218,8 +217,7 @@ describe("WindowManager - Command System", () => {
 
       wm().command(action);
 
-      expect(wm().updateTabbedFocus).toHaveBeenCalled();
-      expect(wm().updateStackedFocus).toHaveBeenCalled();
+      expect(wm().updateGroupFocus).toHaveBeenCalled();
     });
 
     it("should render tree after swap", () => {

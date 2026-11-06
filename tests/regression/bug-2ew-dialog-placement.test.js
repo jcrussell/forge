@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
 import { NODE_TYPES } from "../../lib/extension/tree.js";
-import { WindowType } from "../mocks/gnome/Meta.js";
+import { GrabOp, WindowType } from "../mocks/gnome/Meta.js";
 import * as Utils from "../../lib/extension/utils.js";
 import {
   createMockWindow,
@@ -95,6 +95,37 @@ describe("Bug forge-2ew: dialog not occluded by tiled neighbor", () => {
     const dRect = dialog.get_frame_rect();
     expect(dRect.x).toBe(300);
     expect(dRect.y).toBe(300);
+  });
+
+  // forge-spjt: processFloats runs on every render, so without a guard a dialog
+  // the user drags over the neighbour is snapped back over its parent.
+  it("leaves a dialog where the user dragged it", () => {
+    const dialog = createMockWindow({
+      id: 3006,
+      title: "Open File",
+      window_type: WindowType.DIALOG,
+      transient_for: parent,
+      rect: { x: 1000, y: 400, width: 400, height: 300 },
+    });
+    ctx.tree.createNode(
+      ctx.tree.getNodeByType(NODE_TYPES.MONITOR)[0].nodeValue,
+      NODE_TYPES.WINDOW,
+      dialog
+    );
+    ctx.windowManager.processFloats();
+    expect(dialog.get_frame_rect().x).toBe(280);
+
+    ctx.display.get_focus_window.mockReturnValue(dialog);
+    ctx.windowManager._handleGrabOpBegin(ctx.display, dialog, GrabOp.KEYBOARD_MOVING);
+    dialog.move_frame(true, 1100, 200);
+    ctx.windowManager._handleGrabOpEnd(ctx.display, dialog, GrabOp.KEYBOARD_MOVING);
+    // The grab-op-end and later renders.
+    ctx.windowManager.processFloats();
+    ctx.windowManager.processFloats();
+
+    const dRect = dialog.get_frame_rect();
+    expect(dRect.x).toBe(1100);
+    expect(dRect.y).toBe(200);
   });
 
   it("does not move a non-transient float even if it overlaps a tiled window", () => {

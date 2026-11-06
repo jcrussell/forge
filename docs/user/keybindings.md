@@ -52,7 +52,8 @@ useful inside a stacked or tabbed container where up/down navigation is ambiguou
 Forge intentionally frees several GNOME defaults on enable (native edge-tiling,
 auto-maximize, GNOME's own left/right tile keys, maximize/unmaximize/minimize keys,
 the message-tray toggle, and `Super+L`) so they don't collide; **all are
-restored when the extension is disabled**.
+restored when the extension is disabled**. Forge saves the original values first,
+so they are restored even after a crash or a shell restart that skipped disabling.
 
 Edge-tiling is opt-out: **Disable GNOME edge-tiling** (`disable-edge-tiling`, on by
 default, in Preferences → Tiling) controls it. Turn it off to keep GNOME's native

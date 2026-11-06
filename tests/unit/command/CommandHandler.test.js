@@ -72,8 +72,7 @@ describe("CommandHandler", () => {
       renderTree: vi.fn(),
       unfreezeRender: vi.fn(),
       queueEvent: vi.fn(),
-      updateStackedFocus: vi.fn(),
-      updateTabbedFocus: vi.fn(),
+      updateGroupFocus: vi.fn(),
       movePointerWith: vi.fn(),
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       applyDefaultLayoutToContainer: vi.fn(),
@@ -228,13 +227,12 @@ describe("CommandHandler", () => {
       );
     });
 
-    it("should clear lastTabFocus when switching from tabbed", () => {
+    it("keeps the focused window shown when switching from tabbed (forge-0ym6)", () => {
       mockNodeWindow.parentNode.layout = LAYOUT_TYPES.TABBED;
-      mockNodeWindow.parentNode.lastTabFocus = mockMetaWindow;
 
       commandHandler.execute({ name: "LayoutStackedToggle" });
 
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBeNull();
+      expect(mockWm.updateGroupFocus).toHaveBeenCalledWith(mockNodeWindow);
     });
 
     it("should call unfreezeRender", () => {
@@ -276,12 +274,12 @@ describe("CommandHandler", () => {
       expect(mockNodeWindow.parentNode.layout).toBe(LAYOUT_TYPES.TABBED);
     });
 
-    it("should set lastTabFocus when enabling tabbed", () => {
+    it("records the focused window as the new group's shown window", () => {
       mockNodeWindow.parentNode.layout = LAYOUT_TYPES.HSPLIT;
 
       commandHandler.execute({ name: "LayoutTabbedToggle" });
 
-      expect(mockNodeWindow.parentNode.lastTabFocus).toBe(mockMetaWindow);
+      expect(mockWm.updateGroupFocus).toHaveBeenCalledWith(mockNodeWindow);
     });
 
     it("should toggle from TABBED to split layout and clear lastTabFocus", () => {
@@ -566,8 +564,7 @@ describe("CommandHandler", () => {
     it("FocusNext cycles focus forward and updates stacked/tabbed focus", () => {
       commandHandler.execute({ name: "FocusNext" });
       expect(mockTree.focusSibling).toHaveBeenCalledWith(mockNodeWindow, 1);
-      expect(mockWm.updateStackedFocus).toHaveBeenCalled();
-      expect(mockWm.updateTabbedFocus).toHaveBeenCalled();
+      expect(mockWm.updateGroupFocus).toHaveBeenCalled();
     });
 
     it("FocusPrev cycles focus backward", () => {

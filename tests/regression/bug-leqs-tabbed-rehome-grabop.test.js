@@ -52,20 +52,20 @@ describe("forge-leqs: tabbed re-home tabbed-focus guard + grabOp clearing", () =
     return { metaWindow, node };
   }
 
-  it("calls updateTabbedFocus on re-home when no WINDOW_BASE grab is active (precedence fix)", () => {
+  it("calls updateGroupFocus on re-home when no WINDOW_BASE grab is active (precedence fix)", () => {
     const { metaWindow } = setupRehomeScenario();
     wm().grabOp = null; // no drag in progress
-    const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
+    const tabbedSpy = vi.spyOn(wm(), "updateGroupFocus");
 
     wm().updateMetaWorkspaceMonitor("test", 0, metaWindow);
 
     expect(tabbedSpy).toHaveBeenCalled();
   });
 
-  it("suppresses updateTabbedFocus while a WINDOW_BASE drag is in progress", () => {
+  it("suppresses updateGroupFocus while a WINDOW_BASE drag is in progress", () => {
     const { metaWindow } = setupRehomeScenario();
     wm().grabOp = GrabOp.WINDOW_BASE; // user is drag-moving by the decoration
-    const tabbedSpy = vi.spyOn(wm(), "updateTabbedFocus");
+    const tabbedSpy = vi.spyOn(wm(), "updateGroupFocus");
 
     wm().updateMetaWorkspaceMonitor("test", 0, metaWindow);
 

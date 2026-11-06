@@ -8,6 +8,7 @@ and layout states in Forge.
 from typing import List, Optional, Tuple
 
 from .constants import RetryConfig, Timing, Tolerance
+from .geometry import as_rect, layout_fill_error, overlap_area
 from .shell_proxy import ShellProxy
 from .wait import WaitTimeoutError, wait_for
 
@@ -545,9 +546,7 @@ class WindowHelper:
         Returns:
             Overlapping area in pixels.
         """
-        x_overlap = max(0, min(rect1[0] + rect1[2], rect2[0] + rect2[2]) - max(rect1[0], rect2[0]))
-        y_overlap = max(0, min(rect1[1] + rect1[3], rect2[1] + rect2[3]) - max(rect1[1], rect2[1]))
-        return x_overlap * y_overlap
+        return overlap_area(rect1, rect2)
 
     def assert_windows_no_overlap(
         self,
@@ -594,31 +593,28 @@ class WindowHelper:
 
     def assert_windows_fill_workspace(self, tolerance: float = Tolerance.FILL_RATIO) -> None:
         """
-        Assert that tiled windows together fill most of the workspace.
+        Assert that tiled windows together fill most of the workspace without
+        overlapping each other. Split layouts only: stacked/tabbed windows share
+        one rect by design, which this reports as overlap.
 
         Args:
             tolerance: Minimum fill ratio (0.0 to 1.0).
 
         Raises:
-            WindowAssertionError: If fill ratio is below tolerance.
+            WindowAssertionError: If windows overlap or the fill ratio is below
+                tolerance.
         """
         workspace = self._shell.get_workspace_rect()
-        workspace_area = workspace["width"] * workspace["height"]
 
         windows = self._shell.get_windows()
         if not isinstance(windows, list) or not windows:
             raise WindowAssertionError("No windows found")
 
-        total_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0) for w in windows
+        error = layout_fill_error(
+            [as_rect(w.get("rect", {})) for w in windows], as_rect(workspace), tolerance
         )
-
-        fill_ratio = total_area / workspace_area if workspace_area > 0 else 0
-        if fill_ratio < tolerance:
-            raise WindowAssertionError(
-                f"Windows fill only {fill_ratio * 100:.1f}% of workspace "
-                f"(minimum: {tolerance * 100:.1f}%)"
-            )
+        if error:
+            raise WindowAssertionError(error)
 
     def measure_gap_between(self) -> int:
         """

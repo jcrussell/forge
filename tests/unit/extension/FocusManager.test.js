@@ -73,6 +73,78 @@ describe("FocusManager", () => {
     });
   });
 
+  // forge-0wvx: the poll acts only when the window under the pointer changes,
+  // so keyboard focus moved away from a window under a still pointer stays put.
+  describe("_focusWindowUnderPointer() - acts only when the hovered window changes", () => {
+    let left;
+    let right;
+    let other;
+
+    beforeEach(() => {
+      left = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      right = createMockWindow({
+        rect: new Rectangle({ x: 960, y: 0, width: 960, height: 1080 }),
+        workspace: workspace0(),
+      });
+      other = createMockWindow({ workspace: workspace0() });
+      global.get_window_actors.mockReturnValue([{ meta_window: left }, { meta_window: right }]);
+      global.get_pointer.mockReturnValue([480, 540]);
+      ctx.display.focus_window = left;
+      wm().shouldFocusOnHover = true;
+    });
+
+    it("keeps keyboard focus that moved away from the window under the pointer", () => {
+      const focusSpy = vi.spyOn(left, "focus");
+      wm()._focusWindowUnderPointer();
+
+      ctx.display.focus_window = other; // e.g. Alt+Tab, pointer not moved
+      wm()._focusWindowUnderPointer();
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it("focuses the next window the pointer reaches", () => {
+      wm()._focusWindowUnderPointer();
+      ctx.display.focus_window = other;
+
+      const focusSpy = vi.spyOn(right, "focus");
+      global.get_pointer.mockReturnValue([1440, 540]);
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).toHaveBeenCalledWith(12345);
+    });
+
+    it("keeps a new window's focus when the layout shifts under a still pointer", () => {
+      wm()._focusWindowUnderPointer(); // pointer over left
+      ctx.display.focus_window = other; // a new window opens and takes focus
+
+      // The new tile shrinks left, so the still pointer is now over right.
+      left.get_frame_rect = vi.fn(() => new Rectangle({ x: 0, y: 0, width: 400, height: 1080 }));
+      right.get_frame_rect = vi.fn(() => new Rectangle({ x: 400, y: 0, width: 760, height: 1080 }));
+      const focusSpy = vi.spyOn(right, "focus");
+      wm()._focusWindowUnderPointer();
+      global.get_pointer.mockReturnValue([481, 540]); // a small nudge within right
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it("forgets the hovered window when the loop restarts", () => {
+      wm()._focusWindowUnderPointer();
+      ctx.display.focus_window = other;
+
+      const focusSpy = vi.spyOn(left, "focus");
+      wm().pointerLoopInit();
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).toHaveBeenCalledWith(12345);
+    });
+  });
+
   describe("_focusWindowUnderPointer() - disabling guards (return false)", () => {
     it("returns false and clears the timeout id when shouldFocusOnHover is false", () => {
       const { focusSpy, raiseSpy } = placeWindowUnderPointer();
@@ -181,7 +253,7 @@ describe("FocusManager", () => {
     });
   });
 
-  describe("updateStackedFocus() / updateTabbedFocus() - _freezeRender no-op", () => {
+  describe("updateGroupFocus() - _freezeRender no-op", () => {
     const stackedNode = (layout) => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const container = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.CON, null);
@@ -196,24 +268,24 @@ describe("FocusManager", () => {
       return nodeWindow;
     };
 
-    it("updateStackedFocus is a no-op when _freezeRender is true", () => {
+    it("is a no-op in a STACKED group when _freezeRender is true", () => {
       const nodeWindow = stackedNode(LAYOUT_TYPES.STACKED);
       const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
       const queueSpy = vi.spyOn(wm(), "queueEvent");
       wm()._freezeRender = true;
 
-      wm().updateStackedFocus(nodeWindow);
+      wm().updateGroupFocus(nodeWindow);
 
       expect(raiseSpy).not.toHaveBeenCalled();
       expect(queueSpy).not.toHaveBeenCalled();
     });
 
-    it("updateTabbedFocus is a no-op when _freezeRender is true", () => {
+    it("is a no-op in a TABBED group when _freezeRender is true", () => {
       const nodeWindow = stackedNode(LAYOUT_TYPES.TABBED);
       const raiseSpy = vi.spyOn(nodeWindow.nodeValue, "raise");
       wm()._freezeRender = true;
 
-      wm().updateTabbedFocus(nodeWindow);
+      wm().updateGroupFocus(nodeWindow);
 
       expect(raiseSpy).not.toHaveBeenCalled();
     });

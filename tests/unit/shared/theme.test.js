@@ -538,6 +538,30 @@ describe("Bug #312 (forge-9sd) - read-only stylesheet persistence", () => {
     expect(dest.replace_contents).toHaveBeenCalled();
     expect(tm.reloadStylesheet).toHaveBeenCalled();
   });
+
+  // forge-3pnu: a read-only stylesheet.css left by an older Forge, and the
+  // read-only .bak the first cssTag bump copied from it, made every later
+  // patchCss fail at the .bak overwrite.
+  it("patchCss overwrites a read-only stylesheet.css and .bak", () => {
+    const source = new File("/install/stylesheet.css");
+    const dest = new File("/mock/stylesheet.css");
+    dest._writable = false;
+    const bak = new File("/mock/stylesheet.css.bak");
+    bak._writable = false;
+    const realNewForPath = File.new_for_path;
+    vi.spyOn(File, "new_for_path").mockImplementation((path) =>
+      path === bak.path ? bak : realNewForPath(path)
+    );
+
+    const configMgr = { stylesheetFile: dest, defaultStylesheetFile: source };
+    const settings = createMockSettings();
+    const tm = new ThemeManagerBase({ configMgr, settings });
+
+    expect(tm.patchCss()).toBe(true);
+    expect(settings.get_uint("css-last-update")).toBe(tm.cssTag);
+    expect(dest._writable).toBe(true);
+    expect(bak._writable).toBe(true);
+  });
 });
 
 describe("ThemeManagerBase edge cases", () => {

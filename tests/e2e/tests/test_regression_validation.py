@@ -16,7 +16,7 @@ import time
 import pytest
 from framework.constants import Timing
 from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
-from framework.wait import wait_for_layout, wait_for_window_count
+from framework.wait import wait_for_layout, wait_for_layout_settled, wait_for_window_count
 
 
 class TestBug125VerticalStackedTiling:
@@ -165,6 +165,8 @@ class TestBug305Resize:
         window1, window2, window3 = three_windows
 
         wait_for_window_count(shell_proxy, 3)
+        # The fill check fails on overlap, so let the third window's reflow land.
+        wait_for_layout_settled(shell_proxy, window_helper.get_workspace_rect())
 
         # forge-74p: an 80% threshold for a test literally named "fill" tolerated a
         # fifth of the work area going uncovered. Reuse the shared helper (DRY) at

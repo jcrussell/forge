@@ -16,7 +16,9 @@ New windows tile side-by-side. A container is either a **horizontal split**
   you get an L-shaped layout. This is how complex layouts are built.
 - New windows inherit the focused container's split. Enable **Auto Split /
   Quarter Tiling** (`auto-split-enabled`, off by default) to alternate the split
-  direction automatically based on the focused pane's shape.
+  direction automatically based on the focused pane's shape. A direction you pick
+  with `Super+v` / `Super+z` still decides where the focused window's next
+  neighbour opens.
 
 ## Stacked and tabbed
 

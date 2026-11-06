@@ -83,6 +83,9 @@ class TestKeyboardResize:
         wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         _invoke_resize(shell_proxy, "WindowResizeRight")
+        # Only the focused window moves until the grab-end render reflows its
+        # neighbour, and the fill check now fails on that transient overlap.
+        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
         window_helper.assert_windows_fill_workspace()
 

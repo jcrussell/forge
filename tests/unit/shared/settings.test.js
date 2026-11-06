@@ -399,6 +399,86 @@ describe("ConfigManager", () => {
       expect(userFile.replace_contents).toHaveBeenCalled();
       expect(mockDefaultFile.replace_contents).not.toHaveBeenCalled();
     });
+
+    // forge-d90q: a malformed user file makes the getter serve the bundled
+    // defaults, so the next rule write (float toggle, prefs Add) would replace
+    // every hand-written rule with defaults + 1.
+    describe("forge-d90q: malformed user windows.json", () => {
+      function setup(userContents) {
+        const userFile = createMockFile("/config/windows.json", { contents: userContents });
+        userFile.get_parent = vi.fn(() => ({ get_path: () => "/config" }));
+        userFile.copy = vi.fn(() => true);
+        const defaultFile = createMockFile("/default/windows.json", {
+          contents: JSON.stringify({ overrides: [{ wmClass: "Bundled", mode: "float" }] }),
+        });
+        for (const [name, value] of [
+          ["windowConfigFile", userFile],
+          ["windowConfigPath", userFile],
+          ["defaultWindowConfigFile", defaultFile],
+        ]) {
+          Object.defineProperty(configManager, name, { get: () => value, configurable: true });
+        }
+        return userFile;
+      }
+
+      function addRule() {
+        const props = configManager.windowProps;
+        props.overrides.push({ wmClass: "New", mode: "float" });
+        configManager.windowProps = props;
+      }
+
+      it("backs the user's file up to windows.json.bak before overwriting it", () => {
+        const userFile = setup('{ "overrides": [{ "wmClass": "Mine", "mode": "float" },] }');
+
+        addRule();
+
+        expect(userFile.copy).toHaveBeenCalledTimes(1);
+        expect(userFile.copy.mock.calls[0][0].get_path()).toBe("/config/windows.json.bak");
+        expect(userFile.copy.mock.invocationCallOrder[0]).toBeLessThan(
+          userFile.replace_contents.mock.invocationCallOrder[0]
+        );
+      });
+
+      it("does not overwrite the user's file when the backup fails", () => {
+        const userFile = setup("{ not json");
+        userFile.copy = vi.fn(() => {
+          throw new Error("Permission denied");
+        });
+
+        addRule();
+
+        expect(userFile.replace_contents).not.toHaveBeenCalled();
+      });
+
+      it("forge-45tv: also backs up a file whose malformed entries the getter drops", () => {
+        const userFile = setup(
+          JSON.stringify({ overrides: [null, { wmClass: ["Mine"], mode: "float" }] })
+        );
+
+        addRule();
+
+        expect(userFile.copy).toHaveBeenCalledTimes(1);
+        expect(userFile.replace_contents).toHaveBeenCalled();
+      });
+
+      it("makes no backup of an empty file, keeping an earlier .bak", () => {
+        const userFile = setup("  \n");
+
+        addRule();
+
+        expect(userFile.copy).not.toHaveBeenCalled();
+        expect(userFile.replace_contents).toHaveBeenCalled();
+      });
+
+      it("makes no backup when the user's file is valid", () => {
+        const userFile = setup(JSON.stringify({ overrides: [{ wmClass: "Mine", mode: "float" }] }));
+
+        addRule();
+
+        expect(userFile.copy).not.toHaveBeenCalled();
+        expect(userFile.replace_contents).toHaveBeenCalled();
+      });
+    });
   });
 });
 

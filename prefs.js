@@ -26,6 +26,7 @@ import { AppearancePage } from "./lib/prefs/appearance.js";
 import { SettingsPage, makeAboutButton, findHeaderBar } from "./lib/prefs/settings.js";
 import { FloatingPage } from "./lib/prefs/floating.js";
 import { PortabilityPage } from "./lib/prefs/portability.js";
+import { PREFS_TITLE } from "./lib/shared/settings.js";
 
 export default class ForgeExtensionPreferences extends ExtensionPreferences {
   settings = this.getSettings();
@@ -45,6 +46,7 @@ export default class ForgeExtensionPreferences extends ExtensionPreferences {
 
   fillPreferencesWindow(window) {
     this.window = window;
+    window.set_title(PREFS_TITLE);
     window._settings = this.settings;
     window._kbdSettings = this.kbdSettings;
 

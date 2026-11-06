@@ -39,7 +39,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
         with:
-          # Full history: `make build` runs `git shortlog -sne --all` to generate
+          # Full history: `make build` runs `git shortlog -sne HEAD` to generate
           # the contributors list (lib/prefs/metadata.js).
           fetch-depth: 0
           ref: ${{ inputs.ref }}

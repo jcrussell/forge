@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   SETTINGS_OVERRIDES,
   shouldApplyOverride,
+  parseSnapshot,
   overridesGatedBy,
   reconcileAction,
 } from "../../../lib/shared/gnome-overrides.js";
@@ -84,5 +85,17 @@ describe("reconcileAction (forge-abk)", () => {
 
   it("is a no-op when already restored and still should not apply", () => {
     expect(reconcileAction(edgeTiling, tilingOff, false)).toBe("noop");
+  });
+});
+
+describe("parseSnapshot (forge-7t96)", () => {
+  it("parses a stored snapshot object", () => {
+    expect(parseSnapshot('{"a::b":false}')).toEqual({ "a::b": false });
+  });
+
+  it("reads empty, corrupt or non-object text as an empty snapshot", () => {
+    for (const text of ["", "{", "[1]", "null", "3"]) {
+      expect(parseSnapshot(text)).toEqual({});
+    }
   });
 });

@@ -9,6 +9,7 @@ import time
 from typing import Callable, Optional, TypeVar
 
 from .constants import Timeout, Timing, Tolerance
+from .geometry import as_rect, layout_fill_error
 
 T = TypeVar("T")
 
@@ -253,17 +254,19 @@ def wait_for_layout_settled(
     fill_ratio: float = Tolerance.FILL_RATIO,
     timeout: float = Timeout.LAYOUT,
 ) -> list:
-    """Wait until windows fill the expected portion of the workspace."""
+    """
+    Wait until windows fill the expected portion of the workspace without overlapping.
+
+    Split layouts only: stacked/tabbed windows share one rect by design, so they never settle.
+    """
+    workspace = as_rect(workspace_rect)
 
     def check():
         windows = shell_proxy.get_windows()
         if not isinstance(windows, list) or len(windows) == 0:
             return None
-        total_area = sum(
-            w.get("rect", {}).get("width", 0) * w.get("rect", {}).get("height", 0) for w in windows
-        )
-        ws_area = workspace_rect["width"] * workspace_rect["height"]
-        if ws_area > 0 and total_area / ws_area >= fill_ratio:
+        rects = [as_rect(w.get("rect", {})) for w in windows]
+        if layout_fill_error(rects, workspace, fill_ratio) is None:
             return windows
         return None
 
@@ -272,5 +275,5 @@ def wait_for_layout_settled(
         predicate=lambda w: w is not None,
         timeout=timeout,
         interval=Timing.POLL_INTERVAL,
-        message="Layout did not settle (windows don't fill workspace)",
+        message="Layout did not settle (windows overlap or don't fill workspace)",
     )

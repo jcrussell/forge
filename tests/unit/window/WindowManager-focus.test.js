@@ -546,6 +546,39 @@ describe("WindowManager - Pointer & Focus Management", () => {
     });
   });
 
+  // forge-zqti: the desktop window (DESKTOP on X11, a NORMAL "gjs" window from
+  // Desktop Icons NG on Wayland) fills the gaps between tiles.
+  describe("focusWindowUnderPointer() - desktop window", () => {
+    const hover = (overrides) => {
+      const metaWindow = createMockWindow({
+        rect: new Rectangle({ x: 0, y: 0, width: 1920, height: 1080 }),
+        workspace: workspace0(),
+        ...overrides,
+      });
+      global.get_window_actors.mockReturnValue([{ meta_window: metaWindow }]);
+      global.get_pointer.mockReturnValue([960, 540]);
+      wm().shouldFocusOnHover = true;
+      const focusSpy = vi.spyOn(metaWindow, "focus");
+      const raiseSpy = vi.spyOn(metaWindow, "raise");
+      expect(wm()._focusWindowUnderPointer()).toBe(true);
+      return { focusSpy, raiseSpy };
+    };
+
+    it.each([
+      ["a Wayland desktop-icons window", { wm_class: "gjs" }],
+      ["a DESKTOP window", { window_type: WindowType.DESKTOP }],
+    ])("does not focus %s in a gap between tiles", (_name, overrides) => {
+      const { focusSpy, raiseSpy } = hover(overrides);
+      expect(focusSpy).not.toHaveBeenCalled();
+      expect(raiseSpy).not.toHaveBeenCalled();
+    });
+
+    it("still focuses an untracked UTILITY window (a tool palette)", () => {
+      const { focusSpy } = hover({ wm_class: "Gimp", window_type: WindowType.UTILITY });
+      expect(focusSpy).toHaveBeenCalled();
+    });
+  });
+
   describe("storePointerLastPosition()", () => {
     it("should store pointer position when inside window", () => {
       const { monitor } = getWorkspaceAndMonitor(ctx);
