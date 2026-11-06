@@ -39,6 +39,7 @@ describe("ConfigSync", () => {
       set_uint: (key, value) => {
         store.set(key, { type: "u", value });
       },
+      get_uint64: (key) => store.get(key)?.value ?? 0,
       set_uint64: (key, value) => {
         store.set(key, { type: "u", value });
       },
@@ -267,9 +268,9 @@ describe("ConfigSync", () => {
     });
   });
 
-  describe("auto-export skips out-of-band writes (forge-nn0m)", () => {
-    // The debounced auto path is _autoExport() (forge-rt10), not exportAll();
-    // spy on it to assert whether a background export ran.
+  describe("auto-export skips out-of-band writes (forge-nn0m, forge-f17f)", () => {
+    // Spy on the per-file exporters to see which files a debounced auto-export
+    // actually wrote.
     function captureDebounce() {
       let cb = null;
       vi.spyOn(GLib, "timeout_add").mockImplementation((priority, delay, fn) => {
@@ -279,70 +280,82 @@ describe("ConfigSync", () => {
       return () => cb && cb();
     }
 
+    function autoExportAfterChange(key = "tiling-mode-enabled") {
+      const settingsSpy = vi.spyOn(configSync, "exportSettings");
+      const keybindingsSpy = vi.spyOn(configSync, "exportKeybindings");
+      const fire = captureDebounce();
+      settings._emit("changed", key);
+      fire();
+      const written = {
+        settings: settingsSpy.mock.calls.length,
+        keybindings: keybindingsSpy.mock.calls.length,
+      };
+      settingsSpy.mockRestore();
+      keybindingsSpy.mockRestore();
+      return written;
+    }
+
     beforeEach(() => {
       configMgr.hasPortableConfig = () => true;
       configSync.configFilesLoaded = true;
       configSync._connectSettingsSignals();
-    });
-
-    it("skips the debounced export when a config file was written out of band", () => {
       // Establish our baseline with one (user-initiated) export.
       configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "_autoExport");
+    });
 
-      // Another writer (prefs Export or a hand edit) touches settings.json after
+    it("skips settings.json when it was written out of band", () => {
+      // Another writer (prefs Export or a hand edit) touched settings.json after
       // our export — its mtime now differs from our last-written baseline.
       configMgr._mtimes.settings += 100;
 
-      const fire = captureDebounce();
-      settings._emit("changed", "tiling-mode-enabled");
-      fire();
-
-      // The stale debounced export must NOT overwrite the out-of-band content.
-      expect(exportSpy).not.toHaveBeenCalled();
+      expect(autoExportAfterChange().settings).toBe(0);
     });
 
-    it("still exports when the files are unchanged since our last write", () => {
-      configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "_autoExport");
-
-      // No out-of-band write — the guard must not disable normal auto-export.
-      const fire = captureDebounce();
-      settings._emit("changed", "tiling-mode-enabled");
-      fire();
-
-      expect(exportSpy).toHaveBeenCalledTimes(1);
+    it("exports both files when neither changed since our last write", () => {
+      expect(autoExportAfterChange()).toEqual({ settings: 1, keybindings: 1 });
     });
 
-    it("skips a keybindings.json out-of-band write too", () => {
-      configSync.exportAll();
-      const exportSpy = vi.spyOn(configSync, "_autoExport");
-
+    it("skips keybindings.json when it was written out of band", () => {
       configMgr._mtimes.keybindings += 100;
 
-      const fire = captureDebounce();
-      settings._emit("changed", "tiling-mode-enabled");
-      fire();
+      expect(autoExportAfterChange().keybindings).toBe(0);
+    });
 
-      expect(exportSpy).not.toHaveBeenCalled();
+    it("still exports settings.json when only keybindings.json was hand-edited (forge-f17f)", () => {
+      configMgr._mtimes.keybindings += 100;
+
+      expect(autoExportAfterChange()).toEqual({ settings: 1, keybindings: 0 });
+    });
+
+    it("persists only the written file as synced, so startup imports the skipped one (forge-89yf)", () => {
+      configMgr._mtimes.settings += 100;
+
+      autoExportAfterChange();
+
+      const synced = JSON.parse(settings.get_string("config-sync-mtimes"));
+      expect(synced.settings).not.toBe(configMgr._mtimes.settings);
+      expect(synced.keybindings).toBe(configMgr._mtimes.keybindings);
+    });
+
+    it("does not persist a file as synced when its export fails (forge-89yf)", () => {
+      // A hand edit is skipped once, then the next export of that file fails:
+      // startup must still import the hand edit.
+      configMgr._mtimes.keybindings += 100;
+      autoExportAfterChange();
+      configMgr.saveKeybindingsProps = () => false;
+
+      autoExportAfterChange("window-gap-size");
+
+      expect(configSync._fileChangedSinceSync("keybindings")).toBe(true);
     });
 
     it("resumes auto-export on the NEXT change after a skip (no permanent latch)", () => {
-      configSync.exportAll();
-
-      // External write → first debounced export skips (and adopts the new baseline).
+      // External write → first debounced export skips it (and adopts the new baseline).
       configMgr._mtimes.settings += 100;
-      let fire = captureDebounce();
-      settings._emit("changed", "tiling-mode-enabled");
-      fire();
+      autoExportAfterChange();
 
       // A later genuine change, with no further out-of-band write, must export.
-      const exportSpy = vi.spyOn(configSync, "_autoExport");
-      fire = captureDebounce();
-      settings._emit("changed", "window-gap-size");
-      fire();
-
-      expect(exportSpy).toHaveBeenCalledTimes(1);
+      expect(autoExportAfterChange("window-gap-size")).toEqual({ settings: 1, keybindings: 1 });
     });
   });
 
@@ -412,6 +425,62 @@ describe("ConfigSync", () => {
       settings._emit("changed", "window-gap-size");
       expect(timeoutSpy).not.toHaveBeenCalled();
       timeoutSpy.mockRestore();
+    });
+  });
+
+  describe("startup imports only files changed outside Forge (forge-89yf)", () => {
+    const SEC = 1000000; // getConfigMtime is in microseconds; the stamps are seconds
+
+    beforeEach(() => {
+      configMgr.hasPortableConfig = () => true;
+      configMgr._settingsProps = { appearance: { "window-gap-size": 4 } };
+      configMgr._keybindingsProps = { bindings: {} };
+      settings.set_uint("window-gap-size", 12);
+    });
+
+    it("keeps GSettings when the file is older than the last export", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 1000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(12);
+    });
+
+    it("imports a file written after the last export", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 3000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
+    });
+
+    it("imports on a machine that has never synced", () => {
+      configMgr._mtimes.settings = 1000 * SEC;
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
+    });
+
+    it("keeps GSettings for a file unchanged since Forge wrote it, whatever the stamps", () => {
+      configMgr._mtimes.settings = 3000 * SEC;
+      settings.set_string("config-sync-mtimes", JSON.stringify({ settings: 3000 * SEC }));
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(12);
+    });
+
+    it("imports a file written since Forge last wrote it, even with an older mtime", () => {
+      settings.set_uint64("config-last-export", 2000);
+      configMgr._mtimes.settings = 1000 * SEC;
+      settings.set_string("config-sync-mtimes", JSON.stringify({ settings: 1500 * SEC }));
+
+      configSync.init();
+
+      expect(settings.get_uint("window-gap-size")).toBe(4);
     });
   });
 
@@ -545,6 +614,21 @@ describe("ConfigSync", () => {
       // No export should occur
       expect(configMgr.settingsProps).toBeNull();
       expect(configMgr.keybindingsProps).toBeNull();
+    });
+
+    it("flushes a pending auto-export instead of dropping it", () => {
+      configMgr.hasPortableConfig = () => true;
+      configMgr.settingsConfigFile = {};
+      configMgr.keybindingsConfigFile = {};
+      configSync.configFilesLoaded = true;
+      configSync._connectSettingsSignals();
+      const timeoutSpy = vi.spyOn(GLib, "timeout_add").mockImplementation(() => 42);
+      settings._emit("changed", "window-gap-size");
+      timeoutSpy.mockRestore();
+
+      configSync.destroy();
+
+      expect(configMgr.settingsProps).not.toBeNull();
     });
   });
 });

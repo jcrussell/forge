@@ -23,9 +23,10 @@ In **Preferences → Portability**:
   `keybindings.json` (with "Last export" timestamp).
 - **Import** — reads those files back into GSettings ("Last import" timestamp).
 
-On startup, Forge's config sync imports any present files automatically, so dropping
-a known-good `settings.json`/`keybindings.json` into the config dir and restarting
-applies it. `windows.json` is reloaded live with **`Super+Shift+r`**.
+On startup, Forge's config sync imports each file that something other than Forge
+wrote since Forge last wrote or read it, so dropping a known-good
+`settings.json`/`keybindings.json` into the config dir and restarting applies it,
+while a file Forge wrote itself never reverts settings you changed since. `windows.json` is reloaded live with **`Super+Shift+r`**.
 
 ## Moving config between machines
 

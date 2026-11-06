@@ -325,10 +325,15 @@ describe("isFixedSize", () => {
     }
   );
 
-  it.each(["47.0", "51.0"])("is true for a fullscreen window (Mutter %s)", async (version) => {
-    const Compat = await loadCompat(version);
-    expect(Compat.isFixedSize(new Window({ allows_resize: true, fullscreen: true }))).toBe(true);
-  });
+  it.each(["47.0", "51.0"])(
+    "is false for a fullscreen window although resizeable is false (Mutter %s)",
+    async (version) => {
+      const Compat = await loadCompat(version);
+      const window = new Window({ allows_resize: true, fullscreen: true });
+      expect(window.resizeable).toBe(false);
+      expect(Compat.isFixedSize(window)).toBe(false);
+    }
+  );
 
   it.each(["47.0", "51.0"])(
     "is true for a fixed-size window that maximized itself (Mutter %s)",

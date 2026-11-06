@@ -29,8 +29,8 @@ Each override:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `wmClass` | yes | Window class to match. **Exact** match (case-sensitive); comma-separates a list of exact classes. |
-| `wmTitle` | no | Window title. Substring; `!` prefix negates; comma-separates multiple patterns. |
+| `wmClass` | one of `wmClass`/`wmTitle` | Window class to match. **Exact** match (case-sensitive); comma-separates a list of exact classes. |
+| `wmTitle` | one of `wmClass`/`wmTitle` | Window title. Substring; `!` prefix negates; comma-separates multiple patterns. A rule with no `wmClass` matches every window whose title contains it. |
 | `mode` | yes | `float` = keep out of tiling; `tile` = force into tiling. |
 | `wmId` | — | Runtime-only (written by the per-window toggle); don't set by hand. |
 
@@ -45,6 +45,19 @@ xprop WM_CLASS      # then click the window
 Use the **second** string it prints (the class), or read it from GNOME Looking
 Glass (`Alt+F2` → `lg`).
 
+Some apps (Anki, the Opera Flatpak) report no class when their window first
+appears, or never do, and Forge floats a window while it has no class. To tile one,
+match it by title instead, with a pattern specific enough not to catch other
+windows:
+
+```json
+{ "wmTitle": "- Anki", "mode": "tile" }
+```
+
 > Precedence: a `tile` override for a window/class wins over float-by-type and float
 > rules, so you can force-tile one window of an otherwise-floating class. A
-> per-window toggle never removes a class-wide rule.
+> per-window toggle never removes a class-wide rule. The per-class toggle only
+> adds or removes single-class rules: it never deletes a comma-list or title rule,
+> or another window's per-window rule. To tile an app a comma-list rule floats
+> (Steam, Blender), it adds a class `tile` rule, and the next press removes it
+> again. A title rule outranks class rules, so change those in the file instead.
