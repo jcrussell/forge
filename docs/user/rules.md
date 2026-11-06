@@ -45,9 +45,10 @@ xprop WM_CLASS      # then click the window
 Use the **second** string it prints (the class), or read it from GNOME Looking
 Glass (`Alt+F2` → `lg`).
 
-Some apps report no class at all (Anki, the Opera Flatpak), and Forge floats those
-windows. To tile one, match it by title instead, with a pattern specific enough not
-to catch other windows:
+Some apps (Anki, the Opera Flatpak) report no class when their window first
+appears, or never do, and Forge floats a window while it has no class. To tile one,
+match it by title instead, with a pattern specific enough not to catch other
+windows:
 
 ```json
 { "wmTitle": "- Anki", "mode": "tile" }
