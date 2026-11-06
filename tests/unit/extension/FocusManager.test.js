@@ -118,6 +118,21 @@ describe("FocusManager", () => {
       expect(focusSpy).toHaveBeenCalledWith(12345);
     });
 
+    it("keeps a new window's focus when the layout shifts under a still pointer", () => {
+      wm()._focusWindowUnderPointer(); // pointer over left
+      ctx.display.focus_window = other; // a new window opens and takes focus
+
+      // The new tile shrinks left, so the still pointer is now over right.
+      left.get_frame_rect = vi.fn(() => new Rectangle({ x: 0, y: 0, width: 400, height: 1080 }));
+      right.get_frame_rect = vi.fn(() => new Rectangle({ x: 400, y: 0, width: 760, height: 1080 }));
+      const focusSpy = vi.spyOn(right, "focus");
+      wm()._focusWindowUnderPointer();
+      global.get_pointer.mockReturnValue([481, 540]); // a small nudge within right
+      wm()._focusWindowUnderPointer();
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
     it("forgets the hovered window when the loop restarts", () => {
       wm()._focusWindowUnderPointer();
       ctx.display.focus_window = other;
