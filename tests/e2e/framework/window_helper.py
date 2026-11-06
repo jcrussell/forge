@@ -594,7 +594,8 @@ class WindowHelper:
     def assert_windows_fill_workspace(self, tolerance: float = Tolerance.FILL_RATIO) -> None:
         """
         Assert that tiled windows together fill most of the workspace without
-        overlapping each other.
+        overlapping each other. Split layouts only: stacked/tabbed windows share
+        one rect by design, which this reports as overlap.
 
         Args:
             tolerance: Minimum fill ratio (0.0 to 1.0).
