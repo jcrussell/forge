@@ -254,7 +254,11 @@ def wait_for_layout_settled(
     fill_ratio: float = Tolerance.FILL_RATIO,
     timeout: float = Timeout.LAYOUT,
 ) -> list:
-    """Wait until windows fill the expected portion of the workspace without overlapping."""
+    """
+    Wait until windows fill the expected portion of the workspace without overlapping.
+
+    Split layouts only: stacked/tabbed windows share one rect by design, so they never settle.
+    """
     workspace = as_rect(workspace_rect)
 
     def check():
