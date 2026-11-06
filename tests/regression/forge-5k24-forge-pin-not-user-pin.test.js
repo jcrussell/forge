@@ -87,6 +87,40 @@ describe("forge-5k24: Forge's float pin is not a user Always-on-Top pin", () => 
     expect(win.is_above()).toBe(false);
   });
 
+  it("floats a re-tiled window the user pins after always-on-top was turned off", () => {
+    win.set_wm_class(null);
+    ctx.windowManager.processFloats();
+    expect(win.is_above()).toBe(true);
+
+    ctx.settings.set_boolean("float-always-on-top-enabled", false);
+    ctx.windowManager.cleanupAlwaysFloat();
+    win.set_wm_class("App1");
+    ctx.windowManager.processFloats();
+    expect(node.isTile()).toBe(true);
+
+    win.make_above(); // the user pins it Always on Top
+    ctx.windowManager.processFloats();
+    expect(node.isFloat()).toBe(true);
+    expect(win.is_above()).toBe(true);
+  });
+
+  it("re-tiles a float pinned when always-on-top was turned on", () => {
+    ctx.settings.set_boolean("float-always-on-top-enabled", false);
+    win.set_wm_class(null);
+    ctx.windowManager.processFloats();
+    expect(node.isFloat()).toBe(true);
+    expect(win.is_above()).toBe(false);
+
+    ctx.settings.set_boolean("float-always-on-top-enabled", true);
+    ctx.windowManager.restoreAlwaysFloat();
+    expect(win.is_above()).toBe(true);
+
+    win.set_wm_class("App1");
+    ctx.windowManager.processFloats();
+    expect(node.isTile()).toBe(true);
+    expect(win.is_above()).toBe(false);
+  });
+
   it("keeps a user pin floating", () => {
     win.make_above();
     ctx.windowManager.processFloats();
