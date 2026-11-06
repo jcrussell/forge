@@ -20,6 +20,9 @@ describe("forge-xgrn: FloatClassToggle round trip keeps the class tile rule", ()
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
+    ctx.configMgr.loadDefaultWindowConfigContents = () => ({
+      overrides: [{ wmClass: "evolution", mode: "tile" }],
+    });
   });
 
   afterEach(() => ctx.cleanup());
@@ -51,6 +54,18 @@ describe("forge-xgrn: FloatClassToggle round trip keeps the class tile rule", ()
     expect(overrides()).toEqual([
       expect.objectContaining({ wmClass: "evolution", mode: "tile", wmId: undefined }),
     ]);
+  });
+
+  it("leaves no rule after a round trip for an app with no bundled tile rule", () => {
+    setOverrides([]);
+    const win = tiledWindow("gedit", 4);
+
+    ctx.windowManager.toggleFloatingMode(CLASS_TOGGLE, win);
+    expect(ctx.windowManager.isFloatingExempt(win)).toBe(true);
+
+    ctx.windowManager.toggleFloatingMode(CLASS_TOGGLE, win);
+    expect(ctx.windowManager.isFloatingExempt(win)).toBe(false);
+    expect(overrides()).toEqual([]);
   });
 
   it("tiles a comma-list app and floats it again without touching its rule", () => {
