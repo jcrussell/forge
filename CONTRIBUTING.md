@@ -122,8 +122,9 @@ wrong way is reimplemented.
 - The new tests fail without your change and pass with it. Use a unit test that drives
   real `lib/` code ([tests/README.md](tests/README.md)), or an e2e test when the bug
   only shows in a real shell.
-- `npm test`, `npm run lint`, `npm run lint:src` and `npm run typecheck` pass (the
-  pre-commit hook runs them).
+- These gates pass: `npm test`, `npm run lint`, `npm run lint:src`,
+  `npm run typecheck`, and for changes under `tests/e2e/`, `npm run lint:e2e` and
+  `ruff check tests/e2e`. The pre-commit hook runs them on staged files.
 - Docs, version lists and the CI matrix are updated if the change affects them.
 
 ### Shape of the PR
