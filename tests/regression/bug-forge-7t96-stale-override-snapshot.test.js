@@ -138,6 +138,19 @@ describe("forge-7t96: GNOME originals survive an exit that skips disable()", () 
     expect(forgeSettings.get_string(SNAPSHOT_KEY)).toBe("");
   });
 
+  it("restores a value the user set in GNOME before an unclean exit", () => {
+    enableThenCrash();
+    const desc = SETTINGS_OVERRIDES.find((d) => d.key === "minimize");
+    const gsettings = dconf.get(desc.schemaId);
+    gsettings.set_strv("minimize", ["<Super>m"]); // rebound in GNOME Settings over Forge's []
+    enableThenCrash();
+
+    expect(() => buildExtension().enable()).toThrow(/stop after overrides/);
+
+    expect(gsettings.get_strv("minimize")).toEqual(["<Super>m"]);
+    expect(forgeSettings.get_string(SNAPSHOT_KEY)).toBe("");
+  });
+
   it("restores a crashed override the user has since opted out of", () => {
     enableThenCrash();
     forgeSettings.set_boolean("disable-edge-tiling", false);
