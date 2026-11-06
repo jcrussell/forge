@@ -172,9 +172,9 @@ final call. Don't start fixes until they agree.
 
 ## 7. Gates (on `review/<x>`, built per the strategy)
 
-`npm test`, `npm run lint`, `npm run lint:src`, `npm run lint:e2e`,
-`npm run typecheck`, `ruff check tests/e2e`. Run them on the contributor's head
-first, so you know what fails before your changes.
+Every gate in CONTRIBUTING.md § "Correctness", run on the whole tree rather than
+just the staged files the hook sees. Run them on the contributor's head first, so
+you know what fails before your changes.
 
 For each new test, check that it **fails on the old code**: revert the fix, run the
 test, then restore the fix. A test that passes either way is vacuous

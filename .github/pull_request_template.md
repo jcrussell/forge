@@ -26,7 +26,7 @@ added a timeout, guard or flag, explain why fixing the root cause wasn't possibl
 
 ## Checklist
 
-- [ ] `npm test`, `npm run lint`, `npm run lint:src`, `npm run typecheck` pass
+- [ ] The gates in CONTRIBUTING.md § "Correctness" pass
 - [ ] New tests fail without the change
 - [ ] One concern per commit; messages say what and why
 - [ ] Docs / version lists / CI matrix updated if affected
