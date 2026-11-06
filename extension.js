@@ -165,9 +165,9 @@ export default class ForgeExtension extends Extension {
    * Apply one GNOME settings override: persist its original value in the
    * snapshot BEFORE writing the override, so an exit that skips disable() can't
    * lose it (forge-7t96). An original already in the snapshot was left there by
-   * such an exit and is kept: the current value is then the override itself.
-   * Otherwise the original is captured fresh, so a runtime re-apply (forge-abk)
-   * records the user's latest GNOME value.
+   * such an exit and is kept while the current value is still the override.
+   * Otherwise the original is captured fresh, so a runtime re-apply (forge-abk),
+   * or a value the user set in GNOME before that exit, is the one restored.
    */
   _applyOverride(desc) {
     if (!this._savedSettings) return; // already disabled
@@ -177,8 +177,10 @@ export default class ForgeExtension extends Extension {
     const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
     const id = overrideId(desc);
     const snapshot = this._readSnapshot();
-    if (!(id in snapshot)) {
-      snapshot[id] = gsettings[getter](desc.key);
+    const current = gsettings[getter](desc.key);
+    const leftApplied = id in snapshot && JSON.stringify(current) === JSON.stringify(desc.newValue);
+    if (!leftApplied) {
+      snapshot[id] = current;
       this._writeSnapshot(snapshot);
     }
     gsettings[setter](desc.key, desc.newValue);
@@ -227,9 +229,10 @@ export default class ForgeExtension extends Extension {
   /**
    * forge-abk: when a gating Forge setting changes at runtime, apply or restore
    * each override it gates. _applyOverride/_restoreOverride write GNOME (mutter)
-   * gsettings, never Forge settings, so this cannot re-enter via the change
-   * signal. Across a toggle-off → (user changes GNOME) → toggle-on cycle the
-   * user's latest GNOME value wins (re-captured on re-apply).
+   * gsettings and only Forge's snapshot key, which no reconcile listener watches,
+   * so this cannot re-enter via the change signal. Across a toggle-off → (user
+   * changes GNOME) → toggle-on cycle the user's latest GNOME value wins
+   * (re-captured on re-apply).
    */
   _reconcileOverridesFor(changedKey) {
     const settings = this.settings;
