@@ -254,6 +254,11 @@
             <summary>Timestamp of last config file export (Unix epoch in seconds)</summary>
         </key>
 
+        <key type="s" name="config-sync-mtimes">
+            <default>''</default>
+            <summary>On-disk mtime of each portable config file when Forge last wrote or read it (JSON, internal)</summary>
+        </key>
+
         <key type="b" name="config-file-sync-enabled">
             <default>false</default>
             <summary>Whether to automatically sync changes to config files</summary>

@@ -28,6 +28,7 @@ const INTERNAL_MAIN_KEYS = [
   "window-overrides-reload-trigger",
   "config-last-import",
   "config-last-export",
+  "config-sync-mtimes",
   "config-file-sync-enabled",
 ];
 
