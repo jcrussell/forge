@@ -91,3 +91,58 @@ describe("Bug forge-no5x: directional ops skip floating tree siblings", () => {
     expectFloatUntouched();
   });
 });
+
+describe("Bug forge-no5x: directional focus into another monitor skips floats", () => {
+  let ctx;
+  let a, f0, f1, b;
+
+  beforeEach(() => {
+    ctx = createWindowManagerFixture({
+      globals: {
+        display: {
+          monitorCount: 2,
+          monitorGeometries: [
+            { x: 0, y: 0, width: 1920, height: 1080 },
+            { x: 1920, y: 0, width: 1920, height: 1080 },
+          ],
+        },
+      },
+    });
+    const wm = ctx.windowManager;
+    wm.move = vi.fn();
+    wm.movePointerWith = vi.fn();
+    wm.renderTree = vi.fn();
+
+    const workspace = ctx.workspaces[0];
+    const add = (monitorIndex, id, mode = "TILE") => {
+      const { monitor } = getWorkspaceAndMonitor(ctx, 0, monitorIndex);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+      return createWindowNode(ctx.tree, monitor, {
+        windowOverrides: { id, workspace, monitor: monitorIndex },
+        mode,
+      }).nodeWindow;
+    };
+    // Monitor 0: [A, F0(float)]; monitor 1: [F1(float), B]. Each float sits on
+    // the edge that focus enters its monitor from.
+    a = add(0, 9201);
+    f0 = add(0, 9202, "FLOAT");
+    f1 = add(1, 9203, "FLOAT");
+    b = add(1, 9204);
+  });
+
+  afterEach(() => ctx.cleanup());
+
+  it("focus(A, RIGHT) enters the next monitor at B, not its first-child float", () => {
+    expect(ctx.tree.focus(a, MotionDirection.RIGHT)).toBe(b);
+  });
+
+  it("focus(B, LEFT) enters the previous monitor at A, not its last-child float", () => {
+    expect(ctx.tree.focus(b, MotionDirection.LEFT)).toBe(a);
+  });
+
+  it("focus(A, RIGHT) still enters a monitor that holds only floats", () => {
+    b.mode = "FLOAT";
+
+    expect(ctx.tree.focus(a, MotionDirection.RIGHT)).toBe(f1);
+  });
+});
