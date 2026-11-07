@@ -1,79 +1,29 @@
-# Forge E2E Testing Infrastructure
+# E2E tests
 
-End-to-end tests for Forge run against real GNOME Shell inside Docker containers. Tests use D-Bus `Shell.Eval` to query window/extension state and `xdotool` for simulating keyboard and mouse input.
+The e2e suite runs pytest against a real GNOME Shell in a self-contained Fedora
+container: systemd as PID 1, then `start-user-session.sh` starts D-Bus and the shell
+(X11 on Xvfb for Fedora 39–42, headless Wayland from 43, whose shell has no X11).
+Tests read state and invoke Forge actions through D-Bus `Shell.Eval`
+(`framework/bridge.js`), and send input through Clutter virtual devices or xdotool.
+`framework/` and `apps/` hold the helpers; each module's docstring says what it is
+for.
 
-## Architecture
-
-Each E2E container is a self-contained Fedora image with GNOME Shell and all test dependencies. The container runs systemd as PID 1 (required for `systemd-logind` and `org.freedesktop.locale1`), then `start-user-session.sh` launches a D-Bus session daemon and GNOME Shell directly — without relying on systemd user services. It auto-detects the session type: X11 on Xvfb for Fedora 39-42, headless Wayland for Fedora 43+ (whose gnome-shell is compiled without X11).
-
-```
-Host                          Container (systemd PID 1)
-─────                         ──────────────────────────
-make e2e-test
-  └─ docker run -td ───────►  /usr/sbin/init
-  └─ docker exec ──────────►  start-user-session.sh
-                                 ├─ Xvfb :99            (F39-42 only)
-                                 ├─ dbus-daemon --session
-                                 └─ gnome-shell --x11   (F43+: --headless --wayland)
-  └─ docker exec ──────────►  set-env.sh run-tests.sh
-                                 └─ pytest tests/
-```
-
-## Supported GNOME Versions
-
-| Fedora | GNOME | Status |
-|--------|-------|--------|
-| 39 | 45 | Supported |
-| 40 | 46 | Supported |
-| 41 | 47 | Supported |
-| 42 | 48 | Supported (default) |
-| 43 | 49 | Supported |
-| 44 | 50 | Supported |
-| 45 | 51 | Supported |
-| rawhide | next devel cycle | Manual only (`make e2e-test FEDORA_VERSION=rawhide`) |
-
-Fedora 39-45 all run in CI (`supported_fedora` in `gnome-versions.json`). Rawhide is excluded to avoid breakage from upstream instability, but can be tested manually with `FEDORA_VERSION=rawhide`.
-
-## Running Tests
+The lanes and their GNOME versions are in [`gnome-versions.json`](gnome-versions.json);
+CI runs every `supported_fedora` entry.
 
 ```bash
-# Run with the default lane (GNOME 48 / Fedora 42 - see FEDORA_VERSION in the Makefile)
-make e2e-test
-
-# Run with a specific GNOME version
-make e2e-test GNOME_VERSION=47
-
-# Run for all supported versions
-make e2e-test-all
-
-# Run only the fast multi-step "workflow" lane (see Test Lanes below)
-make e2e-test-fast
-
-# Record a screencast of the run (Wayland-only; forces the latest lane,
-# F44/GNOME50). Writes e2e-results/recording.webm (VP8/WebM) with the current
-# test name + firing action burned into each frame. Opt-in: the recording stack
-# (pipewire/gstreamer) is build-arg gated, so other lanes' images are unchanged.
-# Set FORGE_E2E_RECORD_ROUTE=B to use the Mutter.ScreenCast + pipewiresrc
-# fallback instead of the default org.gnome.Shell.Screencast path.
-#
-# NOTE: recording only works on GNOME 50. The default Route A
-# (org.gnome.Shell.Screencast) only finalizes a .webm on GNOME 50 — which is why
-# e2e-test-record pins that lane; don't switch it. On GNOME 49 Route A aborts
-# after the first test and writes no file, so there you must set
-# FORGE_E2E_RECORD_ROUTE=B (Mutter.ScreenCast + pipewiresrc) to get a recording.
-make e2e-test-record
-
-# Interactive debugging (drops into bash inside the container)
-make e2e-debug
-
-# Clean up images and results
-make e2e-clean
-
-# List supported versions
-make e2e-versions
+make e2e-test                    # default lane (GNOME 48 / Fedora 42)
+make e2e-test GNOME_VERSION=50   # one version
+make e2e-test-all                # every supported version
+make e2e-debug                   # shell inside the container
 ```
 
-## Test Lanes: atomic vs workflow
+The Makefile has the rest (lanes, fuzzing, recording); results land in
+`e2e-results/`, mounted in the container as `/app/e2e-results`.
+`make e2e-test-record` writes a screencast to `e2e-results/recording.webm`; it is
+pinned to GNOME 50, the only lane where its capture route finalizes a file.
+
+## Lanes: atomic and workflow
 
 The suite has two coexisting lanes:
 
@@ -123,7 +73,7 @@ atomic-only, so the atomic lane must keep running by default.
 - Keep each workflow self-contained (end in a clean tiled state); use `restore_settings`
   for any GSetting change.
 
-## Fuzzing (forge-cnrc)
+## Fuzzing
 
 The atomic and workflow lanes only exercise sequences a human wrote. The **fuzzer**
 (`tests/e2e/fuzz/`) instead generates *seeded random* action sequences against the real
@@ -138,8 +88,7 @@ make e2e-fuzz FORGE_FUZZ_SEED=12345             # reproduce a specific session
 # repro and fail once at the end with a summary (good for unattended sweeps).
 make e2e-fuzz FORGE_FUZZ_CONTINUE=1 FORGE_FUZZ_SHRINK=0 \
               FORGE_FUZZ_SESSIONS=10 FORGE_FUZZ_STEPS=1000
-# Tree DEPTH (forge-cnrc): new windows append FLAT by default, so to exercise DEEP nested
-# trees run an auto-split band (each new window splits the focused one). Run both modes:
+# New windows append flat by default; auto-split builds deep nested trees. Run both:
 make e2e-fuzz FORGE_FUZZ_AUTOSPLIT=1     # ON  — deep nested trees
 make e2e-fuzz FORGE_FUZZ_AUTOSPLIT=0     # OFF — flat fan (the historical default)
 ```
@@ -162,8 +111,8 @@ It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh 
    class, config-reload), **drag-drop tile** (drag a window onto a zone of another — the only path
    keybindings can't reach), and **lifecycle chaos** (spawn/close/workspace-switch) at low weight.
    Actions carry a positional focus hint (`leftmost`/…) so a step targets the same window
-   on replay. Dispatch is D-Bus (`invoke_forge_action`), dodging the synthetic-key
-   tile-snap latch (forge-3xz).
+   on replay. Dispatch is D-Bus (`invoke_forge_action`), which avoids Mutter's
+   tile-snap latch on synthetic keys.
 2. **Settle** — after each step the engine first waits for Forge's async work to
    drain (`shell_proxy.wait_for_forge_settled` / `bridge.pendingWork`: the `wm.queueEvent`
    queue, pending idle renders and one-shot timers — Move/SnapLayoutMove finalize ~220ms
@@ -208,8 +157,7 @@ make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
 
 ## Adding a New GNOME Version
 
-Every one of these must move together — the sites below drifted apart historically
-because this list used to stop at step 4.
+All of these move together:
 
 1. Add the Fedora-to-GNOME mapping in `gnome-versions.json` (`fedora_to_gnome`).
    `run-tests.sh` fails any lane whose running shell major differs from this entry.
@@ -221,60 +169,20 @@ because this list used to stop at step 4.
 6. Update the Fedora-to-GNOME comment blocks, which are duplicated in four files:
    `Makefile`, `docker/Dockerfile.e2e`, `docker/docker-compose.e2e.yml` and
    `.github/workflows/e2e-testing.yml`
-7. Update the `e2e-versions` help text in the Makefile, and the table at the top of
-   this file
+7. Update the `e2e-versions` help text in the Makefile
 8. If the *default* lane moves, change it in all three places at once: `FEDORA_VERSION`
    in the Makefile, `ARG FEDORA_VERSION` in `docker/Dockerfile.e2e`, and the
    `${FEDORA_VERSION:-NN}` defaults in `docker/docker-compose.e2e.yml`
 
-## Container Structure
+## Formatting
 
-| Path | Description |
-|------|-------------|
-| `/home/gnomeshell/.local/share/gnome-shell/extensions/forge@jcrussell.github.io/` | Pre-installed Forge extension |
-| `/app/tests/e2e/` | Test framework and test files |
-| `/app/scripts/` | Shell scripts (run-tests.sh, lib.sh, etc.) |
-| `/app/e2e-results/` | Test results and screenshots |
-| `/usr/local/bin/start-user-session.sh` | Launches Xvfb + D-Bus + GNOME Shell |
-| `/usr/local/bin/set-env.sh` | Sets `DBUS_SESSION_BUS_ADDRESS` and `DISPLAY` for test commands |
+Python here is formatted and linted with ruff (`ruff.toml`); install it with
+`pip install -r tests/e2e/requirements.txt`. `make check` and the pre-commit hook
+run it.
 
-### Key Scripts
+## Known gaps
 
-- **`start-user-session.sh`** — Root script that creates the XDG runtime directory, starts Xvfb, launches a D-Bus session daemon, pre-enables Forge via gsettings, and starts GNOME Shell — X11 on F39-42, headless Wayland on F43+ (detected via `gnome-shell --help | grep -- --x11`). Waits for Shell.Eval to confirm readiness.
-- **`set-env.sh`** — Lightweight wrapper that exports `DBUS_SESSION_BUS_ADDRESS` and `DISPLAY`, then `eval`s its arguments. Used to run commands in the gnomeshell user's D-Bus session.
-- **`run-tests.sh`** — Waits for GNOME Shell and Forge to be ready, then runs pytest.
-- **`lib.sh`** — Shared functions: `wait_for_shell`, `wait_for_forge_extension`, `check_forge_extension`, `print_system_info`.
-
-## Test Framework
-
-- **`framework/shell_proxy.py`** — `ShellProxy` class that communicates with GNOME Shell via D-Bus `org.gnome.Shell.Eval`. Executes JavaScript in the Shell process to query extension state, window properties, and tree structure.
-- **`framework/input_simulator.py`** — `InputSimulator` class wrapping `xdotool` for keyboard shortcuts, mouse clicks, and window focus simulation.
-- **`framework/window_helper.py`** — `WindowHelper` with higher-level operations: open windows, arrange layouts, verify tiling state.
-- **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
-- **`framework/geometry.py`** — Pure rect math behind the layout asserts: `layout_fill_error()` clips windows to the workspace and fails on pairwise overlap or low coverage (self-tested shell-free by `tests/test_framework_geometry.py`).
-- **`apps/forge_test_window.py`** — The test window every fixture launches: one plain GTK4 window per process, with no D-Bus name, so a window lives exactly as long as its process. `--class` sets its class (the fixtures pass the palette name from `constants.APP_PALETTE`), `--title` a unique token the fixtures match it by, and `--dialog` (or `SIGUSR1`/`SIGUSR2` to the process) opens/closes a modal transient child. `_launch_window` returns the window's dict plus its `pid`.
-- **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
-
-## Formatting & Linting
-
-The Python here is formatted and linted with [ruff](https://docs.astral.sh/ruff/)
-(config in `ruff.toml` at the repo root; line length 100 to match the JS
-convention). Install it with the rest of the deps (`pip install -r
-tests/e2e/requirements.txt`), then:
-
-```bash
-ruff format tests/e2e   # apply formatting
-ruff check tests/e2e    # lint (add --fix to auto-fix)
-```
-
-Both run automatically: the husky pre-commit hook formats + lints staged
-`tests/e2e/**/*.py`, and `make check` (run by the pre-push hook and CI) checks the
-whole suite. Both shell out to `ruff`, so pushing requires ruff on your `PATH` —
-install it as above.
-
-## Known Issues / Deferred
-
-- **Keybinding-dispatch lane is not fully green (deferred — forge-er8).** Input is
+- **The keybinding-dispatch lane is not fully green.** Input is
   dispatched two ways, selected by `--dispatch-mode`: `dbus` (default — actions invoked
   directly via `org.gnome.Shell.Eval`, the trustworthy lane CI gates on) and `keybinding`
   (synthetic super-modifier keypresses via Clutter's `VirtualInputDevice`). The keybinding
@@ -285,15 +193,13 @@ install it as above.
   wall-clock cost), which is deferred. Tests that strengthen focus/movement assertions keep a
   weaker check under `keybinding` so the gate stays green (see `test_focus_navigation.py`).
 
-- **Drag-drop tiling has no real headless grab coverage (deferred — forge-v9o7).** The
+- **Drag-drop tiling has no real headless grab coverage.** The
   drop pipeline (`grab-op-begin` → `GRAB_TILE` → `_handleMoving` → `moveWindowToPointer`)
   only engages on a real Mutter move grab. Synthetic drags — xdotool mousedown+motion on
   X11 and Clutter `VirtualInputDevice` on headless Wayland — fire **zero** `grab-op-begin`
   signals (verified live on both lanes), so no drop ever lands. The tests in
   `test_drag_drop_tiling.py` therefore assert only on settle-state geometry and `xfail`
-  their landing gate (visible-gap, not skip) rather than passing vacuously. Real coverage
-  would need a programmatic grab (`begin_grab_op` is not driven from GJS today) or
-  `gnome-ponytail-daemon` (not integrated); both are deferred. Until then the drop-decision
-  logic is best covered by unit tests (mocked GNOME APIs), not this lane.
+  their landing gate rather than passing vacuously. Real coverage needs a programmatic
+  grab or `gnome-ponytail-daemon`; until then unit tests cover the drop logic.
 
 The containerized GNOME Shell testing approach, Dockerfile setup (Fedora base image, `gnomeshell` user, systemd configuration, `systemd-logind` override), and `set-env.sh` script are derived from [gnome-shell-pod](https://github.com/Schneegans/gnome-shell-pod) by Simon Schneegans, licensed under the MIT License.

@@ -1,9 +1,8 @@
 # Releasing Forge
 
-How to cut a release. Releases are distributed only as GitHub Releases; this
-fork is not published on extensions.gnome.org (EGO). Releases are automated by
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml): pushing a tag builds the extension, checksums it, attaches a keyless
-build-provenance attestation, and publishes a GitHub Release.
+Releases are GitHub Releases only. Pushing a tag runs
+[`publish.yml`](.github/workflows/publish.yml), which builds the zip, checksums it,
+attests its provenance and publishes the release.
 
 ## Versioning & tags
 
@@ -16,10 +15,9 @@ build-provenance attestation, and publishes a GitHub Release.
   notes instead. Mark the commit `type!:` (e.g. `feat!: ...`) and it is listed
   under **Breaking Changes**; a `BREAKING CHANGE:` footer alone is not picked up.
   Add migration steps in an annotated tag (below).
-- We don't set `version` in `metadata.json` (it is EGO's upload counter).
-  `package.json`'s `version` is npm dev-manifest bookkeeping only — not shipped
-  in the zip, not read at runtime — so bumping it is optional.
-- Lightweight tags are fine; signing is optional and CI does not check it.
+- Don't set `version` in `metadata.json` (it is EGO's upload counter); the build
+  stamps the tag into `version-name`. `package.json`'s `version` isn't shipped.
+- Lightweight tags are fine; CI doesn't check signatures.
 
 ## Cut a release
 
@@ -28,28 +26,18 @@ git tag v2026.11.0
 git push origin v2026.11.0
 ```
 
-CI then builds `forge@jcrussell.github.io.zip`, generates `SHA256SUMS`, attests
-provenance, and creates the GitHub Release with auto-generated notes. To rehearse
-without releasing, run the workflow via **Actions → release → Run workflow**
-(`workflow_dispatch`) on a branch — it builds and attests but creates no Release.
-The notes are still generated there, so the step log shows exactly what a real
-tag would publish.
+To rehearse, run **Actions → release → Run workflow** on a branch: it builds,
+attests and prints the notes, but publishes nothing.
 
 ### Release notes
 
-Notes are generated from **commit subjects**, not PRs, by
-[`.github/scripts/release-notes.sh`](.github/scripts/release-notes.sh): commits
-since the previous `v*` tag (for a stable tag, the previous *stable* tag, so
-betas don't hide earlier changes) are bucketed by conventional-commit type into
-Features / Bug Fixes / Documentation & Translations / Maintenance (plus Breaking
-Changes for `type!:` commits, listed first), with anything that doesn't parse listed under Other so nothing is silently dropped. Maintenance and Other are folded into collapsed `<details>` blocks, so the user-facing sections lead. GitHub's
-built-in `generate_release_notes` is PR-derived and this repo commits straight to
-`main`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
-a compare link).
+[`release-notes.sh`](.github/scripts/release-notes.sh) builds the notes from
+commit subjects since the previous tag (for a stable tag, the previous stable tag),
+grouped by conventional-commit type. `type!:` commits also go under Breaking
+Changes; Maintenance and unparsed subjects (Other) are collapsed.
 
-Nothing needs maintaining per release. When a release *does* need a human note —
-a changed default, a migration step — put it in an **annotated** tag and it
-becomes the prelude above the generated sections:
+A release that needs a human note (a changed default, a migration step) gets an
+**annotated** tag; its message goes above the generated sections:
 
 ```bash
 git tag -a v2026.11.0 -m "Stacked/tabbed layouts are now enabled by default."
@@ -85,11 +73,8 @@ any other suffix (`-alpha.1`) would publish as a stable release.
 
 ## extensions.gnome.org
 
-Not a distribution channel for this fork: EGO's
-[review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#extensions-must-not-be-ai-generated)
-reject AI-generated extensions, and this fork is developed largely with AI agents. The zip is still EGO-shaped (`make dist`), so nothing
-here precludes it. The GitHub attestation and checksum secure the side-load path;
-GNOME's ecosystem has no author-signing mechanism.
+Not used: EGO's [review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#extensions-must-not-be-ai-generated)
+reject AI-generated extensions. The zip is still EGO-shaped (`make dist`).
 
 ## Verify a published release
 

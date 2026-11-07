@@ -1,12 +1,7 @@
 # Bug-class hazard catalog
 
-Forge runs inside the GNOME Shell process against Mutter's GObject-introspected
-APIs, so the recurring defects cluster into a handful of **classes** rather than
-one-off mistakes. A 2026-07-24 analysis of the last ~100 fixes found roughly 40%
-were statically preventable and 60% were runtime hazards (GJS finalization, actor
-use-after-dispose, races, Mutter version drift). The `forge-fhen` anti-regression
-program built a layered set of guardrails against these classes; this file is the
-canonical map of **class → guardrail → known gap**.
+Forge runs inside the GNOME Shell process against Mutter's introspected APIs, so its
+bugs cluster into a few **classes**. This is the map of class → guardrail → known gap.
 
 Each guardrail is either **blocking** (fails CI / pre-commit) or **advisory /
 runtime** (surfaces the defect but does not gate a merge). Prefer adding to a
@@ -18,7 +13,7 @@ blocking layer when a class can be caught statically.
 `metaWindow.get_workspace().index()` / `get_monitor()` fed straight into a
 consumer. On an **unmanaged** window `get_workspace()` returns null and
 `get_monitor()` returns `-1`, so the immediate deref throws / misbehaves ("window
-died between the signal and the handler" — e.g. `forge-ib39`, `forge-7bry`).
+died between the signal and the handler").
 
 - **Guardrail (blocking):** `local/no-unguarded-window-deref` (`eslint-rules/`)
   flags the immediate-chain shape and forces the idiomatic **capture-then-guard**
@@ -30,7 +25,7 @@ died between the signal and the handler" — e.g. `forge-ib39`, `forge-7bry`).
 
 ### 2. Finalized GObject wrapper throws on *any* method
 A disposed-but-not-yet-finalized `Meta.Window` wrapper throws on **every**
-accessor, not only on a null return (Bug #328). A live-looking reference obtained
+accessor, not only on a null return. A live-looking reference obtained
 before an async hop may be dead by the time the handler runs.
 
 - **Guardrail (runtime):** `Utils.isWindowAlive()` probes with a `try/catch`
@@ -66,14 +61,13 @@ fires after `disable()` — the classic extension leak.
   actor-lifetime-bound connects carrying a scoped `eslint-disable` with the reason
   (a destroyed actor auto-disconnects its own handlers). **Prefs** sources are
   exempt by file scope — the prefs GTK4 process is torn down wholesale on close.
-- **Gap / TODO:** three manual tracking idioms still coexist in `window.js` /
-  `config-sync.js`; `forge-fhen.7` will migrate them to
-  `connectObject`/`disconnectObject` (deferred pending e2e validation).
+- **Gap:** three manual tracking idioms still coexist in `window.js` and
+  `config-sync.js`, not yet migrated to `connectObject`/`disconnectObject`.
 
 ### 4. Actor use-after-destroy
 Touching a Clutter/St actor (or a window's `get_compositor_private()`) after it
-has been destroyed/reparented — e.g. tab teardown racing a render (`forge-v2yz`,
-`forge-5r0j`, the "St.BoxLayout already disposed" family).
+has been destroyed or reparented, e.g. tab teardown racing a render ("St.BoxLayout
+already disposed").
 
 - **Guardrail (in-code):** null-check `get_compositor_private()` and gate
   reparenting on `global.window_group.contains(actor)` (see `decoration.js`);
@@ -115,11 +109,9 @@ teardown keeps firing against a dead object.
 - **Seeded e2e fuzzer** (`tests/e2e/fuzz/`) — stateless step executor with an
   oracle bundle (liveness eval, `fuzzCheckInvariants`, log scan) after every step;
   ddmin shrinker for repros. Invariant list: `tests/e2e/README.md`.
-- **Coverage ratchet** (`vitest.config.js`) — a floor below the measured baseline;
-  raise, never lower.
+- **Coverage ratchet** — see [tests/README.md](../../tests/README.md#coverage).
 - **CSS property round-trip tests** (`tests/unit/css/roundtrip.test.js`) — seeded
-  in-grammar stylesheets assert `stringify(parse(x))` is a fixed point (the
-  `forge-y3jy` data-loss cluster).
+  in-grammar stylesheets assert `stringify(parse(x))` is a fixed point.
 - **Regression corpus** (`tests/regression/bug-*.test.js`) — one pinned test per
   historical defect.
 
@@ -129,5 +121,4 @@ When a *new* class emerges (two or more fixes sharing a shape), prefer the
 cheapest blocking layer that can catch it: a `tsc` annotation, then a repo-local
 ESLint rule (`eslint-rules/` + a test in `tests/unit/eslint-rules/`), then a
 runtime invariant in `verifyIntegrity`/the fuzzer. Land new rules as `warn` while
-burning the existing violations, then promote to `error` — the same path
-`no-untracked-connect` and `no-unguarded-window-deref` took in `forge-fhen.12`.
+burning down the existing violations, then promote them to `error`.

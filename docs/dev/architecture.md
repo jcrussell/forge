@@ -16,20 +16,18 @@ for Mutter API drift.
 
 `extension.js` is the `ForgeExtension` (a GNOME `Extension` subclass).
 
-- **`enable()`** (`extension.js`): loads the two GSettings schemas (main +
-  `…forge.keybindings`); saves and overrides conflicting GNOME settings
-  (`SETTINGS_OVERRIDES`, `lib/shared/gnome-overrides.js` — e.g. Mutter `edge-tiling`,
-  `auto-maximize`, native maximize/tile keybindings). The originals are saved in
-  the internal `gnome-overrides-snapshot` key before the overrides are written, so
-  they survive an exit that skips disable(); the next enable() reuses them and
-  disable restores them and clears the key. Then it constructs, in order: `ConfigManager` → `ConfigSync` → theme →
-  `WindowManager` → `Keybindings` → `Cheatsheet`; finally `extWm.enable()`.
-- **`disable()`** (`extension.js`): restores the saved GNOME settings, then
-  tears down each subsystem and nulls every reference. Order mirrors construction.
-- **Session modes** (`_onSessionModeChanged`, `extension.js`): on the lock
-  screen Forge **keeps the tree in memory** but disables keybindings and removes
-  the indicator; it re-enables them on return to the `user` session. The tree is
-  never serialized — locking must not lose the layout.
+- **`enable()`**: loads both GSettings schemas and applies the GNOME overrides in
+  `SETTINGS_OVERRIDES` (`lib/shared/gnome-overrides.js`). The originals go into the
+  `gnome-overrides-snapshot` key first, so an exit that skips `disable()` can't lose
+  them; the next `enable()` reuses the snapshot. Then it constructs `ConfigManager`
+  → `ConfigSync` → theme → `WindowManager` → `Keybindings` → `Cheatsheet`, and calls
+  `extWm.enable()`.
+- **`disable()`**: restores the GNOME settings, clears the snapshot once all of them
+  are back, then tears down
+  the subsystems and nulls every reference.
+- **Session modes** (`_onSessionModeChanged`): on the lock screen Forge keeps the
+  tree in memory but drops keybindings and the indicator, and restores them in the
+  `user` session. The tree is never serialized, so locking must not lose it.
 
 ## The tiling tree
 
@@ -57,9 +55,9 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | Module | Responsibility |
 | --- | --- |
 | `window.js` `WindowManager` | Event hub: binds GNOME signals, tracks windows, owns `renderTree`/`move`, focus, grab/drag. |
-| `command.js` `CommandHandler` | Turns a user action into tree mutations (extracted from window.js). |
-| `focus.js` `FocusManager` | Focus tracking + active-window signal lifecycle (extracted from window.js). |
-| `decoration.js` `DecorationManager` | Stacked/tabbed container decorations and their actor lifecycle (extracted from window.js). |
+| `command.js` `CommandHandler` | Turns a user action into tree mutations. |
+| `focus.js` `FocusManager` | Focus tracking and the active-window signal lifecycle. |
+| `decoration.js` `DecorationManager` | Stacked/tabbed decorations and their actors. |
 | `keybindings.js` `Keybindings` | Registers shell keybindings → `CommandHandler`; drag modifier mask. |
 | `workspace.js` `WorkspaceManager` | Workspace nodes + per-workspace signal lifecycle + renumbering. |
 | `monitor.js` `MonitorManager` | Monitor-per-workspace nodes; split orientation per monitor geometry. |
@@ -68,9 +66,6 @@ ROOT ─ WORKSPACE ─ MONITOR ─┬─ WINDOW
 | `lib/shared/settings.js` `ConfigManager` | GSettings + JSON config (`windows.json` overrides). |
 | `lib/shared/config-sync.js` `ConfigSync` | Mirrors GSettings ⇄ `settings.json`/`keybindings.json`. |
 | `lib/shared/theme.js` + `lib/css/` | Stylesheet parsing/customization (see rendering.md). |
-
-User-facing strings are localized with gettext; the catalog (`po/`) and Weblate
-workflow are documented in [translations.md](translations.md).
 
 ## Command dispatch flow
 
@@ -86,34 +81,28 @@ is gated by the modifier mask in `allowDragDropTile()` (`keybindings.js`).
 
 ## GObject lifecycle discipline
 
-Every subsystem **tracks its signal IDs and disconnects them on teardown** —
-GNOME Shell reloads extensions in-process, so a leaked signal survives and
+Core classes are GObjects registered with `static { GObject.registerClass(this); }`.
+Every subsystem **tracks its signal IDs and disconnects them on teardown**: GNOME
+Shell reloads extensions in-process, so a leaked handler outlives `disable()` and
 crashes later.
 
-- `WindowManager._bindSignals()` / `_removeSignals()` (`window.js`)
-  connect/disconnect display, workspace-manager, and per-window signals; the
-  defensive disconnect ignores throws on already-finalized GObjects (Bug #328).
-- Managers own their own signals: `WorkspaceManager._workspaceSignals` is a
-  `Map<wsIndex, signalIds>` unbound in `removeWorkspace`/`destroy`
-  (`workspace.js`).
-- **Idle/timeout source IDs are reset in a `finally`** so a single throw can't
-  wedge them. If `_renderTreeSrcId` stuck non-zero, every later `renderTree()`
-  would no-op and new windows would stay floating (Bug #531 / forge-cuv; see
-  rendering.md). The `window-added` debounce uses the same pattern
-  (`workspace.js`).
+- `WindowManager._bindSignals()` / `_removeSignals()` own the display,
+  workspace-manager and per-window signals. The disconnect tolerates
+  already-finalized objects.
+- Managers own their signals, e.g. `WorkspaceManager._workspaceSignals`, unbound in
+  `removeWorkspace`/`destroy`.
+- Idle and timeout source IDs are cleared in a `finally`, so one throw can't wedge
+  them ([rendering.md](rendering.md#rendertreefrom-force--windowjs)).
+
+[hazards.md](hazards.md) lists the guardrails that enforce this.
 
 ## Configuration sources
 
 Two layers, reconciled by `ConfigManager` + `ConfigSync`:
 
-- **GSettings** — schema `org.gnome.shell.extensions.forge` (+ `.keybindings`).
-  The runtime source of truth.
-- **JSON files** under `~/.config/forge/config/`:
-  - `windows.json` — per-window / per-class float & tile overrides
-    (`ConfigManager`, `lib/shared/settings.js`).
-  - `settings.json` / `keybindings.json` — portable mirror of GSettings, written
-    and re-imported by `ConfigSync` (`config-sync.js`; see its `SETTINGS_KEYS` and
-    `KEYBINDING_KEYS` maps) so a config can be version-controlled or moved between
-    machines.
-
-`ConfigSync.init()` runs during `enable()` and imports any present files.
+- **GSettings** (`org.gnome.shell.extensions.forge` and `.keybindings`): the runtime
+  source of truth.
+- **`windows.json`**: window rules, owned by `ConfigManager` (`lib/shared/settings.js`).
+- **`settings.json` / `keybindings.json`**: a portable mirror of GSettings, owned by
+  `ConfigSync` (`config-sync.js`; its `SETTINGS_KEYS` and `KEYBINDING_KEYS` say what
+  syncs). User-facing behavior: [config.md](../user/config.md).

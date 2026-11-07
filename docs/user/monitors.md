@@ -1,43 +1,34 @@
 # Multi-monitor
 
-Forge maintains a separate tiling tree per monitor, per workspace. Each monitor's
-default split direction follows its **own** geometry — portrait monitors split
-vertically, landscape monitors split horizontally.
+Each monitor has its own tree per workspace, split to suit its shape: landscape
+monitors split horizontally, portrait ones vertically.
 
 ## Where new windows open
 
-`new-window-placement` (Preferences → general settings):
+**New window placement** (`new-window-placement`, Preferences → Tiling):
 
-- **`pointer`** (default) — a new window tiles on the monitor with the pointer /
-  active window.
-- **`window-actual`** — a new window tiles on the monitor it actually opened on
-  (respects app-restored geometry).
+- `pointer` (default): the monitor with the pointer or the active window.
+- `window-actual`: the monitor the window opened on, which respects geometry an app
+  restores.
 
-If windows open on the "wrong" monitor, try switching this setting.
+If windows open on the wrong monitor, try the other one.
 
-## Excluding a monitor from tiling
+## Excluding monitors and workspaces
 
-`monitor-skip-tile` — a comma-separated list of monitor **indices** to leave alone
-(windows there are never tiled). Likewise `workspace-skip-tile` excludes whole
-workspaces by index. Use these for a monitor dedicated to a floating app (chat,
-media) — or as a workaround for the vertical-monitor limitation below.
+**Non-tiling monitors** (`monitor-skip-tile`) and **Non-tiling workspaces**
+(`workspace-skip-tile`), in Preferences → Tiling, take comma-separated indices, e.g.
+`0,1`. Windows there never tile, which suits a monitor kept for chat or media.
+`Super+Shift+w` adds or removes the current workspace.
 
 ## Workspaces on the primary monitor only
 
-Under GNOME's default `workspaces-only-on-primary=true`, the other monitors do not
-switch workspaces: their windows stay visible on every workspace. Forge carries
-those monitors' layouts along to the active workspace on every switch, so
-directional focus and moves between the primary and the other monitors keep working
-on all workspaces.
+With GNOME's default `workspaces-only-on-primary`, the other monitors' windows show on
+every workspace. Forge carries those monitors' layouts to the active workspace, so
+focus and moves across monitors work everywhere.
 
-## Known limitations
+## Limitations
 
-- **Vertical / portrait monitor setups are not fully supported** — focus and
-  navigation across a portrait secondary monitor can misbehave. Excluding that
-  monitor via `monitor-skip-tile` is the current workaround.
-- **Dynamic workspaces are not supported** — use a fixed number of workspaces.
-
-Hot-plugging a monitor is handled (the tree adds/repairs monitor nodes on
-`monitors-changed`). If a layout looks wrong after a display change, disable and
-re-enable Forge to rebuild the tree (`Super+Shift+r` only reloads the config files,
-not the tree) and see [troubleshooting.md](troubleshooting.md).
+- Portrait monitors are not fully supported: focus and navigation across a portrait
+  secondary monitor can misbehave. Excluding that monitor is the workaround.
+- After a display change, if a layout looks wrong, disable and re-enable Forge to
+  rebuild the tree.

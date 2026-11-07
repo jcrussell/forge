@@ -14,26 +14,13 @@ export const IS_MUTTER_49_PLUS = SHELL_MAJOR >= 49;                // compat.js 
 
 GNOME Shell and Mutter share a version (same release cycle), so the Shell major
 version is a reliable Mutter-capability gate. Each shim is a plain exported function
-that branches `if (IS_MUTTER_49_PLUS) { … } else { … }`. Version dispatch (not
+that branches on an `IS_MUTTER_NN_PLUS` constant. Version dispatch (not
 `try/catch`) is deliberate: it reads clearly, costs no exception on the hot path,
 and self-documents which API landed where.
 
-## Current shims (`compat.js`)
-
-| Shim | Mutter ≤ 48 | Mutter ≥ 49 |
-| --- | --- | --- |
-| `isMaximized` / `isNotMaximized` | `get_maximized() === BOTH` / `=== 0` | `is_maximized()` |
-| `maximize(w, flags)` | `maximize(flags)` | BOTH → `maximize()`; partial → `set_maximize_flags(flags)` (never both) |
-| `unmaximize(w)` | `unmaximize(BOTH)` if maximized | `unmaximize()` if maximized (no-op otherwise) |
-| `getMaximizeFlags` | `get_maximized()` | `get_maximize_flags()` |
-
-GNOME 48/51 St and Clutter shims (also in `compat.js`):
-
-| Shim | Before | From |
-| --- | --- | --- |
-| `stBoxOrientation(vertical)` | `{ vertical }` (≤ 47) | `{ orientation: Clutter.Orientation.* }` (48+; `vertical` removed at 51) |
-| `getClutterBackend()` | `Clutter.get_default_backend()` (≤ 50) | `global.stage.context.get_backend()` (51+) |
-| `getMinFrameSize(w)` | `null`: no API (≤ 49) | `get_min_size()` (50+), converted from a client to a frame size |
+`compat.js` holds one shim per drifted API; read it for the current set. GNOME 48
+and 51 also changed St and Clutter (`vertical` → `orientation`, the Clutter backend
+getter); those shims live there too.
 
 ## Drift map (reference)
 
@@ -77,7 +64,3 @@ GNOME 48/51 St and Clutter shims (also in `compat.js`):
 For the rare downstream-distro backport where version ≠ capability, switch that one
 shim's dispatch from the version constant to a feature check
 (`typeof w.method === "function"`) — same module, same callsites.
-
-> The behavioral guardrails here (the try-new-shape recipe and the
-> `set_unmaximize_flags` early-return trap) are also kept as `bd` memories so they
-> surface in agent context, not just on a docs read.

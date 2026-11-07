@@ -2,58 +2,46 @@
 
 ## First steps
 
-- **Reload config** — `Super+Shift+r` re-reads `windows.json` / `keybindings.json`
-  from disk without restarting.
-- **Restart GNOME Shell** — on X11, `Alt+F2` → `r` → Enter. On Wayland, log out and
-  back in.
-- **Check it's enabled** — `gnome-extensions list --enabled` should include
-  `forge@jcrussell.github.io`. If it also lists `forge@jmmaranan.com` (upstream
-  Forge, or this fork before `v2026.11.0`), two copies are tiling at once:
-  `gnome-extensions uninstall forge@jmmaranan.com`, or for a distro-packaged copy,
-  uninstall the package or `gnome-extensions disable forge@jmmaranan.com`.
+- **Restart GNOME Shell:** log out and back in (on X11, `Alt+F2`, `r`, Enter also
+  works).
+- **Check what's enabled:** `gnome-extensions list --enabled` should show
+  `forge@jcrussell.github.io`. If it also shows `forge@jmmaranan.com`, two copies are
+  tiling; [remove the old one](../../README.md#upgrading-from-forgejmmaranancom).
+- **Reload config files:** `Super+Shift+r` ([what it reloads](config.md)).
 
-## A window won't tile (or won't float)
+## A window won't tile, or won't float
 
-It probably matches a rule. Check **Preferences → Windows** and
-`~/.config/forge/config/windows.json` for an override on its class, and confirm
-`tiling-mode-enabled` is on and the workspace/monitor isn't excluded
-(`workspace-skip-tile` / `monitor-skip-tile`). See [rules.md](rules.md) and
-[monitors.md](monitors.md).
+Check, in order: a [window rule](rules.md) for its class or title, tiling being on
+(`Super+w`), and whether its monitor or workspace is
+[excluded](monitors.md#excluding-monitors-and-workspaces) (`Super+Shift+w` toggles
+the workspace).
 
-## Stacked / tabbed shortcuts do nothing
+## Stacked or tabbed shortcuts do nothing
 
-Stacked and tabbed are **on by default**. If the shortcuts no-op, the modes were
-turned off — confirm `stacked-tiling-mode-enabled` / `tabbed-tiling-mode-enabled`
-are enabled in **Preferences → Tiling → Behavior**. See [layouts.md](layouts.md).
+The mode is turned off in Preferences → Tiling.
 
-## Enabling debug logs
+## Debug logs
 
-Logging is **off by default** and only active in development builds. Turn it on:
+Release builds don't log. Build from source with `make dev`
+([CONTRIBUTING.md](../../CONTRIBUTING.md)), then:
 
 ```bash
 gsettings set org.gnome.shell.extensions.forge logging-enabled true
-gsettings set org.gnome.shell.extensions.forge log-level 5   # 0=OFF … 5=DEBUG 6=TRACE 7=ALL
+gsettings set org.gnome.shell.extensions.forge log-level 5   # DEBUG; 6 TRACE, 7 ALL
+journalctl -f -o cat /usr/bin/gnome-shell   # or: make log
 ```
 
-Then watch the logs:
+Set `logging-enabled` back to `false` when done.
 
-```bash
-# X11
-journalctl -f -o cat /usr/bin/gnome-shell
-# or, generally
-journalctl -f -u gnome-shell        # follow
-journalctl -e -u gnome-shell        # jump to the end (Wayland)
-```
-
-(`make log` wraps this during development.) Set `log-level` back to `0` when done.
-
-## Reporting a bug
-
-Include your GNOME version (`gnome-shell --version`), session type (X11/Wayland),
-the steps to reproduce, and any relevant `journalctl` output. File issues against
-the fork: <https://github.com/jcrussell/forge/issues>.
+GNOME Shell logs JavaScript errors from any build, so the journal is worth checking
+either way.
 
 ## Known limitations
 
-No dynamic workspaces; no full vertical-monitor support (see
-[monitors.md](monitors.md)).
+- Dynamic workspaces are not supported; use a fixed number.
+- Portrait monitors are [not fully supported](monitors.md#limitations).
+
+## Reporting a bug
+
+Use the [bug report form](https://github.com/jcrussell/forge/issues/new?template=bug_report.yml);
+it asks for what's needed.
