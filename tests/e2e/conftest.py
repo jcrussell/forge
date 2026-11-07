@@ -301,8 +301,18 @@ def forge_settings(shell_proxy) -> Generator[ForgeSettings, None, None]:
 
 @pytest.fixture
 def clean_workspace(shell_proxy, input_sim) -> Generator[None, None, None]:
-    """Ensure a clean workspace for testing."""
+    """Ensure a clean workspace for testing: no windows, workspace 0 active."""
     _close_all_windows(shell_proxy)
+    # The session has two fixed workspaces; a test that leaves the second one
+    # active would hand the next test a workspace with nothing to its right.
+    if shell_proxy.get_active_workspace_index() != 0:
+        shell_proxy.activate_workspace(0)
+        wait_for(
+            shell_proxy.get_active_workspace_index,
+            predicate=lambda i: i == 0,
+            message="could not return to workspace 0",
+        )
+    shell_proxy.wait_for_forge_settled()
     yield
     _close_all_windows(shell_proxy)
     # Warp the pointer to a neutral spot between tests. An xdotool drag
@@ -350,8 +360,16 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     workspaces (not just the active one) is load-bearing: the fuzz session's
     switch_ws chaos strands windows on other workspaces, and leftovers used to
     survive this teardown for the rest of the suite (forge-4b6).
+
+    Raises if any window is left: a dirty session must not leak into the next test.
     """
-    drain_all_windows(shell_proxy)
+    remaining = drain_all_windows(shell_proxy)
+    if remaining != 0:
+        try:
+            windows = shell_proxy.get_windows()
+        except Exception as e:
+            windows = f"<get_windows failed: {e}>"
+        raise RuntimeError(f"windows left after closing all ({remaining}): {windows!r}")
 
 
 @pytest.fixture
