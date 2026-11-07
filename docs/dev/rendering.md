@@ -19,10 +19,9 @@ The idle body (`window.js`) runs this exact order — **the order is
 load-bearing**:
 
 ```
-tree.pruneDeadWindows()              // drop nodes whose Meta.Window wrapper is finalized —
-                                     // one dead wrapper would throw out of every later step (forge-4b6)
+tree.pruneDeadWindows()              // drop finalized windows; one would throw out of every later step
 processFloats()                      // classify every window TILE vs FLOAT
-_reconcileFullscreenFloatDemotion()  // after processFloats, which re-pins floats (forge-zo4)
+_reconcileFullscreenFloatDemotion()  // after processFloats, which re-pins floats
 tree.render(from)                    // compute rects + move tiled windows
 handleMaximizeOnSingle()             // maximize a lone tiled window per monitor
 updateDecorationLayout()             // tab/stack decorations
@@ -30,8 +29,7 @@ updateBorderLayout()                 // focus/split borders
 ```
 
 The source ID is reset in a `finally` (`window.js`): if a throw left it set,
-every future `renderTree()` would no-op and new windows would stay floating
-(Bug #531 / forge-cuv).
+every future `renderTree()` would no-op and new windows would stay floating.
 
 ## `processFloats()` — `window.js`
 
@@ -115,8 +113,7 @@ keeps its tree node, it is not detached.
 
 `ThemeManagerBase` (`lib/shared/theme.js`) parses the stylesheet with the bundled
 CSS parser in `lib/css/` and exposes `getCssProperty`/`setCssProperty`.
-`updateDecorationLayout()` / `updateBorderLayout()` apply style classes
-(`.window-tiled-border`, `.window-tabbed-tab`, palette classes …) to the actors.
-Users override appearance at
-`~/.config/forge/stylesheet/forge/stylesheet.css`; `patchCss()` syncs bundled
-defaults into the user profile, and a GSettings trigger reloads the stylesheet.
+`updateDecorationLayout()` / `updateBorderLayout()` apply its style classes to the
+actors. On `enable()`, `patchCss()` replaces the user's stylesheet when the bundled
+one's version tag is newer (keeping a `.bak`); Preferences bumps `css-updated` to
+reload it. User view: [theming.md](../user/theming.md).

@@ -1,38 +1,19 @@
-# Portable configuration
+# Portable config
 
-Forge can mirror your settings and keybindings to plain JSON files so you can back
-them up, version-control them, or copy them to another machine.
+Forge can mirror its settings to `settings.json` and its keybindings to
+`keybindings.json` in `~/.config/forge/config/`, next to the
+[window rules](rules.md) in `windows.json`. The files are plain JSON, so they diff
+cleanly in a dotfiles repo. GSettings stays the live source; the files are an
+import/export layer.
 
-## Where config lives
+- **Export:** Preferences → Portability → Export current settings. This also turns
+  on **Auto-sync changes**, which rewrites the files whenever a setting changes.
+- **Reload:** Preferences → Portability → Import from files, or `Super+Shift+r`,
+  which re-reads all three files. It doesn't reload the stylesheet or rebuild the
+  tree.
+- **On startup** Forge imports a file only if something else changed it since Forge
+  last wrote or read it, so a file Forge wrote never reverts newer settings.
 
-```
-~/.config/forge/config/
-├── settings.json       # mirror of Forge GSettings (appearance, behavior, …)
-├── keybindings.json    # mirror of keybindings
-└── windows.json        # float/tile window rules (see rules.md)
-```
-
-GSettings remains the live source of truth; these files are an import/export layer.
-
-## Export / import
-
-In **Preferences → Portability**:
-
-- **Open config directory** — opens the folder above in your file manager.
-- **Export current settings** — writes your current GSettings to `settings.json` /
-  `keybindings.json` (with "Last export" timestamp).
-- **Import** — reads those files back into GSettings ("Last import" timestamp).
-
-On startup, Forge's config sync imports each file that something other than Forge
-wrote since Forge last wrote or read it, so dropping a known-good
-`settings.json`/`keybindings.json` into the config dir and restarting applies it,
-while a file Forge wrote itself never reverts settings you changed since. `windows.json` is reloaded live with **`Super+Shift+r`**.
-
-## Moving config between machines
-
-1. On the source machine: **Export current settings**.
-2. Copy `~/.config/forge/config/*.json` to the same path on the target.
-3. On the target: **Import** (or just restart GNOME Shell — sync imports on enable).
-
-Because the files are plain JSON, they diff cleanly and are safe to keep in a
-dotfiles repo.
+**Open config directory** on the same page opens the folder. To move a setup to
+another machine, export, copy the `*.json` files to the same
+directory there, and import (or log in).
