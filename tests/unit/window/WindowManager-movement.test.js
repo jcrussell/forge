@@ -177,6 +177,34 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(moveFrameSpy).not.toHaveBeenCalled();
     });
 
+    it("re-requests the frame's own rect while an earlier request is pending", () => {
+      // Wayland: the frame changes only when the app commits a request it was sent.
+      const b = { x: 0, y: 0, width: 960, height: 1080 };
+      const metaWindow = createMockWindow({ rect: b });
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame").mockImplementation(() => {});
+
+      wm().move(metaWindow, { x: 0, y: 0, width: 640, height: 1080 });
+      wm().move(metaWindow, b); // frame still at b, but the app is about to commit the 640
+      expect(moveResizeSpy).toHaveBeenLastCalledWith(true, 0, 0, 960, 1080);
+
+      moveResizeSpy.mockClear();
+      wm().move(metaWindow, b);
+      expect(moveResizeSpy).not.toHaveBeenCalled();
+    });
+
+    it("forgets the last request when Forge releases the window", () => {
+      const b = { x: 0, y: 0, width: 960, height: 1080 };
+      const metaWindow = createMockWindow({ rect: b });
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
+      wm().move(metaWindow, { x: 0, y: 0, width: 640, height: 1080 });
+      wm()._releaseWindow(metaWindow);
+      metaWindow.move_resize_frame(true, 0, 0, 960, 1080); // resized while untracked
+
+      moveResizeSpy.mockClear();
+      wm().move(metaWindow, b);
+      expect(moveResizeSpy).not.toHaveBeenCalled();
+    });
+
     it("should handle various rect sizes", () => {
       const metaWindow = createMockWindow();
       const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
