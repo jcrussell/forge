@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# Mirrors .husky/pre-push (beads replaces core.hooksPath).
+make check || exit $?
+
 # --- BEGIN BEADS INTEGRATION v1.0.4 ---
 # This section is managed by beads. Do not remove these markers.
 if command -v bd >/dev/null 2>&1; then

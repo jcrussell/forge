@@ -125,7 +125,10 @@ wrong way is reimplemented.
 - `make check` passes. It runs the static checks and unit tests (ruff, Prettier,
   ESLint, typecheck, vitest) on the whole tree, so it needs
   [ruff](https://docs.astral.sh/ruff/) on your `PATH` even for JS-only changes. CI
-  also builds the package (`make dist`) and runs the e2e lanes.
+  also builds the package (`make dist`) and runs the e2e lanes. The pre-push hook
+  runs `make check` on your working tree, not the commits being pushed, so commit
+  or stash work in progress first; `HUSKY=0` or `--no-verify` skips it. The
+  pre-commit hook only formats and lints staged files and runs related tests.
 - Docs, version lists and the CI matrix are updated if the change affects them.
 
 ### Shape of the PR
