@@ -13,7 +13,7 @@ Run `make help` for the full target list; `npm install` first (needs Node.js 20+
 - **`make dev`** installs a debug build locally; **`make prod`** does a full install + enable + shell restart.
 - **`make test`** (nested Wayland, no restart) / **`make test-x`** (X11) for manual in-shell testing.
 - **`npm test`** runs the unit suite (mocked GNOME APIs); **`make unit-test-docker`** and **`make e2e-test`** are the canonical Docker environments.
-- **`npm run format`** / **`npm run lint`** — Prettier; **`npm run lint:src`** / **`npm run lint:e2e`** — ESLint; **`npm run typecheck`** — `tsc --noEmit`. The husky pre-commit hook (`lint-staged`) runs all of these plus `vitest related` and `ruff`.
+- **`npm run format`** / **`npm run lint`** — Prettier; **`npm run lint:src`** / **`npm run lint:e2e`** — ESLint; **`npm run typecheck`** — `tsc --noEmit`. **`make check`** runs all of these plus the unit suite and ruff on the whole tree; the pre-commit hook (`lint-staged`) only formats and lints staged files and runs `vitest related`.
 
 ## Architecture
 

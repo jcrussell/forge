@@ -26,7 +26,7 @@ HAS_MSGFMT := $(shell command -v msgfmt &>/dev/null && echo yes || echo no)
 
 .PHONY: all clean install schemas uninstall enable disable log debug check-deps \
 	dev prod build metadata compilemsgs update-pot update-po dist purge restart test test-x test-open \
-	format lint unit-test unit-test-watch unit-test-coverage \
+	format lint check unit-test unit-test-watch unit-test-coverage \
 	docker-test-build unit-test-docker unit-test-docker-watch unit-test-docker-coverage \
 	e2e-test e2e-test-fast e2e-fuzz e2e-test-all e2e-test-multimonitor e2e-test-record e2e-debug e2e-clean e2e-build e2e-versions \
 	horizontal-line journal help
@@ -245,6 +245,17 @@ format:
 
 lint:
 	npm run lint
+
+# The static checks and unit tests a change must pass (CONTRIBUTING.md § "Correctness"),
+# on the whole tree. ruff runs first so a missing ruff fails fast.
+check:
+	ruff check tests/e2e
+	ruff format --check tests/e2e
+	npm run lint
+	npm run lint:src
+	npm run lint:e2e
+	npm run typecheck
+	npm test
 
 # Unit tests (local with mocked GNOME APIs)
 unit-test:
@@ -491,6 +502,7 @@ help:
 	@echo "Code Quality:"
 	@echo "  format           Format code with Prettier (writes changes)"
 	@echo "  lint             Check code formatting (no changes)"
+	@echo "  check            Static checks + unit tests: ruff, Prettier, ESLint, typecheck, vitest"
 	@echo ""
 	@echo "Unit Tests:"
 	@echo "  unit-test              Run tests locally"
