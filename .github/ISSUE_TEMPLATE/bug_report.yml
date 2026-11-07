@@ -44,6 +44,16 @@ body:
       placeholder: GNOME Shell 00.0
     validations:
       required: true
+  - type: dropdown
+    id: session-type
+    attributes:
+      label: Session type
+      description: Run `echo $XDG_SESSION_TYPE`.
+      options:
+        - Wayland
+        - X11
+    validations:
+      required: true
   - type: input
     id: forge-version
     attributes:
