@@ -42,7 +42,7 @@ Notes are generated from **commit subjects**, not PRs, by
 since the previous `v*` tag (for a stable tag, the previous *stable* tag, so
 betas don't hide earlier changes) are bucketed by conventional-commit type into
 Features / Bug Fixes / Documentation & Translations / Maintenance (plus Breaking
-Changes for `type!:` commits, listed first), with anything that doesn't parse listed under Other so nothing is silently dropped. GitHub's
+Changes for `type!:` commits, listed first), with anything that doesn't parse listed under Other so nothing is silently dropped. Maintenance and Other are folded into collapsed `<details>` blocks, so the user-facing sections lead. GitHub's
 built-in `generate_release_notes` is PR-derived and this repo commits straight to
 `main`, so it produced empty bodies (`v49-90-beta.1` and `beta.2` shipped with just
 a compare link).

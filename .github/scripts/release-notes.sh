@@ -45,13 +45,29 @@ if [ "$(git cat-file -t "refs/tags/${TAG}" 2>/dev/null || true)" = "tag" ]; then
   fi
 fi
 
-emit() { # emit <heading> <type-regex> [bang-regex]
-  local heading="$1" types="$2" bang="${3:-!?}" body
-  body="$(git log --no-merges --format='%s' "$RANGE" |
-    sed -nE "s/^(${types})(\([^)]*\))?${bang}: (.*)$/- \3/p" || true)"
-  if [ -n "$body" ]; then
+section() { # section <heading> <body> [collapse]
+  local heading="$1" body="$2"
+  [ -n "$body" ] || return 0
+  if [ -n "${3:-}" ]; then
+    # Folded so a long range's test and CI churn doesn't bury the user-facing
+    # sections. The blank lines let GitHub render the list inside <details>.
+    printf '<details>\n<summary><b>%s</b> (%d)</summary>\n\n%s\n\n</details>\n\n' \
+      "$heading" "$(grep -c '^- ' <<<"$body")" "$body"
+  else
     printf '### %s\n\n%s\n\n' "$heading" "$body"
   fi
+}
+
+# Commit subjects, with `<` escaped so GitHub neither strips a subject's
+# `<range>` as a tag nor ends a <details> block early.
+subjects() {
+  git log --no-merges --format='%s' "$RANGE" | sed 's/</\&lt;/g'
+}
+
+emit() { # emit <heading> <type-regex> [bang-regex] [collapse]
+  local heading="$1" types="$2" bang="${3:-!?}"
+  section "$heading" "$(subjects |
+    sed -nE "s/^(${types})(\([^)]*\))?${bang}: (.*)$/- \3/p" || true)" "${4:-}"
 }
 
 # `type!:` marks a breaking change; it is listed here and under its own type.
@@ -59,16 +75,13 @@ emit "Breaking Changes" '[a-z]+' '!'
 emit "Features" 'feat'
 emit "Bug Fixes" 'fix'
 emit "Documentation & Translations" 'docs|i18n'
-emit "Maintenance" 'refactor|tooling|chore|ci|build|style|perf|test'
+emit "Maintenance" 'refactor|tooling|chore|ci|build|style|perf|test' '!?' collapse
 
 # Anything that does not parse as a conventional commit still has to surface, or
-# the notes would silently drop it.
-OTHER="$(git log --no-merges --format='%s' "$RANGE" |
+# the notes would silently drop it. Folded: it is mostly pre-convention history.
+section "Other" "$(subjects |
   grep -vE '^(feat|fix|docs|i18n|refactor|tooling|chore|ci|build|style|perf|test)(\([^)]*\))?!?: ' |
-  sed 's/^/- /' || true)"
-if [ -n "$OTHER" ]; then
-  printf '### Other\n\n%s\n\n' "$OTHER"
-fi
+  sed 's/^/- /' || true)" collapse
 
 REPO_URL="https://github.com/${GITHUB_REPOSITORY:-jcrussell/forge}"
 if [ -n "$PREV" ]; then
