@@ -13,10 +13,7 @@ ACTIONS and asserts on layout/path (get_container_layout, get_focused_node_path)
 never positional geometry.
 """
 
-import time
-
 import pytest
-from framework.constants import Timing
 from framework.wait import wait_for_layout, wait_for_window_count
 from framework.workflow import step
 
@@ -84,7 +81,6 @@ def _enable_stacked_tabbed_modes(restore_settings):
     """
     restore_settings.set_stacked_tiling_mode_enabled(True)
     restore_settings.set_tabbed_tiling_mode_enabled(True)
-    time.sleep(Timing.SETTINGS_SETTLE)
 
 
 class TestWorkflowStacked:

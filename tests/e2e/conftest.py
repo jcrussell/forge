@@ -270,7 +270,7 @@ def screenshot(display) -> ScreenshotCapture:
 
 
 @pytest.fixture(scope="session")
-def forge_settings() -> Generator[ForgeSettings, None, None]:
+def forge_settings(shell_proxy) -> Generator[ForgeSettings, None, None]:
     """Provide connected ForgeSettings instance."""
     # Try with the extension's schema directory first (Docker container path)
     schema_dir = os.path.join(
@@ -282,14 +282,14 @@ def forge_settings() -> Generator[ForgeSettings, None, None]:
 
     settings = None
     if os.path.isdir(schema_dir):
-        settings = ForgeSettings(schema_dir=schema_dir)
+        settings = ForgeSettings(schema_dir=schema_dir, shell_proxy=shell_proxy)
         try:
             settings.connect()
         except Exception:
             settings = None
 
     if settings is None:
-        settings = ForgeSettings()
+        settings = ForgeSettings(shell_proxy=shell_proxy)
         try:
             settings.connect()
         except Exception as e:
@@ -427,15 +427,13 @@ def launch_window(shell_proxy, clean_workspace):
 
 
 @pytest.fixture
-def restore_settings(forge_settings) -> Generator:
+def restore_settings(forge_settings, shell_proxy) -> Generator:
     """Yield forge_settings and restore all changes after test."""
     yield forge_settings
+    # Writes go through the extension, so Forge has seen each restored value;
+    # wait for the work its handlers queued.
     forge_settings.restore_all()
-    # Structural settle (forge-zsk): GSettings writes propagate to the extension
-    # asynchronously via the GSettings 'changed' signal; there is no queryable
-    # post-condition to poll on for "all overrides reverted", so this stays a
-    # fixed delay.
-    time.sleep(Timing.SETTINGS_SETTLE)
+    shell_proxy.wait_for_forge_settled()
 
 
 def _launch_window(app: str, shell_proxy: ShellProxy, app_args: Optional[list] = None) -> dict:

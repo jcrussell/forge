@@ -49,6 +49,7 @@
   const Meta = imports.gi.Meta;
   const Clutter = imports.gi.Clutter;
   const St = imports.gi.St;
+  const GLib = imports.gi.GLib;
 
   // --- Forge root resolution (absorbs _forge_root_js) -----------------------------------------
   // `class Tree extends Node` and its ctor calls super(NODE_TYPES.ROOT, ...) (lib/extension/
@@ -1093,6 +1094,24 @@
           } catch (e2) {}
         }
       }
+    },
+
+    // Write a Forge GSetting through the extension's own Gio.Settings, so its 'changed'
+    // handler has run when this Eval returns (a write from the test process only reaches
+    // gnome-shell on a later main-loop turn). `type` is a GVariant type string.
+    setSetting(key, type, value) {
+      const ext = forgeExt();
+      if (!ext || !ext.settings) return "no-ext";
+      ext.settings.set_value(key, new GLib.Variant(type, value));
+      return "ok";
+    },
+
+    // A Forge GSetting as the running extension sees it, as {value} (an object, so
+    // ShellProxy.eval decodes scalars to their JSON type rather than a string).
+    getSetting(key) {
+      const ext = forgeExt();
+      if (!ext || !ext.settings) return JSON.stringify({ value: null });
+      return JSON.stringify({ value: ext.settings.get_value(key).deep_unpack() });
     },
 
     // Activate (switch to) a workspace by index, creating intermediate workspaces if needed, for
