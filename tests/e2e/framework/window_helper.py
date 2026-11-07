@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 from .constants import RetryConfig, Timing, Tolerance
 from .geometry import as_rect, layout_fill_error, overlap_area
 from .shell_proxy import ShellProxy
-from .wait import WaitTimeoutError, wait_for
+from .wait import WaitTimeoutError, wait_for, wait_for_stable
 
 # Per-step timeout when polling for window-close progress during teardown
 # (forge-zsk). Generous vs. a normal close (<300ms under Xvfb) but bounded so a
@@ -624,3 +624,12 @@ class WindowHelper:
         left = sorted_wins[0].get("rect", {})
         right = sorted_wins[1].get("rect", {})
         return right.get("x", 0) - (left.get("x", 0) + left.get("width", 0))
+
+    def measure_settled_gap(self) -> int:
+        """measure_gap_between() once Forge's re-layout has landed.
+
+        Windows move one at a time, so a gap read mid-render can sit halfway
+        between the old and the new value.
+        """
+        self._shell.wait_for_forge_settled()
+        return wait_for_stable(self.measure_gap_between)

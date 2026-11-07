@@ -55,12 +55,10 @@ class TestGapKeybinding:
         )
         assert inc_after == orig_increment + 1
 
-        gap_after = wait_for(
-            lambda: window_helper.measure_gap_between(),
-            predicate=lambda g: g > gap_before + Tolerance.RESIZE_MIN_DELTA,
-            message="measured gap did not grow after GapSize +1",
+        gap_after = window_helper.measure_settled_gap()
+        assert gap_after > gap_before + Tolerance.RESIZE_MIN_DELTA, (
+            f"measured gap did not grow after GapSize +1: {gap_before} -> {gap_after}"
         )
-        assert gap_after > gap_before
 
     def test_gap_decrease_reverses(
         self, shell_proxy, window_helper, forge_settings, restore_settings, two_windows
@@ -77,10 +75,9 @@ class TestGapKeybinding:
 
         # Increase, then decrease back.
         _gap_increase(shell_proxy)
-        gap_up = wait_for(
-            lambda: window_helper.measure_gap_between(),
-            predicate=lambda g: g > gap_base + Tolerance.RESIZE_MIN_DELTA,
-            message="gap did not grow before decrement",
+        gap_up = window_helper.measure_settled_gap()
+        assert gap_up > gap_base + Tolerance.RESIZE_MIN_DELTA, (
+            f"gap did not grow before decrement: {gap_base} -> {gap_up}"
         )
 
         _gap_decrease(shell_proxy)
@@ -91,9 +88,7 @@ class TestGapKeybinding:
         )
         assert inc_back == orig_increment
 
-        gap_back = wait_for(
-            lambda: window_helper.measure_gap_between(),
-            predicate=lambda g: g < gap_up - Tolerance.RESIZE_MIN_DELTA,
-            message="measured gap did not shrink after GapSize -1",
+        gap_back = window_helper.measure_settled_gap()
+        assert abs(gap_back - gap_base) < Tolerance.SIZE, (
+            f"gap did not return to baseline after GapSize -1: {gap_base} -> {gap_up} -> {gap_back}"
         )
-        assert abs(gap_back - gap_base) < Tolerance.SIZE
