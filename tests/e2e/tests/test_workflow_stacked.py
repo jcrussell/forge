@@ -148,7 +148,7 @@ class TestWorkflowStacked:
         with step(shell_proxy, "close one in TABBED -> tree stays valid, 2 windows"):
             shell_proxy.close_one_window()
             wait_for_window_count(shell_proxy, 2)
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
             result = shell_proxy.verify_tree_integrity()
             assert result.get("valid", False), (
                 f"tree invalid after tabbed close: {result.get('errors')}"
@@ -181,7 +181,7 @@ class TestWorkflowStacked:
             wait_for_layout(shell_proxy, "STACKED")
             launch_window()  # attaches into that CON via tree.attachNode -> 2 siblings
             wait_for_window_count(shell_proxy, 4)
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
             assert _layout_node_child_count(shell_proxy, "STACKED") >= 2, (
                 "expected a multi-child STACKED container to drive sibling focus nav"
             )
@@ -216,7 +216,7 @@ class TestWorkflowStacked:
                 assert "id" in pinned, (
                     f"could not pin focus inside the STACKED container: {pinned!r}"
                 )
-                shell_proxy.wait_for_idle()
+                shell_proxy.wait_for_forge_settled()
                 before = window_helper.get_focused_id()
                 assert before == pinned["id"], (
                     f"pin did not take: focused {before}, expected {pinned['id']}"
@@ -242,7 +242,7 @@ class TestWorkflowStacked:
                 assert "id" in pinned, (
                     f"could not pin focus inside the TABBED container: {pinned!r}"
                 )
-                shell_proxy.wait_for_idle()
+                shell_proxy.wait_for_forge_settled()
                 before = window_helper.get_focused_id()
                 assert before == pinned["id"], (
                     f"pin did not take: focused {before}, expected {pinned['id']}"

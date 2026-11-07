@@ -38,7 +38,7 @@ class TestWorkflowRebalance:
             wait_for_window_count(shell_proxy, 2)
             wait_for_layout_settled(shell_proxy, workspace)
             window_helper.assert_windows_fill_workspace()
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
             result = shell_proxy.verify_tree_integrity()
             assert result.get("valid", False), (
                 f"tree invalid after first close: {result.get('errors')}"
@@ -52,7 +52,7 @@ class TestWorkflowRebalance:
             assert abs(rect["width"] - workspace["width"]) < Tolerance.SIZE, (
                 f"remaining window width {rect['width']} should fill {workspace['width']}"
             )
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
             result = shell_proxy.verify_tree_integrity()
             assert result.get("valid", False), (
                 f"tree invalid after second close: {result.get('errors')}"

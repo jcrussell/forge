@@ -71,7 +71,7 @@ class TestFullscreenTiled:
             timeout=Timing.LAYOUT_CHANGE * 6,
             message="window did not go fullscreen",
         )
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         assert not shell_proxy.is_focused_window_floating(), (
             "the fullscreen window was floated out of its tile"

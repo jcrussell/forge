@@ -105,11 +105,13 @@ def wait_for_stable(
     """
     start = time.time()
     last_value = None
+    last_exception = None
     stable_since = None
 
     while time.time() - start < timeout:
         try:
             current = getter()
+            last_exception = None
             if current == last_value:
                 if stable_since is None:
                     stable_since = time.time()
@@ -118,11 +120,14 @@ def wait_for_stable(
             else:
                 last_value = current
                 stable_since = None
-        except Exception:
+        except Exception as e:
+            last_exception = e
             stable_since = None
         time.sleep(interval)
 
-    raise WaitTimeoutError("Value did not stabilize")
+    if last_exception:
+        raise WaitTimeoutError(f"Value did not stabilize: {last_exception}") from last_exception
+    raise WaitTimeoutError(f"Value did not stabilize. Last value: {last_value}")
 
 
 def retry(

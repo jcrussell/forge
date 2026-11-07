@@ -29,7 +29,7 @@ class TestWindowSwap:
         """
         pinned = shell_proxy.activate_last_sibling_of("HSPLIT")  # the right window
         assert "id" in pinned, f"could not pin the right window: {pinned!r}"
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         if dispatch_mode != "dbus":
             # Synthetic ctrl+super+h is unreliable under Mutter's VirtualInputDevice
@@ -63,7 +63,7 @@ class TestWindowSwap:
         forge-y0d: the old assert only checked width/height > 0 after the swap.
         Toggle to a vertical split, pin the BOTTOM window deterministically (last
         sibling of the VSPLIT) and settle, then prove that same window (by id) moves
-        above where it started. Pinning + wait_for_idle avoids the focus-seed race
+        above where it started. Pinning + waiting for Forge to settle avoids the focus-seed race
         that flaked the older-version lanes.
         """
         input_sim.toggle_layout()
@@ -71,7 +71,7 @@ class TestWindowSwap:
 
         pinned = shell_proxy.activate_last_sibling_of("VSPLIT")  # the bottom window
         assert "id" in pinned, f"could not pin the bottom window: {pinned!r}"
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         if dispatch_mode != "dbus":
             # Synthetic ctrl+super+k is unreliable under VirtualInputDevice (forge-er8);
@@ -116,7 +116,7 @@ class TestWindowMove:
         """
         pinned = shell_proxy.activate_last_sibling_of("HSPLIT")  # the right window
         assert "id" in pinned, f"could not pin the right window: {pinned!r}"
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         if dispatch_mode != "dbus":
             # Synthetic shift+super+h is unreliable under VirtualInputDevice (forge-er8).

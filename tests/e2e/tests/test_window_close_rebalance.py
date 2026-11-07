@@ -93,7 +93,7 @@ class TestTreeIntegrityAfterClose:
         # Close one window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), f"Tree invalid after first close: {result.get('errors')}"
@@ -101,7 +101,7 @@ class TestTreeIntegrityAfterClose:
         # Close another window
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), (
@@ -115,7 +115,7 @@ class TestTreeIntegrityAfterClose:
 
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 2)
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         result = shell_proxy.verify_tree_integrity()
         assert result.get("valid", False), (

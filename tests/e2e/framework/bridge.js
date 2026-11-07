@@ -28,6 +28,19 @@
 
   const FORGE_UUID = "forge@jmmaranan.com";
 
+  // One-shot GLib sources Forge keeps on its WindowManager; each id is zeroed when its
+  // callback runs, so a non-zero id is work Forge still has to do. pendingWork() treats any
+  // of them as busy; fuzzResourceCounts() also counts the recurring focus-on-hover poll.
+  const PENDING_TIMER_IDS = [
+    "_renderTreeSrcId",
+    "_reloadTreeSrcId",
+    "_wsWindowAddSrcId",
+    "_windowHomeReconcileSrcId",
+    "_queueSourceId",
+    "_manualResizeEndId",
+    "_workspaceChangingTimeoutId",
+  ];
+
   // Resolve GI namespaces ONCE at install time and capture them in the method closures.
   // imports.gi.* works in the Eval scope; capturing here avoids re-importing per call and
   // sidesteps any question of imports.* reachability from a later eval (Phase 0 only verified
@@ -756,26 +769,53 @@
       }
     },
 
-    // M3: quiescence probe so the Python settle can wait for async finalize to drain. Move /
-    // SnapLayoutMove finalize through wm.queueEvent, which enqueues onto wm.eventQueue (a Queue,
-    // tree.js:758, with a .length getter) and drains via a GLib.timeout (window.js:271); a render
-    // is then a GLib.idle_add tracked by wm._renderTreeSrcId (window.js:1439). So:
-    //   queue         = eventQueue.length (pending queued events; 0 if the structure is missing)
-    //   pendingRender = !!_renderTreeSrcId (an idle render is scheduled but hasn't fired)
-    //   busy          = queue > 0 || pendingRender
+    // Quiescence probe: is Forge still holding work it will apply on a later main-loop turn?
+    //   queue          = wm.eventQueue.length (queueEvent callbacks not yet run)
+    //   timers         = PENDING_TIMER_IDS still scheduled (idle renders, reloads, 200ms
+    //                    window-add/window-create waits, the 300ms workspace-change guard, ...)
+    //   awaitingFrames = windows Forge tracks but whose first frame hasn't arrived yet
+    //   stackPins      = windows whose 50ms stacking pin (tree.js) has yet to lift
+    //   busy           = any of the above
+    // It only covers Forge's side: a move Forge has sent can still be in flight in the
+    // compositor/client, so geometry checks still wait for the frame rect to settle.
     // Never throws — returns {busy:false,...} on any error.
-    fuzzPendingWork() {
+    pendingWork() {
       try {
         const ext = forgeExt();
         const wm = ext && ext.extWm;
-        let queue = 0;
-        if (wm && wm.eventQueue && typeof wm.eventQueue.length === "number") {
-          queue = wm.eventQueue.length;
+        if (!wm) {
+          return JSON.stringify({
+            busy: false,
+            queue: 0,
+            timers: [],
+            awaitingFrames: 0,
+            stackPins: 0,
+          });
         }
-        const pendingRender = !!(wm && wm._renderTreeSrcId);
-        return JSON.stringify({ busy: queue > 0 || pendingRender, queue, pendingRender });
+        const queue =
+          wm.eventQueue && typeof wm.eventQueue.length === "number" ? wm.eventQueue.length : 0;
+        const timers = PENDING_TIMER_IDS.filter((id) => wm[id]);
+        const metaWindows = global
+          .get_window_actors()
+          .map((a) => a.meta_window)
+          .filter(Boolean);
+        const awaitingFrames = metaWindows.filter((w) => w.forgeAwaitingFirstFrame).length;
+        const stackPins = metaWindows.filter((w) => w._forgeStackTimeoutId).length;
+        return JSON.stringify({
+          busy: queue > 0 || timers.length > 0 || awaitingFrames > 0 || stackPins > 0,
+          queue,
+          timers,
+          awaitingFrames,
+          stackPins,
+        });
       } catch (e) {
-        return JSON.stringify({ busy: false, queue: 0, pendingRender: false });
+        return JSON.stringify({
+          busy: false,
+          queue: 0,
+          timers: [],
+          awaitingFrames: 0,
+          stackPins: 0,
+        });
       }
     },
 
@@ -1603,16 +1643,7 @@
           arrLen(wm._workspaceManagerSignals) +
           arrLen(wm._settingsSignals) +
           arrLen(wm._overviewSignals);
-        const timerIds = [
-          "_renderTreeSrcId",
-          "_reloadTreeSrcId",
-          "_wsWindowAddSrcId",
-          "_windowHomeReconcileSrcId",
-          "_queueSourceId",
-          "_manualResizeEndId",
-          "_pointerFocusTimeoutId",
-          "_workspaceChangingTimeoutId",
-        ];
+        const timerIds = [...PENDING_TIMER_IDS, "_pointerFocusTimeoutId"];
         let timers = 0;
         for (const id of timerIds) if (wm[id]) timers += 1;
         let decorations = 0;
