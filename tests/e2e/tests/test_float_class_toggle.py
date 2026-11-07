@@ -27,6 +27,8 @@ from framework.input_simulator import DEFAULT_FLOAT_LAYOUT
 from framework.wait import wait_for
 
 CLASS_FLOAT_ACTION = {"name": "FloatClassToggle", **DEFAULT_FLOAT_LAYOUT}
+# A second tiled class from the app palette, for the scoping test.
+OTHER_APP = "forge-test-window-b"
 
 
 def _is_editor_class_float(override: dict, wm_class: str) -> bool:
@@ -123,21 +125,34 @@ class TestFloatClassToggle:
         assert residual == 0
 
     def test_class_toggle_does_not_leak_to_other_classes(
-        self, shell_proxy, two_windows, _strip_editor_float
+        self, shell_proxy, two_windows, launch_window, _strip_editor_float
     ):
-        """The override must be scoped to exactly the toggled wm_class.
-
-        Headless can only launch gnome-text-editor, so 'no other class' is
-        verified structurally: after one toggle there is EXACTLY ONE class-wide
-        float override matching the editor class (scoped count, not total)."""
+        """The override must be scoped to exactly the toggled wm_class: a window
+        of another class stays tiled and gets no override of its own."""
         wm_class = two_windows[0].get("wmClass")
+        other_class = launch_window(OTHER_APP).get("wmClass")
+        assert other_class and other_class != wm_class
 
-        shell_proxy.ensure_focus()
-        shell_proxy.invoke_forge_action(CLASS_FLOAT_ACTION)
-
-        count = wait_for(
-            lambda: _count_editor_class_float(shell_proxy, wm_class),
-            predicate=lambda n: n == 1,
-            message="expected exactly one editor class-wide float override",
-        )
-        assert count == 1
+        try:
+            # The first-launched window is leftmost; target it explicitly, since
+            # the newest (other-class) window has focus.
+            shell_proxy.invoke_forge_action(
+                CLASS_FLOAT_ACTION, focus_window="leftmost", also_activate=True
+            )
+            wait_for(
+                lambda: shell_proxy.count_tiled_windows_of_class(wm_class),
+                predicate=lambda n: n == 0,
+                message="FloatClassToggle did not float the toggled class",
+            )
+            count = wait_for(
+                lambda: _count_editor_class_float(shell_proxy, wm_class),
+                predicate=lambda n: n == 1,
+                message="expected exactly one class-wide float override",
+            )
+            assert count == 1
+            assert shell_proxy.count_tiled_windows_of_class(other_class) == 1, (
+                "a window of another class was floated by the class toggle"
+            )
+            assert _count_editor_class_float(shell_proxy, other_class) == 0
+        finally:
+            shell_proxy.remove_class_float_override(other_class)

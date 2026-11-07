@@ -1135,6 +1135,7 @@
       const windows = workspace.list_windows();
       return JSON.stringify(
         windows.map((w) => ({
+          id: w.get_id(),
           title: w.get_title(),
           wmClass: w.get_wm_class(),
           rect: rect(w.get_frame_rect()),
@@ -1325,8 +1326,11 @@
       for (let i = 0; i < wm.get_n_workspaces(); i++) {
         const windows = wm.get_workspace_by_index(i).list_windows();
         if (windows.length > 0) {
+          // Close dialogs before their parents: a window with a modal child open
+          // ignores delete().
+          const target = windows.find((w) => w.get_transient_for()) || windows[0];
           // forge-191a: valid server timestamp (not CurrentTime/0); see closeAllWindows.
-          windows[0].delete(global.display.get_current_time_roundtrip());
+          target.delete(global.display.get_current_time_roundtrip());
           return this.getTotalWindowCount();
         }
       }

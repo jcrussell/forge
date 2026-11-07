@@ -167,9 +167,9 @@ DRAG_PATH_WEIGHT = 4
 REHOME_WEIGHT = 2
 
 
-# App palette as a weighted (name, weight) list for the spawn step (Angle 2). Drawn heavily
-# toward DEFAULT_TEST_APP (the fast/reliable tiled editor); the minority entry (zenity) is a
-# dialog/transient probe. Baked into the step as a tag so replay re-spawns the same app.
+# App palette as a weighted (name, weight) list for the spawn step (Angle 2). Drawn mostly
+# toward the two tiled classes; the minority dialog entry is a transient probe. Baked into the
+# step as a tag so replay re-spawns the same app.
 _SPAWN_APPS = [(name, spec["weight"]) for name, spec in APP_PALETTE.items()]
 
 

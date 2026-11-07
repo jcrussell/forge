@@ -37,16 +37,6 @@ def drain_all_windows(shell_proxy: ShellProxy) -> int:
     under Xvfb, which can saturate the main loop and cause gnome-shell to
     lose its D-Bus service channel name.
 
-    We do NOT proactively Quit or SIGTERM the gnome-text-editor GApplication
-    primary. On Mutter 50 headless Wayland the .service file
-    (`Exec=gnome-text-editor --gapplication-service`) means any gdbus call to
-    `org.gnome.TextEditor` D-Bus-activates a fresh service-mode instance just
-    to receive the message — which itself races registration and hangs with
-    "Failed to register: Timeout was reached", blocking subsequent
-    `--new-window` launches indefinitely. Letting the primary stay alive and
-    serve `--new-window` activations is the only path that doesn't poison
-    the session bus.
-
     Returns the number of windows remaining (0 on success; best-effort).
     """
     for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
@@ -56,9 +46,7 @@ def drain_all_windows(shell_proxy: ShellProxy) -> int:
                 return 0
             shell_proxy.close_one_window_any_workspace()
             # Poll for the window count to actually drop rather than a fixed
-            # WINDOW_CLOSE sleep (forge-zsk). get_total_window_count() is a
-            # read-only Shell.Eval, so this never pokes the gnome-text-editor
-            # primary — the bus-poisoning invariant above is preserved. Short
+            # WINDOW_CLOSE sleep (forge-zsk). Short
             # timeout so a window that won't close can't stall teardown; the
             # attempt cap bounds total work and the next iteration re-reads state.
             try:

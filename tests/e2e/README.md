@@ -81,7 +81,7 @@ The suite has two coexisting lanes:
   test. The pinpoint regression net; a failure names the exact behavior.
 - **Workflow tests** (`test_workflow_<area>.py`, marked `@pytest.mark.workflow`) — one
   small window set driven through many sequenced operations (tile → relayout → resize →
-  close → reopen → …). They amortize the ~10.5s-per-window launch cost across many
+  close → reopen → …). They amortize the per-window launch and settle cost across many
   assertions and exercise realistic state transitions the atomic tests never cover.
 
 Both lanes run on every `make e2e-test`, with **workflows ordered first** (a stable sort
@@ -246,6 +246,7 @@ because this list used to stop at step 4.
 - **`framework/window_helper.py`** — `WindowHelper` with higher-level operations: open windows, arrange layouts, verify tiling state.
 - **`framework/constants.py`** — Shared constants (timeouts, extension UUID, key names).
 - **`framework/geometry.py`** — Pure rect math behind the layout asserts: `layout_fill_error()` clips windows to the workspace and fails on pairwise overlap or low coverage (self-tested shell-free by `tests/test_framework_geometry.py`).
+- **`apps/forge_test_window.py`** — The test window every fixture launches: one plain GTK4 window per process, with no D-Bus name, so a window lives exactly as long as its process. `--class` sets its class (the fixtures pass the palette name from `constants.APP_PALETTE`), `--title` a unique token the fixtures match it by, and `--dialog` (or `SIGUSR1`/`SIGUSR2` to the process) opens/closes a modal transient child. `_launch_window` returns the window's dict plus its `pid`.
 - **`framework/workflow.py`** — Helpers for the workflow lane: `step()` (per-step screencast label + failure annotation) and `invoke_resize()` (deterministic keyboard-resize driver, also used by the atomic resize tests).
 
 ## Formatting & Linting

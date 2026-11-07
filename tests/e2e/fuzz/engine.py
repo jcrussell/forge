@@ -166,7 +166,7 @@ class FuzzEngine:
         Args:
             shell_proxy: connected ShellProxy.
             launch_fn: zero-arg callable that launches one window and returns its info
-                dict (reuse conftest._launch_window). Spawns are ~10s each.
+                dict (reuse conftest._launch_window).
             results_dir: directory for repro artifacts (e2e-results/fuzz).
             gap/tol: geometry overlap slack passed to the bridge oracle (px).
             auto_split: None = leave Forge's auto-split-enabled as-is; True/False = pin it for the
@@ -232,7 +232,7 @@ class FuzzEngine:
         kind = step.get("kind")
         if kind == "spawn":
             # Spawn the tagged palette app (Angle 2). Legacy/initial-window steps with no tag
-            # default to the fast tiled editor.
+            # default to the plain tiled test window.
             self.launch_fn(step.get("app") or DEFAULT_TEST_APP)
             return
         if kind == "close":
