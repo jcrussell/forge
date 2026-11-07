@@ -89,7 +89,7 @@ class TestFocusNavigation:
         # MUST change the focused window, independent of the post-toggle focus.
         pinned = shell_proxy.activate_last_sibling_of("VSPLIT")
         assert "id" in pinned, f"could not pin focus inside the VSPLIT container: {pinned!r}"
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
         assert shell_proxy.get_container_layout() == "VSPLIT"
         before = window_helper.get_focused_id()
         assert before == pinned["id"], (

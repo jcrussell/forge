@@ -62,7 +62,7 @@ def test_split_border_renders_for_focused_split_window(shell_proxy, two_windows)
     # the HSPLIT deterministically before probing, like test_window_swap does.
     pinned = shell_proxy.activate_last_sibling_of("HSPLIT")
     assert "id" in pinned, f"could not pin a window in the HSPLIT: {pinned!r}"
-    shell_proxy.wait_for_idle()
+    shell_proxy.wait_for_forge_settled()
 
     probe = shell_proxy.eval(PROBE_JS)
     print("\nsplit-border probe:", json.dumps(probe, indent=2))

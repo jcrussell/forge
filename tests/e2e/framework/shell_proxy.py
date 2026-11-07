@@ -18,6 +18,9 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402  (must follow gi.require_version)
 
+from .constants import Timeout, Timing  # noqa: E402
+from .wait import WaitTimeoutError  # noqa: E402
+
 
 class ShellProxyError(Exception):
     """Exception raised when Shell.Eval fails."""
@@ -166,39 +169,6 @@ class ShellProxy:
             return output
         except GLib.Error as e:
             raise ShellProxyError(f"D-Bus call failed: {e.message}")
-
-    def wait_for_idle(self, timeout=5.0, interval=0.3, stable_count=3):
-        """Wait for gnome-shell to become responsive after heavy operations.
-
-        Polls gnome-shell with a trivial D-Bus eval until it responds
-        multiple times consecutively, confirming the main loop is not
-        saturated and the rendering pipeline has settled. This prevents
-        crashes caused by stacked/tabbed layout toggles overwhelming the
-        Clutter rendering pipeline under Xvfb.
-
-        Args:
-            timeout: Maximum time to wait in seconds.
-            interval: Time between polls in seconds.
-            stable_count: Number of consecutive successful pings required
-                before considering the shell idle.
-
-        Returns:
-            True if shell became responsive, False on timeout.
-        """
-        start = time.time()
-        consecutive = 0
-        while time.time() - start < timeout:
-            try:
-                if self.eval("1") is not None:
-                    consecutive += 1
-                    if consecutive >= stable_count:
-                        return True
-                else:
-                    consecutive = 0
-            except Exception:
-                consecutive = 0
-            time.sleep(interval)
-        return False
 
     def is_forge_enabled(self) -> bool:
         """Check if Forge extension is enabled."""
@@ -799,16 +769,41 @@ class ShellProxy:
         opts = json.dumps({"gap": int(gap), "tol": int(tol), "render": bool(render)})
         return self.eval("globalThis._forgeTestBridge.fuzzCheckInvariants(%s)" % opts)
 
-    def fuzz_pending_work(self) -> dict:
-        """Report the fuzzer's async-finalizer backpressure: {'busy', 'queue', 'pendingRender'}.
+    def pending_work(self) -> dict:
+        """What Forge still has to do on a later main-loop turn.
 
-        Mirrors fuzz_render_now/fuzz_check_invariants. The bridge contract guarantees this
-        never throws and always returns a dict, so the engine can POLL it to wait for the
-        Move/SnapLayoutMove (~220ms event-queue) and resize (grab-signal) finalizers to
-        drain before the oracle reads (M3). See bridge.fuzzPendingWork.
+        Returns {'busy', 'queue', 'timers', 'awaitingFrames', 'stackPins'}; see
+        bridge.pendingWork.
+        The bridge never throws and always returns a dict.
         """
         self._ensure_bridge()
-        return self.eval("globalThis._forgeTestBridge.fuzzPendingWork()")
+        return self.eval("globalThis._forgeTestBridge.pendingWork()")
+
+    def wait_for_forge_settled(self, timeout: float = Timeout.DEFAULT) -> dict:
+        """Wait until Forge has no queued events, scheduled renders or timers, no
+        window waiting for its first frame and no stacking pin, on two polls in a row.
+
+        Forge applies most changes later than the call that causes them (a 200ms
+        window-create wait, the 220ms event queue, idle renders), so an assertion
+        made right after an action can read the state from before Forge acted.
+        This only covers Forge: a move it has sent can still be landing, so
+        geometry checks also wait for the frame rect to settle.
+
+        Raises WaitTimeoutError (with the last report) if Forge stays busy.
+        """
+        start = time.time()
+        quiet = 0
+        pending = None
+        while time.time() - start < timeout:
+            try:
+                pending = self.pending_work()
+            except ShellProxyError as e:  # a shell too busy to answer is not settled
+                pending = e
+            quiet = quiet + 1 if isinstance(pending, dict) and not pending.get("busy") else 0
+            if quiet >= 2:
+                return pending
+            time.sleep(Timing.POLL_INTERVAL)
+        raise WaitTimeoutError(f"Forge did not settle within {timeout}s: {pending}")
 
     def fuzz_focus_mismatch(self) -> dict:
         """Return focus-correctness violations: {'violations': [{rule,detail,path}, ...]}.

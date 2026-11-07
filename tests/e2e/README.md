@@ -109,7 +109,11 @@ atomic-only, so the atomic lane must keep running by default.
   self-label on the recording lane.
 - **End every state-changing step in a `wait_for_*`** on its own post-condition — there is
   no flake-rerun plugin, so this polling is the only stability mechanism, and longer
-  sequences multiply the gates.
+  sequences multiply the gates. Forge applies most changes on a later main-loop turn (a
+  200ms window-create wait, the 220ms event queue, idle renders):
+  `shell_proxy.wait_for_forge_settled()` waits until it has nothing pending, and the
+  window fixtures and `restore_settings` writes already end with it. It covers Forge's
+  side only, so geometry still needs a `wait_for_stable` on the rects.
 - For focus-dependent steps use `invoke_forge_action(..., focus_window=...)` (and
   `also_activate=True` for async-finalized actions like keyboard resize). Positional hints
   cannot disambiguate STACKED/TABBED children (shared rect) — target those via focus
@@ -159,9 +163,10 @@ It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh 
    Actions carry a positional focus hint (`leftmost`/…) so a step targets the same window
    on replay. Dispatch is D-Bus (`invoke_forge_action`), dodging the synthetic-key
    tile-snap latch (forge-3xz).
-2. **Settle** — after each step the engine first waits for the shell's async work to
-   drain (`bridge.fuzzPendingWork`: the `wm.queueEvent` queue + any pending idle render —
-   Move/SnapLayoutMove finalize ~220ms later), then forces a **synchronous** `tree.render()`
+2. **Settle** — after each step the engine first waits for Forge's async work to
+   drain (`shell_proxy.wait_for_forge_settled` / `bridge.pendingWork`: the `wm.queueEvent`
+   queue, pending idle renders and one-shot timers — Move/SnapLayoutMove finalize ~220ms
+   later), then forces a **synchronous** `tree.render()`
    (`bridge.fuzzRenderNow`). `command()` only *queues* an idle render, so a naive read
    races the pre-`cleanTree` tree; draining + the forced render is the positive settle.
 3. **Oracle** (`bridge.fuzzCheckInvariants` + log scan) — liveness probe, then the

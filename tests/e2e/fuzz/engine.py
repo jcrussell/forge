@@ -206,25 +206,18 @@ class FuzzEngine:
         return self._monitor_count
 
     def _settle(self):
-        """Wait for responsiveness, drain async finalizers, then force a synchronous render.
+        """Drain async finalizers, then force a synchronous render.
 
-        wait_for_idle only proves the main loop answers D-Bus; the Move/SnapLayoutMove
-        (~220ms event-queue) and resize (grab-signal) finalizers can still be mid-flight,
-        leaving the tree half-updated when the oracle reads (M3). Poll fuzz_pending_work()
-        until it reports not-busy (bounded), THEN force the synchronous render. Defensive:
+        The Move/SnapLayoutMove (~220ms event-queue) and resize (grab-signal) finalizers
+        can still be mid-flight, leaving the tree half-updated when the oracle reads (M3).
+        Wait for Forge to settle (bounded), THEN force the synchronous render. Defensive:
         any wrapper error / non-dict result falls back to the old behavior so a missing or
         broken bridge method can never hang the run.
         """
-        self.shell.wait_for_idle(timeout=5.0, interval=0.2, stable_count=2)
-        deadline = time.time() + SETTLE_DRAIN_TIMEOUT
-        while time.time() < deadline:
-            try:
-                pending = self.shell.fuzz_pending_work()
-            except Exception:  # noqa: BLE001 - never let backpressure polling hang a run
-                break
-            if not isinstance(pending, dict) or not pending.get("busy"):
-                break
-            time.sleep(SETTLE_DRAIN_INTERVAL)
+        try:
+            self.shell.wait_for_forge_settled(timeout=SETTLE_DRAIN_TIMEOUT)
+        except Exception:  # noqa: BLE001 - never let backpressure polling hang a run
+            pass
         self.shell.fuzz_render_now()
 
     def execute(self, step):
@@ -619,7 +612,6 @@ class FuzzEngine:
         return path
 
 
-# _settle() backpressure poll: max wait for async finalizers (fuzz_pending_work busy) to drain,
-# and the poll interval. Kept short so a stuck/missing signal degrades to the old behavior fast.
+# _settle() backpressure: max wait for Forge's async finalizers to drain. Kept short so a
+# stuck/missing signal degrades to the old behavior fast.
 SETTLE_DRAIN_TIMEOUT = 2.0
-SETTLE_DRAIN_INTERVAL = 0.1

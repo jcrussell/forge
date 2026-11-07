@@ -102,13 +102,13 @@ class TestDecorationStacking:
             {"name": "LayoutTabbedToggle"}, focus_window="leftmost", also_activate=True
         )
         wait_for_layout(shell_proxy, "TABBED")
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         # The rightmost window floats, then covers the bar from above.
         shell_proxy.invoke_forge_action(FLOAT_TOGGLE, focus_window="rightmost")
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
         _eval_json(shell_proxy, _COVER_BAR)
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         # Focusing the remaining tiled window restacks (Mutter) and re-lays out (Forge).
         _eval_json(shell_proxy, _FOCUS_UNRELATED)
@@ -119,7 +119,7 @@ class TestDecorationStacking:
             message="unrelated tiled window never took focus with the bar shown",
         )
         assert state["overlaps"], f"precondition: the float must cover the bar: {state}"
-        shell_proxy.wait_for_idle()
+        shell_proxy.wait_for_forge_settled()
 
         state = _eval_json(shell_proxy, _PROBE)
         assert state["decoIndex"] >= 0 and state["floatIndex"] >= 0, state

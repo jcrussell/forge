@@ -56,7 +56,7 @@ class TestMinSizeTiling:
 
             # renderTree is async (GLib.idle_add); wait for the render to settle
             # before measuring the rendered frames.
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
 
             sorted_windows = sorted(
                 shell_proxy.get_windows(), key=lambda w: w.get("rect", {}).get("x", 0)
@@ -81,7 +81,7 @@ class TestMinSizeTiling:
             )
         finally:
             shell_proxy.eval("globalThis._forgeTestBridge.resetWindowMinSize('%s')" % wm_class)
-            shell_proxy.wait_for_idle()
+            shell_proxy.wait_for_forge_settled()
 
     def test_real_window_reports_min_size(self, shell_proxy, two_windows):
         """Compat.getMinFrameSize reads Meta.Window.get_min_size() from Mutter 50,
