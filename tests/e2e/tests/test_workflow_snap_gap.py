@@ -48,12 +48,10 @@ class TestWorkflowSnapGap:
                 message="window-gap-size-increment did not increase",
             )
             assert inc_after == orig_increment + 1
-            gap_up = wait_for(
-                lambda: window_helper.measure_gap_between(),
-                predicate=lambda g: g > gap_before + Tolerance.RESIZE_MIN_DELTA,
-                message="measured gap did not grow after GapSize +1",
+            gap_up = window_helper.measure_settled_gap()
+            assert gap_up > gap_before + Tolerance.RESIZE_MIN_DELTA, (
+                f"measured gap did not grow after GapSize +1: {gap_before} -> {gap_up}"
             )
-            assert gap_up > gap_before
 
         with step(shell_proxy, "GapSize -1 -> increment and pixel gap return to base"):
             shell_proxy.invoke_forge_action({"name": "GapSize", "amount": -1})
@@ -63,12 +61,11 @@ class TestWorkflowSnapGap:
                 message="window-gap-size-increment did not return to baseline",
             )
             assert inc_back == orig_increment
-            gap_back = wait_for(
-                lambda: window_helper.measure_gap_between(),
-                predicate=lambda g: g < gap_up - Tolerance.RESIZE_MIN_DELTA,
-                message="measured gap did not shrink after GapSize -1",
+            gap_back = window_helper.measure_settled_gap()
+            assert abs(gap_back - gap_before) < Tolerance.SIZE, (
+                f"gap did not return to baseline after GapSize -1: "
+                f"{gap_before} -> {gap_up} -> {gap_back}"
             )
-            assert abs(gap_back - gap_before) < Tolerance.SIZE
 
         with step(shell_proxy, "workspace switch and back -> two-window layout preserved"):
             sorted_before = window_helper.get_windows_sorted_by_position("x")
