@@ -39,7 +39,9 @@ def drain_all_windows(shell_proxy: ShellProxy) -> int:
 
     Returns the number of windows remaining (0 on success; best-effort).
     """
-    for _ in range(RetryConfig.WINDOW_CLOSE_ATTEMPTS):
+    # The cap counts rounds where nothing closed, so any number of windows drains.
+    stalled = 0
+    while stalled < RetryConfig.WINDOW_CLOSE_ATTEMPTS:
         try:
             count_before = shell_proxy.get_total_window_count()
             if count_before == 0:
@@ -58,7 +60,7 @@ def drain_all_windows(shell_proxy: ShellProxy) -> int:
                 )
             except WaitTimeoutError:
                 # No progress this round; let the loop re-attempt (bounded).
-                pass
+                stalled += 1
         except Exception:
             break
     # Final settle: wait for a fully empty session instead of a fixed sleep.
