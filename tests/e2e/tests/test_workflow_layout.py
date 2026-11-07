@@ -8,7 +8,7 @@ vs ~24 across the atomic tests it overlaps) and exercises the realistic sequence
 of re-laying-out and resizing the SAME windows that the one-op atomic tests never
 cover.
 
-Both test windows share a wmClass (gnome-text-editor), so geometry is read via
+Both test windows share a wmClass, so geometry is read via
 position-sorted rects, never the class-based WindowHelper asserts (which can't
 disambiguate two identical classes).
 """

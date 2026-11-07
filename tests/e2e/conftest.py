@@ -7,7 +7,9 @@ and other testing utilities.
 
 import os
 import subprocess
+import sys
 import time
+import uuid
 import warnings
 from pathlib import Path
 from typing import Generator, Optional
@@ -16,8 +18,8 @@ import pytest
 from framework.constants import (
     APP_PALETTE,
     DEFAULT_TEST_APP,
-    DEFAULT_TEST_APP_ARGS,
     FORGE_UUID,
+    TEST_APP_PATH,
     Timeout,
     Timing,
 )
@@ -235,45 +237,6 @@ def enable_forge_debug_logging(shell_proxy, check_forge_ready):
         warnings.warn(f"Could not enable forge debug logging: {e}")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _warm_text_editor(shell_proxy, check_forge_ready):
-    """Front-load the gnome-text-editor GApplication launch race into session setup.
-
-    The first `gnome-text-editor --new-window` of a session can hit the ~25s
-    GApplication.register() / portal race on Mutter 50 headless Wayland (see
-    forge-0gj). Doing one real launch+close here — through the exact same
-    `_launch_window` path the tests use (same env, GTK_USE_PORTAL=0) — warms the
-    primary so the first actual test launches against an already-serving primary
-    instead of being the one that absorbs the race.
-
-    Best-effort: this never raises. A session-scoped autouse fixture that raised
-    would error *every* test (a worse cascade than the single early ERROR we're
-    fixing). On failure we warn loudly and sweep the workspace clean; the per-test
-    `_launch_window` retries+sweep (below) still protect each test independently.
-    This runs identically on every lane — it is not gated on Fedora/Mutter version.
-    """
-    try:
-        _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    except Exception as e:
-        warnings.warn(f"gnome-text-editor warmup launch failed: {e}")
-    finally:
-        # Always leave a clean workspace for the first test, regardless of whether
-        # the warmup window appeared (a late/zombie window must not leak).
-        _close_all_windows(shell_proxy)
-
-    # The session runs with num-workspaces=2 / dynamic-workspaces=false, so
-    # workspace state is real. Make sure the warmup didn't leave us off ws 0.
-    try:
-        if shell_proxy.get_active_workspace_index() != 0:
-            shell_proxy.eval(
-                "(function(){"
-                "global.workspace_manager.get_workspace_by_index(0)"
-                ".activate(global.get_current_time()); return 'ok';})();"
-            )
-    except Exception as e:
-        warnings.warn(f"Could not restore active workspace to 0 after warmup: {e}")
-
-
 @pytest.fixture(scope="session")
 def dispatch_mode(request) -> str:
     """The --dispatch-mode option as a session-scoped fixture value."""
@@ -383,62 +346,12 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
 
     Thin wrapper over the shared drain (framework.window_helper.drain_all_windows,
     also used by the fuzz engine's _reset_workspace) — see its docstring for the
-    one-by-one pacing and gnome-text-editor bus-poisoning rationale. Sweeping all
+    one-by-one pacing. Sweeping all
     workspaces (not just the active one) is load-bearing: the fuzz session's
     switch_ws chaos strands windows on other workspaces, and leftovers used to
     survive this teardown for the rest of the suite (forge-4b6).
     """
     drain_all_windows(shell_proxy)
-
-
-def _log_window_shortfall(shell_proxy: ShellProxy, n: int, note: str) -> None:
-    """Append a fixture window-count mismatch event to fixture-recovery.log.
-
-    Recurrence evidence for the forge-my4w launch-race family. Fetches the live
-    window list itself (guarded — the shell may be the thing that broke) and
-    probes NameHasOwner for org.gnome.TextEditor. With the primary unit under
-    Restart=always this log fires >=5s after any vanish, so the primary has
-    normally re-registered by probe time: true is the expected reading either
-    way, while false means the systemd restart loop itself is dead (unit
-    failed) — a distinct, worse failure. NameHasOwner is answered by
-    dbus-daemon itself and can never D-Bus-activate the editor, so the
-    bus-poisoning invariant (_close_all_windows) holds. Best-effort: never
-    raises.
-    """
-    try:
-        try:
-            observed = repr(shell_proxy.get_windows())
-        except Exception as e:
-            observed = f"<get_windows failed: {e}>"
-        try:
-            probe = subprocess.run(
-                [
-                    "gdbus",
-                    "call",
-                    "--session",
-                    "--dest",
-                    "org.freedesktop.DBus",
-                    "--object-path",
-                    "/org/freedesktop/DBus",
-                    "--method",
-                    "org.freedesktop.DBus.NameHasOwner",
-                    "org.gnome.TextEditor",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            primary = (probe.stdout or probe.stderr).strip()
-        except Exception as e:
-            primary = f"<probe failed: {e}>"
-        log_path = E2E_RESULTS_DIR / "fixture-recovery.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with log_path.open("a") as f:
-            f.write(f"--- {note} @ {time.time():.3f} ---\n")
-            f.write(f"expected={n} observed={observed}\n")
-            f.write(f"NameHasOwner(org.gnome.TextEditor)={primary}\n\n")
-    except Exception:
-        pass
 
 
 @pytest.fixture
@@ -458,39 +371,16 @@ def _launch_windows(shell_proxy: ShellProxy, n: int) -> tuple:
     """Launch n test windows up-front, settling each (forge-zsk).
 
     Shared by the two/three/four_windows fixtures so the launch+settle loop lives
-    in one place; workflow tests that want N windows up-front reuse it too.
-
-    After the loop, verify the exact NET count (forge-my4w): each _launch_window
-    call only proves ITS window appeared (`> initial_count`), so an earlier
-    window vanishing mid-loop — the gnome-text-editor primary dying while a
-    later activation is in flight (forge-4wl family) — yields a "successful"
-    fixture with n-1 windows. On mismatch, do one full reset-and-relaunch round
-    (idempotent: no separate surplus/shortfall modes) before raising.
+    in one place; workflow tests that want N windows up-front reuse it too. Each
+    launch only proves its own window appeared, so finish by checking the exact
+    count: none of the earlier windows may have gone since.
     """
-
-    def _launch_loop() -> list:
-        windows = []
-        for _ in range(n):
-            windows.append(_launch_window(DEFAULT_TEST_APP, shell_proxy))
-            time.sleep(Timing.WINDOW_SETTLE)
-        return windows
-
-    for attempt in range(2):
-        windows = _launch_loop()
-        try:
-            # Windows are already settled, so the healthy path matches on the
-            # first poll and this adds no wall-clock time.
-            wait_for_window_count(shell_proxy, n, timeout=Timeout.DEFAULT)
-        except WaitTimeoutError:
-            if attempt:
-                _log_window_shortfall(shell_proxy, n, "recovery FAILED")
-                raise
-            _log_window_shortfall(shell_proxy, n, "count mismatch after launch loop; recovering")
-            _close_all_windows(shell_proxy)
-            continue
-        if attempt:
-            _log_window_shortfall(shell_proxy, n, "recovery succeeded")
-        return tuple(windows)
+    windows = []
+    for _ in range(n):
+        windows.append(_launch_window(DEFAULT_TEST_APP, shell_proxy))
+        time.sleep(Timing.WINDOW_SETTLE)
+    wait_for_window_count(shell_proxy, n, timeout=Timeout.DEFAULT)
+    return tuple(windows)
 
 
 @pytest.fixture
@@ -541,118 +431,72 @@ def restore_settings(forge_settings) -> Generator:
     time.sleep(Timing.SETTINGS_SETTLE)
 
 
-def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> dict:
-    """Launch an application window and wait for it to appear.
+def _launch_window(app: str, shell_proxy: ShellProxy, app_args: Optional[list] = None) -> dict:
+    """Launch one test window and wait until it is listed with a real size.
 
-    On Mutter 50 headless Wayland the first few launches in a fresh session
-    can fail because gnome-text-editor's GApplication.register() hangs ~25s
-    on portal probes ("Failed to register: Timeout was reached") before the
-    portal is warmed up. We retry on timeout, killing the stuck subprocess
-    so it doesn't leak a half-registered process that fights subsequent
-    activations.
+    `app` is a palette name (framework.constants.APP_PALETTE) and becomes the
+    window's class. Every launch is its own apps/forge_test_window.py process with
+    a unique title, so the window returned is always the one this call opened;
+    its dict also carries the process id ("pid").
+    If the process exits before its window shows up, fail at once; its stderr is
+    in subprocess-stderr.log.
     """
     if app_args is None:
-        # Palette apps (fuzzer Angle 2) carry their own launch args — notably zenity needs a
-        # mode arg or it exits. Non-palette callers keep the historical editor/empty default.
-        spec = APP_PALETTE.get(app)
-        if spec is not None:
-            app_args = spec["args"]
-        else:
-            app_args = DEFAULT_TEST_APP_ARGS if app == DEFAULT_TEST_APP else []
+        app_args = APP_PALETTE[app]["args"]
+    title = f"{app}-{uuid.uuid4().hex[:8]}"
 
-    # Ensure environment variables are passed to the subprocess
     env = os.environ.copy()
     # For Wayland mode, WAYLAND_DISPLAY should be set by set-env.sh;
     # only fall back to DISPLAY for X11 mode
     if "WAYLAND_DISPLAY" not in env and "DISPLAY" not in env:
         env["DISPLAY"] = ":99"
-    # Make sure D-Bus session is set
-    if "DBUS_SESSION_BUS_ADDRESS" not in env:
-        xdg_runtime = env.get("XDG_RUNTIME_DIR", "/run/user/1000")
-        env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={xdg_runtime}/bus"
-    # Bypass xdg-desktop-portal where possible (Gtk4 mostly ignores this, but
-    # it suppresses Gtk3 portal probes if any test app pulls Gtk3 in).
-    env.setdefault("GTK_USE_PORTAL", "0")
 
-    cmd = [app] + app_args
+    cmd = [sys.executable, str(TEST_APP_PATH), "--class", app, "--title", title, *app_args]
     # Capture subprocess stderr to disk so launch failures can be diagnosed.
     # Append mode: a single rolling log per test session is sufficient.
     stderr_log = E2E_RESULTS_DIR / "subprocess-stderr.log"
     stderr_log.parent.mkdir(parents=True, exist_ok=True)
-
-    def _attempt(attempt: int) -> dict:
-        try:
-            current = shell_proxy.get_windows()
-            initial_count = len(current) if isinstance(current, list) else 0
-        except Exception:
-            initial_count = 0
-
-        stderr_fp = stderr_log.open("a")
-        stderr_fp.write(f"--- {app} {app_args} attempt={attempt} @ {time.time():.3f} ---\n")
+    with stderr_log.open("a") as stderr_fp:
+        stderr_fp.write(f"--- {title} {app_args} @ {time.time():.3f} ---\n")
         stderr_fp.flush()
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=stderr_fp,
-            env=env,
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=stderr_fp, env=env)
+
+    def find_window():
+        if proc.poll() is not None:
+            return {"exited": proc.returncode}
+        windows = shell_proxy.get_windows()
+        return next((w for w in windows if w.get("title") == title), None)
+
+    def ready(w):
+        if w is None:
+            return False
+        rect = w.get("rect", {})
+        return "exited" in w or (rect.get("width", 0) > 0 and rect.get("height", 0) > 0)
+
+    try:
+        window = wait_for(
+            find_window,
+            predicate=ready,
+            timeout=Timing.WINDOW_LAUNCH,
+            interval=Timing.POLL_INTERVAL_WINDOW,
+            message=f"Window '{title}' did not appear",
         )
+    except WaitTimeoutError:
+        proc.kill()
+        _log_launch_failure(title, shell_proxy, "did not appear")
+        raise
+    if "exited" in window:
+        _log_launch_failure(title, shell_proxy, f"exited with {window['exited']}")
+        raise RuntimeError(
+            f"{title} exited with {window['exited']} before its window appeared "
+            "(see subprocess-stderr.log)"
+        )
+    window["pid"] = proc.pid
+    return window
 
-        def find_new_window():
-            windows = shell_proxy.get_windows()
-            if isinstance(windows, list) and len(windows) > initial_count:
-                for w in windows:
-                    wm_class = w.get("wmClass", "").lower()
-                    if app.split("-")[0] in wm_class:
-                        return w
-                return windows[-1] if windows else None
-            return None
 
-        def has_valid_size(w):
-            if w is None:
-                return False
-            rect = w.get("rect", {})
-            return rect.get("width", 0) > 0 and rect.get("height", 0) > 0
-
-        try:
-            return wait_for(
-                find_new_window,
-                predicate=has_valid_size,
-                timeout=Timing.WINDOW_LAUNCH,
-                interval=Timing.POLL_INTERVAL_WINDOW,
-                message=f"Window for '{app}' did not appear",
-            )
-        except WaitTimeoutError:
-            # Kill the hung subprocess so it doesn't claim the bus name later
-            # and starve subsequent activations.
-            if proc.poll() is None:
-                try:
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=1)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        proc.wait(timeout=1)
-                except (OSError, ProcessLookupError):
-                    pass
-            raise
-        finally:
-            stderr_fp.close()
-
-    max_attempts = 3
-    last_exc = None
-    for attempt in range(1, max_attempts + 1):
-        try:
-            return _attempt(attempt)
-        except WaitTimeoutError as e:
-            last_exc = e
-            if attempt == max_attempts:
-                break
-            # Brief settle gap before retry so a half-started portal/primary
-            # has a moment to either finish or be cleared.
-            time.sleep(1)
-
-    # All attempts failed. Capture diagnostics so the artifact carries the
-    # decisive evidence (probe result at the moment of failure).
+def _log_launch_failure(title: str, shell_proxy: ShellProxy, reason: str) -> None:
+    """Append a failed launch, with the windows listed at that moment, to launch-failures.log."""
     try:
         final_windows = shell_proxy.get_windows()
     except Exception as e:
@@ -660,19 +504,8 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: list = None) -> 
     diag_path = E2E_RESULTS_DIR / "launch-failures.log"
     diag_path.parent.mkdir(parents=True, exist_ok=True)
     with diag_path.open("a") as f:
-        f.write(f"--- {app} {app_args} (after {max_attempts} attempts) @ {time.time():.3f} ---\n")
+        f.write(f"--- {title} {reason} @ {time.time():.3f} ---\n")
         f.write(f"final_windows={final_windows!r}\n\n")
-
-    # Sweep the workspace to 0 windows before raising so a window that arrived
-    # late from a slow activation can't leak into the next test's baseline and
-    # cascade as a "did not fill" failure (forge-0gj). clean_workspace already
-    # guarantees "0 windows expected" entering each test, so sweep-to-0 (not to a
-    # captured baseline, which could itself contain the zombie) is the correct
-    # target. _close_all_windows closes via window.delete() and never pokes the
-    # gnome-text-editor primary, preserving the bus-poisoning invariant above.
-    _close_all_windows(shell_proxy)
-
-    raise last_exc
 
 
 def pytest_collection_modifyitems(config, items):

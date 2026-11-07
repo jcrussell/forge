@@ -306,7 +306,7 @@ class ShellProxy:
         """Whether the currently FOCUSED window is floating (resolved by identity).
 
         is_window_floating(wm_class) is first-match by class, so it's ambiguous
-        when several windows share a wm_class (e.g. two gnome-text-editor windows).
+        when several windows share a wm_class (e.g. two test windows).
         This resolves the focused Meta.Window's own tree node and reads its mode —
         the right check after floating "the focused window".
         """
