@@ -110,7 +110,7 @@ class TestTreeIntegrityAfterClose:
 
     def test_close_in_stacked_layout(self, shell_proxy, input_sim, three_windows):
         """Tree should remain valid after closing a window in stacked layout."""
-        # toggle_stacked() already settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
+        # toggle_stacked() already waits for the layout to land.
         input_sim.toggle_stacked()
 
         shell_proxy.close_one_window()

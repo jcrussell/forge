@@ -113,7 +113,8 @@ atomic-only, so the atomic lane must keep running by default.
   200ms window-create wait, the 220ms event queue, idle renders):
   `shell_proxy.wait_for_forge_settled()` waits until it has nothing pending, and the
   window fixtures and `restore_settings` writes already end with it. It covers Forge's
-  side only, so geometry still needs a `wait_for_stable` on the rects.
+  side only: for geometry, `shell_proxy.wait_for_layout_landed()` also waits for its
+  moves to land.
 - For focus-dependent steps use `invoke_forge_action(..., focus_window=...)` (and
   `also_activate=True` for async-finalized actions like keyboard resize). Positional hints
   cannot disambiguate STACKED/TABBED children (shared rect) — target those via focus

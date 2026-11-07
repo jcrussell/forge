@@ -29,7 +29,7 @@
   const FORGE_UUID = "forge@jmmaranan.com";
 
   // One-shot GLib sources Forge keeps on its WindowManager; each id is zeroed when its
-  // callback runs, so a non-zero id is work Forge still has to do. pendingWork() treats any
+  // callback runs, so a non-zero id is work Forge still has to do. pendingState() treats any
   // of them as busy; fuzzResourceCounts() also counts the recurring focus-on-hover poll.
   const PENDING_TIMER_IDS = [
     "_renderTreeSrcId",
@@ -75,6 +75,38 @@
   // --- Rect projection (absorbs the ~8 {x,y,width,height} copies) ------------------------------
   function rect(r) {
     return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+  }
+
+  function sameRect(a, b) {
+    return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+  }
+
+  // --- Forge's outstanding work (pendingWork, layoutState) -------------------------------------
+  //   queue          = wm.eventQueue.length (queueEvent callbacks not yet run)
+  //   timers         = PENDING_TIMER_IDS still scheduled (idle renders, reloads, 200ms
+  //                    window-add/window-create waits, the 300ms workspace-change guard, ...)
+  //   awaitingFrames = windows Forge tracks but whose first frame hasn't arrived yet
+  //   stackPins      = windows whose 50ms stacking pin (tree.js) has yet to lift
+  //   busy           = any of the above
+  const NO_PENDING_WORK = { busy: false, queue: 0, timers: [], awaitingFrames: 0, stackPins: 0 };
+
+  function pendingState(wm) {
+    const queue =
+      wm.eventQueue && typeof wm.eventQueue.length === "number" ? wm.eventQueue.length : 0;
+    const timers = PENDING_TIMER_IDS.filter((id) => wm[id]);
+    const metaWindows = global
+      .get_window_actors()
+      .map((a) => a.meta_window)
+      .filter(Boolean);
+    const awaitingFrames = metaWindows.filter((w) => w.forgeAwaitingFirstFrame).length;
+    const stackPins = metaWindows.filter((w) => w._forgeStackTimeoutId).length;
+    return {
+      busy: queue > 0 || timers.length > 0 || awaitingFrames > 0 || stackPins > 0,
+      queue,
+      timers,
+      awaitingFrames,
+      stackPins,
+    };
   }
 
   // --- Traversal combinators (small + explicit, NOT one universal walker) ----------------------
@@ -770,53 +802,16 @@
       }
     },
 
-    // Quiescence probe: is Forge still holding work it will apply on a later main-loop turn?
-    //   queue          = wm.eventQueue.length (queueEvent callbacks not yet run)
-    //   timers         = PENDING_TIMER_IDS still scheduled (idle renders, reloads, 200ms
-    //                    window-add/window-create waits, the 300ms workspace-change guard, ...)
-    //   awaitingFrames = windows Forge tracks but whose first frame hasn't arrived yet
-    //   stackPins      = windows whose 50ms stacking pin (tree.js) has yet to lift
-    //   busy           = any of the above
-    // It only covers Forge's side: a move Forge has sent can still be in flight in the
-    // compositor/client, so geometry checks still wait for the frame rect to settle.
-    // Never throws — returns {busy:false,...} on any error.
+    // Quiescence probe: the work Forge still has to apply on a later main-loop turn
+    // (pendingState). It only covers Forge's side: a move Forge has sent can still be in
+    // flight in the compositor/client, which layoutState also checks.
+    // Never throws — returns NO_PENDING_WORK on any error.
     pendingWork() {
       try {
-        const ext = forgeExt();
-        const wm = ext && ext.extWm;
-        if (!wm) {
-          return JSON.stringify({
-            busy: false,
-            queue: 0,
-            timers: [],
-            awaitingFrames: 0,
-            stackPins: 0,
-          });
-        }
-        const queue =
-          wm.eventQueue && typeof wm.eventQueue.length === "number" ? wm.eventQueue.length : 0;
-        const timers = PENDING_TIMER_IDS.filter((id) => wm[id]);
-        const metaWindows = global
-          .get_window_actors()
-          .map((a) => a.meta_window)
-          .filter(Boolean);
-        const awaitingFrames = metaWindows.filter((w) => w.forgeAwaitingFirstFrame).length;
-        const stackPins = metaWindows.filter((w) => w._forgeStackTimeoutId).length;
-        return JSON.stringify({
-          busy: queue > 0 || timers.length > 0 || awaitingFrames > 0 || stackPins > 0,
-          queue,
-          timers,
-          awaitingFrames,
-          stackPins,
-        });
+        const wm = forgeExt()?.extWm;
+        return JSON.stringify(wm ? pendingState(wm) : NO_PENDING_WORK);
       } catch (e) {
-        return JSON.stringify({
-          busy: false,
-          queue: 0,
-          timers: [],
-          awaitingFrames: 0,
-          stackPins: 0,
-        });
+        return JSON.stringify(NO_PENDING_WORK);
       }
     },
 
@@ -1201,6 +1196,30 @@
           isFocused: w.has_focus(),
         }))
       );
+    },
+
+    // The active workspace's frame rects, whether Forge has work pending (pendingState), and
+    // whether the layout has landed: nothing pending and every window tiled with its frame at
+    // renderRect, which is also the last rect move() requested (none if it never had to).
+    // One read, so no work can queue between the checks. A float, or a tile Mutter holds
+    // elsewhere (min size, maximized single window), has no such target, so `landed` is
+    // false and the caller falls back to waiting for the frames to stop moving.
+    layoutState() {
+      const wm = forgeExt()?.extWm;
+      const busy = !!wm && pendingState(wm).busy;
+      const windows = global.workspace_manager.get_active_workspace().list_windows();
+      const rects = windows.map((w) => rect(w.get_frame_rect()));
+      const landed =
+        !busy &&
+        windows.every((w, i) => {
+          const node = wm?.findNodeWindow(w);
+          const target = node?.isTile() ? node.renderRect : null;
+          const requested = w._forgeRequestedRect;
+          return (
+            !!target && sameRect(rects[i], target) && (!requested || sameRect(requested, target))
+          );
+        });
+      return JSON.stringify({ landed, busy, rects });
     },
 
     // was get_workspace_rect (no try/catch)

@@ -123,9 +123,9 @@ class InputSimulator:
             key_delay: Delay between key presses in milliseconds.
             shell_proxy: Optional ShellProxy for Clutter-based input (required
                 for Wayland mode, also works in X11 mode).
-            idle_proxy: Optional ShellProxy used only for wait_for_idle() calls
-                after heavy layout operations. Use this in X11 mode where
-                xdotool handles input but idle waits are still needed.
+            idle_proxy: Optional ShellProxy used only to wait for Forge after
+                layout operations. Use this in X11 mode where xdotool handles
+                input but those waits are still needed.
             dispatch_mode: How methods with a forge action equivalent route
                 their request:
                   "dbus" (default): invoke_forge_action via Shell.Eval.
@@ -148,6 +148,14 @@ class InputSimulator:
         self._overlay_enabled = os.environ.get("FORGE_E2E_RECORD") == "1"
         if not shell_proxy:
             self._verify_xdotool()
+
+    def _wait_for_layout(self) -> None:
+        """After a layout-changing command, wait until Forge has applied it and the
+        frames have landed. Without a shell proxy, fall back to a fixed pause."""
+        if self._idle_proxy:
+            self._idle_proxy.wait_for_layout_landed()
+        else:
+            time.sleep(Timing.LAYOUT_CHANGE)
 
     def _dispatch(
         self,
@@ -352,16 +360,12 @@ class InputSimulator:
     def toggle_stacked(self) -> None:
         """Toggle stacked layout (Shift+Super+s / LayoutStackedToggle)."""
         self._dispatch("LayoutStackedToggle", "shift+super+s")
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
-        if self._idle_proxy:
-            self._idle_proxy.wait_for_idle()
+        self._wait_for_layout()
 
     def toggle_tabbed(self) -> None:
         """Toggle tabbed layout (Shift+Super+t / LayoutTabbedToggle)."""
         self._dispatch("LayoutTabbedToggle", "shift+super+t")
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
-        if self._idle_proxy:
-            self._idle_proxy.wait_for_idle()
+        self._wait_for_layout()
 
     def workspace_prev(self) -> None:
         """Press Super+Page_Up to go to previous workspace."""

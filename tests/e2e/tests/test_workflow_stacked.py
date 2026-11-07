@@ -4,8 +4,7 @@ Workflow WF4: stacked / tabbed + focus workflow (forge-911 / forge-clp).
 Drives one 3-window set through HSPLIT -> STACKED -> TABBED -> close -> split,
 with focus navigation, asserting at each step. Folds the stacked/tabbed layout,
 focus-within-stack and tree-integrity-in-stacked atomic concerns into a single
-launch — and crucially amortizes the heavy STACKED_LAYOUT_CHANGE (~3s) settle,
-paid a handful of times here instead of once per atomic stacked/tabbed test.
+launch.
 
 Determinism: in STACKED/TABBED all children share one rect, so a positional
 focus_window hint can't disambiguate them. This workflow targets via focus
@@ -91,7 +90,7 @@ class TestWorkflowStacked:
             wait_for_window_count(shell_proxy, 3)
 
         with step(shell_proxy, "toggle STACKED -> container reports STACKED, 3 windows"):
-            input_sim.toggle_stacked()  # self-settles: STACKED_LAYOUT_CHANGE + wait_for_idle
+            input_sim.toggle_stacked()  # waits for the layout to land
             wait_for_layout(shell_proxy, "STACKED")
             assert len(shell_proxy.get_windows()) == 3
 

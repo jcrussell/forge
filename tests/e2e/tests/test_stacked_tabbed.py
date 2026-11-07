@@ -129,7 +129,6 @@ class TestStackedLayout:
         input_sim.toggle_stacked()
         wait_for_layout(shell_proxy, "STACKED")
         input_sim.toggle_stacked()
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
 
         # The real post-condition the old bare width/height check missed: the
         # container must return to a split (the single-child STACKED CON is
@@ -281,7 +280,6 @@ class TestTabbedNestedSplitCon:
         assert shell_proxy.eval(FOCUS_WINDOW_SIBLING_OF_CON) == "activated"
         time.sleep(Timing.LAYOUT_CHANGE)
         input_sim.toggle_tabbed()
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
 
         # Shell must still be alive and the tree queryable (no render crash).
         tree = shell_proxy.get_forge_tree()

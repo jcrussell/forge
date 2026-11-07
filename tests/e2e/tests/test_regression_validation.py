@@ -57,7 +57,7 @@ class TestBug125VerticalStackedTiling:
         total_width_before = sum(w.get("rect", {}).get("width", 0) for w in windows_before)
 
         # Toggle layout to stacked (Shift+Super+s is default keybinding).
-        # toggle_stacked() self-settles (STACKED_LAYOUT_CHANGE + wait_for_idle).
+        # toggle_stacked() waits for the layout to land.
         input_sim.toggle_stacked()
         wait_for_layout(shell_proxy, "STACKED")  # confirm the toggle took effect
 
@@ -233,7 +233,6 @@ class TestBug057SplitConSiblings:
         assert shell_proxy.eval(FOCUS_WINDOW_SIBLING_OF_CON) == "activated"
         time.sleep(Timing.LAYOUT_CHANGE)
         input_sim.toggle_stacked()
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
 
         # All four windows survive the toggle.
         assert len(shell_proxy.get_windows()) == 4, "windows lost after stacking"
