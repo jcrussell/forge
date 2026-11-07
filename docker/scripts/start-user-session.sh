@@ -46,12 +46,11 @@ echo "$SESSION_TYPE" > /tmp/forge-session-type
 chmod 644 /tmp/forge-session-type
 
 # Force software GL (llvmpipe) for every session process (forge-4wl). On
-# F44/GNOME50, gnome-text-editor attempts a ZINK/Vulkan GL path that has
-# no device in the headless container; the failing vkCreateInstance probe slows
-# the first cold --new-window enough to blow the launch timeout (transient
-# first-test ERROR). These vars must be passed via systemd-run --setenv — the
-# shell, portal, and editor primary run as transient units that do NOT inherit
-# this script's (or the Dockerfile's) environment. Spliced into each unit below.
+# F44/GNOME50, GTK attempts a ZINK/Vulkan GL path that has no device in the
+# headless container, and the failing vkCreateInstance probe is slow. These vars
+# must be passed via systemd-run --setenv — the shell runs as a transient unit
+# that does NOT inherit this script's (or the Dockerfile's) environment.
+# Spliced into each unit below.
 GL_ENV=(
     --setenv=LIBGL_ALWAYS_SOFTWARE=1
     --setenv=GALLIUM_DRIVER=llvmpipe
@@ -243,124 +242,6 @@ if [ "$SESSION_TYPE" = "wayland" ]; then
         chmod 644 /tmp/forge-wayland-display
     else
         echo "WARNING: No Wayland display socket found"
-    fi
-fi
-
-# Pre-launch xdg-desktop-portal under the session bus and (if present) Wayland.
-# gnome-text-editor on GNOME 50 blocks ~25s per --new-window during
-# GApplication.register() while Gtk waits on portal D-Bus methods. Lazy dbus
-# activation of org.freedesktop.portal.Desktop never claims the bus name in
-# headless containers (no DISPLAY/WAYLAND_DISPLAY/XDG_SESSION_TYPE in dbus's
-# exec env), so we start it ourselves with the right environment.
-if [ -x /usr/libexec/xdg-desktop-portal ]; then
-    if ! gdbus call --address="unix:path=$BUS_SOCKET" \
-            --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
-            --method org.freedesktop.DBus.NameHasOwner org.freedesktop.portal.Desktop 2>/dev/null \
-            | grep -q true; then
-        echo "Pre-launching xdg-desktop-portal..."
-        PORTAL_ENV=(
-            --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET"
-            --setenv=XDG_CURRENT_DESKTOP=GNOME
-            --setenv=XDG_SESSION_TYPE="$SESSION_TYPE"
-        )
-        if [ "$SESSION_TYPE" = "wayland" ] && [ -n "$WAYLAND_DISPLAY" ]; then
-            PORTAL_ENV+=(--setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY")
-        elif [ "$SESSION_TYPE" = "x11" ]; then
-            PORTAL_ENV+=(--setenv=DISPLAY=":${DISPLAY_NUM}")
-        fi
-        systemd-run --unit=forge-xdg-portal --uid=gnomeshell --gid=gnomeshell \
-            "${PORTAL_ENV[@]}" \
-            /usr/libexec/xdg-desktop-portal 2>/dev/null || true
-    fi
-fi
-
-# Pre-launch a persistent gnome-text-editor GApplication primary instance
-# (--gapplication-service runs without windows, just holds the bus name).
-# Subsequent test `gnome-text-editor --new-window` invocations become remote
-# D-Bus calls to this primary, bypassing GApplication.register() entirely.
-# Without this, every fresh --new-window blocks ~25s in register() while Gtk
-# waits on slow/missing portal calls on Mutter 50 headless Wayland.
-#
-# GApplication services idle-exit seconds after inactivity (~4s observed on
-# F42; clean exit 0, so Restart=on-failure would never fire) — and since a
-# serving primary hosts every test window in-process, each workspace drain
-# idle-exits it too. Restart=always/200ms below re-registers a primary within
-# ~200ms of every exit, NARROWING the no-primary window in which a
-# --new-window must cold-register and can race another in-flight registration
-# (forge-my4w window-vanish flakes; the conftest _launch_windows count verify
-# is the invariant that covers the sub-second residue). While some
-# --new-window process owns the name instead, the restarted service instance
-# fails "Unable to acquire bus name" and exits without activating anything
-# (G_APPLICATION_IS_SERVICE never falls back to remote activation, so no bus
-# poisoning is possible). StartLimitIntervalSec=0 keeps that retry loop from
-# tripping systemd's 5-starts/10s limit and permanently failing the unit. The
-# flat 200ms is deliberate: RestartSteps/RestartMaxDelaySec backoff was tried
-# and rejected — the step counter does NOT reset on clean exits (verified on
-# F42/systemd 257), so the benign idle-exit cycle ratchets the delay to the
-# max within ~5 cycles and permanently re-opens the no-primary gap. The
-# contention retry loop (~5Hz, each spawn dying cheaply at name acquisition)
-# is rare and bounded by the owning test's duration; its noise lands in the
-# unit journal, not gnome-shell.log.
-if command -v gnome-text-editor &>/dev/null; then
-    EDITOR_ENV=(
-        --setenv=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-        --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$BUS_SOCKET"
-        --setenv=XDG_CURRENT_DESKTOP=GNOME
-        --setenv=XDG_SESSION_TYPE="$SESSION_TYPE"
-        # Software GL so the editor primary (which renders every --new-window)
-        # never attempts the failing ZINK/Vulkan cold path on F44 (forge-4wl).
-        "${GL_ENV[@]}"
-    )
-    if [ "$SESSION_TYPE" = "wayland" ] && [ -n "$WAYLAND_DISPLAY" ]; then
-        EDITOR_ENV+=(--setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY")
-    elif [ "$SESSION_TYPE" = "x11" ]; then
-        EDITOR_ENV+=(--setenv=DISPLAY=":${DISPLAY_NUM}")
-    fi
-    echo "Pre-launching gnome-text-editor GApplication primary..."
-    systemd-run --unit=forge-text-editor-primary --uid=gnomeshell --gid=gnomeshell \
-        -p Restart=always -p RestartSec=200ms -p StartLimitIntervalSec=0 \
-        "${EDITOR_ENV[@]}" \
-        gnome-text-editor --gapplication-service 2>/dev/null || true
-    # Wait for the primary to claim its bus name so test --new-window calls
-    # become remote activations instead of racing fresh register().
-    EDITOR_NAME_OWNED=0
-    for i in {1..60}; do
-        if gdbus call --address="unix:path=$BUS_SOCKET" \
-                --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
-                --method org.freedesktop.DBus.NameHasOwner org.gnome.TextEditor 2>/dev/null \
-                | grep -q true; then
-            EDITOR_NAME_OWNED=1
-            break
-        fi
-        sleep 0.5
-    done
-    # NameHasOwner only proves the primary grabbed the bus name. Its
-    # GApplication may still be registering actions / loading settings for
-    # ~10s after that, and a test --new-window during that window can race
-    # silently. Probe a real method — org.gtk.Actions.List on the
-    # /org/gnome/TextEditor object — to confirm the GApplication is actually
-    # serving requests.
-    EDITOR_ACTIONS_READY=0
-    for i in {1..60}; do
-        if gdbus call --address="unix:path=$BUS_SOCKET" \
-                --dest org.gnome.TextEditor --object-path /org/gnome/TextEditor \
-                --method org.gtk.Actions.List 2>/dev/null | grep -q '^('; then
-            echo "gnome-text-editor primary ready"
-            EDITOR_ACTIONS_READY=1
-            break
-        fi
-        sleep 0.5
-    done
-    # Diagnostic only (no exit / no restart — the pytest warmup fixture + per-test
-    # retry/sweep handle a not-yet-ready primary). If either probe exhausted
-    # without success, surface it loudly so a later launch-race failure is
-    # debuggable from the lane log (forge-0gj). This runs on every lane.
-    if [ "$EDITOR_NAME_OWNED" -ne 1 ] || [ "$EDITOR_ACTIONS_READY" -ne 1 ]; then
-        echo "WARNING: gnome-text-editor primary not confirmed ready" \
-             "(name_owned=$EDITOR_NAME_OWNED actions_ready=$EDITOR_ACTIONS_READY)"
-        systemctl status forge-text-editor-primary --no-pager 2>&1 | head -20 || true
-        journalctl --no-pager -n 20 -u forge-text-editor-primary 2>/dev/null || true
     fi
 fi
 
