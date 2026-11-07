@@ -122,9 +122,10 @@ wrong way is reimplemented.
 - The new tests fail without your change and pass with it. Use a unit test that drives
   real `lib/` code ([tests/README.md](tests/README.md)), or an e2e test when the bug
   only shows in a real shell.
-- These gates pass: `npm test`, `npm run lint`, `npm run lint:src`,
-  `npm run typecheck`, and for changes under `tests/e2e/`, `npm run lint:e2e` and
-  `ruff check tests/e2e`. The pre-commit hook runs them on staged files.
+- `make check` passes. It runs the static checks and unit tests (ruff, Prettier,
+  ESLint, typecheck, vitest) on the whole tree, so it needs
+  [ruff](https://docs.astral.sh/ruff/) on your `PATH` even for JS-only changes. CI
+  also builds the package (`make dist`) and runs the e2e lanes.
 - Docs, version lists and the CI matrix are updated if the change affects them.
 
 ### Shape of the PR

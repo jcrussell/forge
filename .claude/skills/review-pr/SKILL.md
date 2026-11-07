@@ -155,7 +155,7 @@ same message as the verdict table.
    accepted commit onto `main` alone, to find the ones that depend on earlier
    commits. If a dependency was declined, the dependent commit has to be adjusted
    or reimplemented. Then build `review/<x>` and run
-   `git rebase -x 'npm test' main` to check that every commit passes alone.
+   `git rebase -x 'make check' main` to check that every commit passes alone.
 4. **Authorship.** Rebase, cherry-pick and squash all keep `--author`. Never land
    contributor work under our name alone.
 5. **Close the PR by hand.** Rebasing changes the SHAs, so GitHub won't mark the PR
@@ -166,9 +166,9 @@ final call. Don't start fixes until they agree.
 
 ## 7. Gates (on `review/<x>`, built per the strategy)
 
-Every gate in CONTRIBUTING.md § "Correctness", run on the whole tree rather than
-just the staged files the hook sees. Run them on the contributor's head first, so
-you know what fails before your changes.
+`make check`, which runs the static checks and unit tests on the whole tree rather
+than just the staged files the hook sees. Run it on the contributor's head first, so you know what fails
+before your changes.
 
 For each new test, check that it **fails on the old code**: revert the fix, run the
 test, then restore the fix. A test that passes either way is vacuous
