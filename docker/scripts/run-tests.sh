@@ -42,8 +42,8 @@ export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUN
 
 # Force software GL for any app subprocess pytest launches (forge-4wl). The
 # session units get this via systemd-run --setenv in start-user-session.sh; this
-# covers the test-side `gnome-text-editor --new-window` subprocesses, which
-# inherit os.environ via _launch_window.
+# covers the test windows (apps/forge_test_window.py), which inherit
+# os.environ via _launch_window.
 export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
 export GALLIUM_DRIVER="${GALLIUM_DRIVER:-llvmpipe}"
 
