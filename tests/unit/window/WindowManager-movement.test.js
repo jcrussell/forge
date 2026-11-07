@@ -51,7 +51,7 @@ describe("WindowManager - Movement & Positioning", () => {
       });
       const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
       const unmaximizeSpy = vi.spyOn(metaWindow, "unmaximize");
-      const queueEventSpy = vi.spyOn(wm(), "queueEvent").mockImplementation(() => {});
+      const renderTreeSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
       const rect = { x: 100, y: 100, width: 800, height: 600 };
 
       wm()._awaitFirstFrame(metaWindow, () => {
@@ -68,10 +68,7 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(unmaximizeSpy).not.toHaveBeenCalled();
 
       onFirstFrame();
-      expect(queueEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "window-first-frame" }),
-        50
-      );
+      expect(renderTreeSpy).toHaveBeenCalledWith("window-first-frame", true);
       wm().move(metaWindow, rect);
       expect(moveResizeSpy).toHaveBeenCalled();
     });
