@@ -9,8 +9,9 @@ import { createMockWindow, createWindowManagerFixture } from "../mocks/helpers/i
  * waited behind the whole backlog.
  *
  * Fix: idempotent events (focus-update, raise-float) opt in
- * to coalescing by name; window-first-frame is per window and never coalesces.
- * The queue's timeout is captured so each test can step it one tick at a time.
+ * to coalescing by name, and window-first-frame renders straight away instead of
+ * going through the queue. The queue's timeout is captured so each test can step
+ * it one tick at a time.
  */
 describe("Bug forge-2hbi: the event queue coalesces idempotent events", () => {
   let ctx, wm, ticks;
@@ -64,23 +65,18 @@ describe("Bug forge-2hbi: the event queue coalesces idempotent events", () => {
     expect(focusUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("runs each window-first-frame queued behind the burst on the next ticks", () => {
+  it("renders each window's first frame without waiting behind the burst", () => {
     const { metaWindow: a, firstFrame: aFirstFrame } = trackWindow("A");
     const { firstFrame: bFirstFrame } = trackWindow("B");
     drainQueue();
-    const firstFrameRenders = vi.spyOn(wm, "renderTree");
+    const renders = vi.spyOn(wm, "renderTree");
 
     for (let i = 0; i < 30; i++) a.emit("focus", a);
     aFirstFrame();
     bFirstFrame();
-    firstFrameRenders.mockClear();
 
-    tick(); // the coalesced focus-update
-    expect(tick()).toBe(true);
-    expect(tick()).toBe(false);
-    const fromFirstFrame = firstFrameRenders.mock.calls.filter(
-      ([from]) => from === "window-first-frame"
-    );
+    const fromFirstFrame = renders.mock.calls.filter(([from]) => from === "window-first-frame");
     expect(fromFirstFrame).toHaveLength(2);
+    expect(tick()).toBe(false); // only the coalesced focus-update was queued
   });
 });
