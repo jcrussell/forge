@@ -56,6 +56,13 @@ git tag -a v2026.11.0 -m "Stacked/tabbed layouts are now enabled by default."
 git push origin v2026.11.0
 ```
 
+For a longer note, write it in a file. Markdown headings need `--cleanup=verbatim`:
+by default git strips lines starting with `#` from tag messages as comments.
+
+```bash
+git tag -a --cleanup=verbatim -F notes.md v2026.11.0
+```
+
 Preview any range locally:
 
 ```bash
