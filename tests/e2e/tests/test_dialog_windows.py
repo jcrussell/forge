@@ -3,231 +3,131 @@ Dialog Window Tests for Forge.
 
 Tests that dialog/transient windows are not tiled and don't
 disrupt the tiling layout of other windows.
+
+The dialog is the test window's own modal child (transient-for set to the test
+window), opened and closed by signalling the test window's process, so it opens
+over a window that is already tiled. Forge floats it by its transient parent
+(_floatsByRole). Every assertion waits for Forge to settle first: Forge decides
+float vs tile about 200ms after a window appears, not when it is first listed.
 """
 
 import os
-import subprocess
+import signal
 
-import pytest
 from framework.constants import Tolerance
-from framework.wait import wait_for, wait_for_stable, wait_for_window_count
+from framework.wait import wait_for, wait_for_stable
 
 
-def _safe_terminate(proc):
-    """Terminate a subprocess safely with timeout and kill fallback."""
-    proc.terminate()
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
+def _dialog_title(window):
+    return f"{window['title']} (dialog)"
 
 
-def _open_zenity_dialog(display=None):
-    """Open a zenity info dialog as a subprocess."""
-    env = os.environ.copy()
-    if display:
-        env["DISPLAY"] = display
-    elif "DISPLAY" not in env:
-        env["DISPLAY"] = ":99"
-
-    return subprocess.Popen(
-        ["zenity", "--info", "--text=Test dialog", "--timeout=30"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-    )
+def _dialog_listed(shell_proxy, window):
+    return any(w.get("title") == _dialog_title(window) for w in shell_proxy.get_windows())
 
 
-def _zenity_present(windows):
-    """True when a zenity window is present (wmClass is case-insensitive)."""
-    return isinstance(windows, list) and any(
-        w.get("wmClass", "").lower() == "zenity" for w in windows
-    )
+def _open_dialog(shell_proxy, window_helper, window):
+    """Open `window`'s modal dialog and wait until Forge and the layout settle."""
+    os.kill(window["pid"], signal.SIGUSR1)
+    wait_for(lambda: _dialog_listed(shell_proxy, window), message="dialog did not appear")
+    shell_proxy.wait_for_forge_settled()
+    wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
 
-def _wait_zenity_closed(shell_proxy):
-    """Block until no zenity window remains (forge-1wp).
-
-    Replaces a fixed post-terminate sleep: a slow-to-die dialog could otherwise
-    still be on-screen when the next test starts and perturb its tiling baseline.
-    Polling the real post-condition (the window is gone) is both faster on the
-    common path and correct on the slow one.
-    """
+def _close_dialog(shell_proxy, window_helper, window):
+    """Close `window`'s dialog and wait until Forge and the layout settle."""
+    os.kill(window["pid"], signal.SIGUSR2)
     wait_for(
-        shell_proxy.get_windows,
-        predicate=lambda windows: not _zenity_present(windows),
-        message="zenity dialog did not close",
+        lambda: _dialog_listed(shell_proxy, window),
+        predicate=lambda listed: not listed,
+        message="dialog did not close",
     )
+    shell_proxy.wait_for_forge_settled()
+    wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
 
-def _has_zenity():
-    """Check if zenity is available."""
-    try:
-        subprocess.run(["zenity", "--version"], capture_output=True, check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-
-@pytest.fixture
-def zenity_available():
-    """Skip test if zenity is not available."""
-    if not _has_zenity():
-        pytest.skip("zenity not available")
+def _main_window_rect(shell_proxy, window):
+    """The rect of `window` itself (not its same-class dialog), matched by title."""
+    return next(w["rect"] for w in shell_proxy.get_windows() if w.get("title") == window["title"])
 
 
 class TestDialogWindows:
     """Test that dialog windows are handled correctly."""
 
-    def test_modal_dialog_not_tiled(
-        self, shell_proxy, input_sim, window_helper, test_window, zenity_available
-    ):
+    def test_modal_dialog_not_tiled(self, shell_proxy, window_helper, test_window):
         """A dialog window should not shrink the parent tiled window."""
-        wm_class = test_window.get("wmClass")
         workspace = window_helper.get_workspace_rect()
 
-        # Open a dialog and wait for it to actually appear.
-        proc = _open_zenity_dialog()
-        wait_for(
-            shell_proxy.get_windows,
-            predicate=_zenity_present,
-            message="zenity dialog did not appear",
+        _open_dialog(shell_proxy, window_helper, test_window)
+
+        width = _main_window_rect(shell_proxy, test_window)["width"]
+        assert width > workspace["width"] * 0.8, (
+            f"Parent window should stay large: width {width} vs workspace {workspace['width']}"
         )
 
-        try:
-            # Parent window should still be large (not shrunk by dialog tiling)
-            rect_after = window_helper.get_window_rect(wm_class)
-            assert rect_after[2] > workspace["width"] * 0.8, (
-                f"Parent window should stay large: width {rect_after[2]} "
-                f"vs workspace {workspace['width']}"
-            )
-        finally:
-            _safe_terminate(proc)
-            _wait_zenity_closed(shell_proxy)
-
-    def test_dialog_preserves_tiling(
-        self, shell_proxy, input_sim, window_helper, two_windows, zenity_available
-    ):
+    def test_dialog_preserves_tiling(self, shell_proxy, window_helper, two_windows):
         """Opening a dialog should not change existing tiled windows' positions."""
-        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
-        sorted_before = window_helper.get_windows_sorted_by_position("x")
-        rects_before = [w.get("rect", {}) for w in sorted_before]
+        rects_before = [w["rect"] for w in window_helper.get_windows_sorted_by_position("x")]
 
-        proc = _open_zenity_dialog()
-        wait_for(
-            shell_proxy.get_windows,
-            predicate=_zenity_present,
-            message="zenity dialog did not appear",
+        _open_dialog(shell_proxy, window_helper, two_windows[0])
+
+        wm_class = two_windows[0]["wmClass"]
+        assert shell_proxy.count_tiled_windows_of_class(wm_class) == 2, (
+            "the dialog should not be a tiled node in the Forge tree"
         )
-
-        try:
-            # Get only the tiled windows (exclude dialog)
-            all_windows = shell_proxy.get_windows()
-            tiled_windows = sorted(
-                [w for w in all_windows if w.get("wmClass", "").lower() != "zenity"],
-                key=lambda w: w.get("rect", {}).get("x", 0),
+        tiled_after = sorted(
+            (_main_window_rect(shell_proxy, w) for w in two_windows), key=lambda r: r["x"]
+        )
+        for before, after in zip(rects_before, tiled_after):
+            assert abs(before["width"] - after["width"]) < Tolerance.POSITION, (
+                f"Tiled window width changed: {before['width']} -> {after['width']}"
             )
 
-            # The dialog must be excluded from the Forge tree (not a tiled node).
-            # Use its real wmClass (case varies, e.g. "Zenity"); the tree query is
-            # case-sensitive, so derive it from the live window rather than guessing.
-            zenity_class = next(
-                w.get("wmClass") for w in all_windows if w.get("wmClass", "").lower() == "zenity"
-            )
-            assert shell_proxy.count_tiled_windows_of_class(zenity_class) == 0, (
-                f"Dialog '{zenity_class}' should not be a tiled node in the Forge tree"
-            )
-
-            for before_rect, tiled_win in zip(rects_before, tiled_windows):
-                after_rect = tiled_win.get("rect", {})
-                assert (
-                    abs(before_rect.get("width", 0) - after_rect.get("width", 0))
-                    < Tolerance.POSITION
-                ), (
-                    f"Tiled window width changed: {before_rect.get('width')} -> {after_rect.get('width')}"
-                )
-        finally:
-            _safe_terminate(proc)
-            _wait_zenity_closed(shell_proxy)
-
-    def test_dialog_is_not_tiled(self, shell_proxy, test_window, zenity_available):
+    def test_dialog_is_not_tiled(self, shell_proxy, window_helper, test_window):
         """A dialog window must not become a tiled node in the Forge tree.
 
-        With a tiled window present and a zenity dialog open, Forge's dialog/
-        transient exclusion (_isDialogLike / WINDOW_TYPES) must keep the dialog
-        out of the tree. The old test read raw Mutter window types and ended in
-        `has_dialog or has_zenity` — always true because the test already blocks
-        on a zenity window being present, so it never exercised Forge. Mirror
-        test_dialog_preserves_tiling: derive the real (case-sensitive) wmClass
-        from the live window, then assert Forge tiled exactly zero of them.
+        The dialog shares the test window's class, so with both open exactly one
+        tiled node of that class means the dialog was kept out of the tree.
         """
-        proc = _open_zenity_dialog()
-        wait_for(
-            shell_proxy.get_windows,
-            predicate=_zenity_present,
-            message="zenity dialog did not appear",
-        )
+        _open_dialog(shell_proxy, window_helper, test_window)
 
-        try:
-            all_windows = shell_proxy.get_windows()
-            # The tree query is case-sensitive (wmClass case varies, e.g.
-            # "Zenity"); derive it from the live window rather than guessing.
-            zenity_class = next(
-                w.get("wmClass") for w in all_windows if w.get("wmClass", "").lower() == "zenity"
-            )
-            assert shell_proxy.count_tiled_windows_of_class(zenity_class) == 0, (
-                f"Dialog '{zenity_class}' should not be a tiled node in the Forge tree"
-            )
-        finally:
-            _safe_terminate(proc)
-            _wait_zenity_closed(shell_proxy)
+        wm_class = test_window["wmClass"]
+        assert shell_proxy.count_windows_of_class(wm_class) == 2
+        assert shell_proxy.count_tiled_windows_of_class(wm_class) == 1, (
+            "Dialog should not be a tiled node in the Forge tree"
+        )
 
 
 class TestDialogCloseBehavior:
     """Test that closing dialogs preserves tiling state."""
 
-    def test_closing_dialog_preserves_tiling(
-        self, shell_proxy, window_helper, test_window, zenity_available
-    ):
-        """Closing a dialog should restore original window count."""
-        count_before = len(shell_proxy.get_windows())
+    def test_closing_dialog_preserves_tiling(self, shell_proxy, window_helper, two_windows):
+        """Closing a dialog leaves both tiled windows tiled where they were."""
+        rects_before = [_main_window_rect(shell_proxy, w) for w in two_windows]
 
-        proc = _open_zenity_dialog()
-        wait_for(
-            shell_proxy.get_windows,
-            predicate=_zenity_present,
-            message="zenity dialog did not appear",
+        _open_dialog(shell_proxy, window_helper, two_windows[0])
+        _close_dialog(shell_proxy, window_helper, two_windows[0])
+
+        assert shell_proxy.count_tiled_windows_of_class(two_windows[0]["wmClass"]) == 2, (
+            "both windows should still be tiled after the dialog closed"
         )
+        for window, before in zip(two_windows, rects_before):
+            after = _main_window_rect(shell_proxy, window)
+            for key in ("x", "width"):
+                assert abs(before[key] - after[key]) < Tolerance.POSITION, (
+                    f"{window['title']} {key} changed: {before[key]} -> {after[key]}"
+                )
 
-        _safe_terminate(proc)
-        windows = wait_for_window_count(shell_proxy, count_before)
-
-        count_after = len(windows)
-        assert count_after == count_before, (
-            f"Window count should be restored: {count_before} -> {count_after}"
-        )
-
-    def test_multiple_dialogs_dont_break_tiling(
-        self, shell_proxy, window_helper, test_window, zenity_available
-    ):
+    def test_multiple_dialogs_dont_break_tiling(self, shell_proxy, window_helper, test_window):
         """Opening and closing multiple dialogs should not break tiling."""
-        wm_class = test_window.get("wmClass")
-
         for _ in range(3):
-            proc = _open_zenity_dialog()
-            wait_for(
-                shell_proxy.get_windows,
-                predicate=_zenity_present,
-                message="zenity dialog did not appear",
-            )
-            _safe_terminate(proc)
-            _wait_zenity_closed(shell_proxy)
+            _open_dialog(shell_proxy, window_helper, test_window)
+            _close_dialog(shell_proxy, window_helper, test_window)
 
         # Single window should still fill workspace
         workspace = window_helper.get_workspace_rect()
-        rect = window_helper.get_window_rect(wm_class)
-        assert abs(rect[2] - workspace["width"]) < Tolerance.SIZE, (
+        width = _main_window_rect(shell_proxy, test_window)["width"]
+        assert abs(width - workspace["width"]) < Tolerance.SIZE, (
             f"Window should still fill workspace after dialogs: "
-            f"width {rect[2]} vs {workspace['width']}"
+            f"width {width} vs {workspace['width']}"
         )
