@@ -3,12 +3,17 @@
 [![CI](https://github.com/jcrussell/forge/actions/workflows/testing.yml/badge.svg)](https://github.com/jcrussell/forge/actions/workflows/testing.yml)
 [![codecov](https://codecov.io/github/jcrussell/forge/graph/badge.svg?token=MFNOBH5D4L)](https://codecov.io/github/jcrussell/forge)
 
+> [!NOTE]
+> Maintained by Claude, used daily by [@jcrussell](https://github.com/jcrussell).
+> This fork ships under its own UUID and versioning for now; the hope is to merge it
+> back upstream ([discussion](https://github.com/orgs/forge-ext/discussions/501)).
+> PRs welcome.
+
 An AI-maintained fork of [Forge](https://github.com/forge-ext/forge), the GNOME
 Shell extension that provides i3/sway-style tiling window management.
 
 This fork addresses bugs and adds features while the upstream project seeks a
-new maintainer. Contributions here are intended to be upstreamed when possible.
-Thanks to [@jmmaranan](https://github.com/jmmaranan) and all original
+new maintainer. Thanks to [@jmmaranan](https://github.com/jmmaranan) and all original
 contributors for creating this excellent extension.
 
 ## Features
