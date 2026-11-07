@@ -232,7 +232,7 @@ class TestDragPreviewCleanup:
         shell_proxy.invoke_forge_action(
             {"name": "LayoutTabbedToggle"}, focus_window="leftmost", also_activate=True
         )
-        time.sleep(Timing.STACKED_LAYOUT_CHANGE)
+        shell_proxy.wait_for_layout_landed()
         wait_for_layout(shell_proxy, "TABBED")
 
         windows = shell_proxy.get_windows()

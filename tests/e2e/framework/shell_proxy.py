@@ -18,8 +18,15 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402  (must follow gi.require_version)
 
-from .constants import Timeout, Timing  # noqa: E402
+from .constants import Timeout  # noqa: E402
 from .wait import WaitTimeoutError  # noqa: E402
+
+# wait_for_forge_settled polls a cheap bridge read; a short interval keeps each
+# settle close to Forge's own timers instead of adding a poll period on top.
+SETTLE_POLL_INTERVAL = 0.03
+# How long frames with no exact target must stay put before wait_for_layout_landed
+# counts them as landed.
+LAYOUT_STABLE_TIME = 0.15
 
 
 class ShellProxyError(Exception):
@@ -802,8 +809,36 @@ class ShellProxy:
             quiet = quiet + 1 if isinstance(pending, dict) and not pending.get("busy") else 0
             if quiet >= 2:
                 return pending
-            time.sleep(Timing.POLL_INTERVAL)
+            time.sleep(SETTLE_POLL_INTERVAL)
         raise WaitTimeoutError(f"Forge did not settle within {timeout}s: {pending}")
+
+    def wait_for_layout_landed(self, timeout: float = Timeout.DEFAULT) -> None:
+        """Wait until Forge has settled, then until its moves have landed in the
+        compositor.
+
+        The layout has landed once, in one read, Forge has no work pending and every
+        window is tiled with its frame at the rect Forge laid it out at and last
+        requested, which is usually true by the first poll. A float, or a tile Mutter
+        holds elsewhere (min size, maximized), has no exact target: then the frames
+        only have to stop moving, with nothing pending, for LAYOUT_STABLE_TIME.
+
+        Raises WaitTimeoutError (with the last frames) if neither happens.
+        """
+        self.wait_for_forge_settled()
+        start = time.time()
+        last_rects = None
+        stable_since = time.time()
+        while time.time() - start < timeout:
+            state = self.eval("globalThis._forgeTestBridge.layoutState()")
+            if state["landed"]:
+                return
+            if state["busy"] or state["rects"] != last_rects:
+                last_rects = state["rects"]
+                stable_since = time.time()
+            elif time.time() - stable_since >= LAYOUT_STABLE_TIME:
+                return
+            time.sleep(SETTLE_POLL_INTERVAL)
+        raise WaitTimeoutError(f"Layout did not land within {timeout}s: {last_rects}")
 
     def fuzz_focus_mismatch(self) -> dict:
         """Return focus-correctness violations: {'violations': [{rule,detail,path}, ...]}.

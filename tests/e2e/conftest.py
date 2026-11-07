@@ -27,7 +27,7 @@ from framework.gsettings import ForgeSettings
 from framework.input_simulator import InputSimulator
 from framework.screenshot import ScreenshotCapture
 from framework.shell_proxy import ShellProxy
-from framework.wait import WaitTimeoutError, wait_for, wait_for_stable, wait_for_window_count
+from framework.wait import WaitTimeoutError, wait_for, wait_for_window_count
 from framework.window_helper import WindowHelper, drain_all_windows
 
 # Test configuration
@@ -376,17 +376,8 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
 def test_window(shell_proxy, clean_workspace) -> Generator[dict, None, None]:
     """Launch a single test window."""
     window = _launch_window(DEFAULT_TEST_APP, shell_proxy)
-    _settle_layout(shell_proxy)
+    shell_proxy.wait_for_layout_landed()
     yield window
-
-
-def _settle_layout(shell_proxy: ShellProxy) -> None:
-    """Wait until Forge has finished reacting to the last change, then until every
-    window's frame has stopped moving (Forge's moves land in the compositor later)."""
-    shell_proxy.wait_for_forge_settled()
-    wait_for_stable(
-        lambda: sorted(tuple(w.get("rect", {}).values()) for w in shell_proxy.get_windows())
-    )
 
 
 def _launch_windows(shell_proxy: ShellProxy, n: int) -> tuple:
@@ -403,7 +394,7 @@ def _launch_windows(shell_proxy: ShellProxy, n: int) -> tuple:
         # Where the next window goes depends on Forge having placed this one;
         # the frames only need to have landed once, at the end.
         shell_proxy.wait_for_forge_settled()
-    _settle_layout(shell_proxy)
+    shell_proxy.wait_for_layout_landed()
     wait_for_window_count(shell_proxy, n, timeout=Timeout.DEFAULT)
     return tuple(windows)
 
@@ -438,7 +429,7 @@ def launch_window(shell_proxy, clean_workspace):
 
     def _launch(app: str = DEFAULT_TEST_APP) -> dict:
         window = _launch_window(app, shell_proxy)
-        _settle_layout(shell_proxy)
+        shell_proxy.wait_for_layout_landed()
         return window
 
     return _launch
