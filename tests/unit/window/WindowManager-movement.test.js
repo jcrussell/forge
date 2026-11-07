@@ -84,6 +84,25 @@ describe("WindowManager - Movement & Positioning", () => {
       expect(disconnectSpy).toHaveBeenCalledWith(77);
       expect(metaWindow.forgeAwaitingFirstFrame).toBe(false);
     });
+
+    it("drops the guard when disable() releases the handler before the first frame", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      const metaWindow = createMockWindow({ workspace: ctx.workspaces[0] });
+      const windowActor = metaWindow.get_compositor_private();
+      vi.spyOn(windowActor, "connect").mockReturnValue(77);
+      const moveResizeSpy = vi.spyOn(metaWindow, "move_resize_frame");
+      const rect = { x: 100, y: 100, width: 800, height: 600 };
+
+      wm()._awaitFirstFrame(metaWindow, () => {
+        ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
+        windowActor.actorSignals = [1];
+      });
+      wm()._signalsBound = true; // the test context never ran _bindSignals
+      wm()._removeSignals();
+
+      wm().move(metaWindow, rect);
+      expect(moveResizeSpy).toHaveBeenCalled();
+    });
   });
 
   describe("move", () => {
