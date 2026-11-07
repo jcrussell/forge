@@ -26,8 +26,6 @@ class TestMaximizeCompat:
         """
         restore_settings.set("window-maximize-on-single", True)
 
-        time.sleep(Timing.SETTINGS_SETTLE)
-
         # Precondition: a tiled pair is not maximized.
         assert shell_proxy.count_maximized_windows() == 0
 
@@ -47,7 +45,6 @@ class TestMaximizeCompat:
         so Forge decides "fixed size" from the `resizeable` property instead.
         """
         restore_settings.set("window-maximize-on-single", True)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.close_one_window()
         windows = wait_for_window_count(shell_proxy, 1)
@@ -75,7 +72,6 @@ class TestMaximizeCompat:
         here — under headless the test app opens maximized and isn't re-tiled.)
         """
         restore_settings.set("window-maximize-on-single", True)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.close_one_window()
         wait_for_window_count(shell_proxy, 1)
@@ -87,7 +83,6 @@ class TestMaximizeCompat:
 
         # Disable so the re-tile below can't immediately re-maximize the window.
         restore_settings.set("window-maximize-on-single", False)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.ensure_focus()
         shell_proxy.invoke_forge_action({"name": "FloatToggle"})

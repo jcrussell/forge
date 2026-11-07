@@ -13,6 +13,8 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402  (must follow gi.require_version)
 
+from .wait import WaitTimeoutError  # noqa: E402
+
 
 class GSettingsError(Exception):
     """Exception raised when GSettings operation fails."""
@@ -31,14 +33,20 @@ class ForgeSettings:
     SCHEMA_ID = "org.gnome.shell.extensions.forge"
     KEYBINDINGS_SCHEMA_ID = "org.gnome.shell.extensions.forge.keybindings"
 
-    def __init__(self, schema_dir: Optional[str] = None):
+    def __init__(self, schema_dir: Optional[str] = None, shell_proxy=None):
         """
         Initialize ForgeSettings.
 
         Args:
             schema_dir: Optional path to schemas directory.
                        If None, uses system schemas.
+            shell_proxy: Optional connected ShellProxy. When given, main-schema
+                       reads and writes go through the running extension's own
+                       settings (ShellProxy.get_setting/set_setting), so a write
+                       has reached Forge by the time set() returns; a write from
+                       this process would only reach gnome-shell later.
         """
+        self._shell_proxy = shell_proxy
         self._settings: Optional[Gio.Settings] = None
         self._keybinding_settings: Optional[Gio.Settings] = None
         self._schema_dir = schema_dir
@@ -96,10 +104,38 @@ class ForgeSettings:
         if not self._settings:
             raise GSettingsError("Not connected to GSettings")
 
+        if self._shell_proxy is not None:
+            return self._shell_proxy.get_setting(key)
         try:
             return self._settings.get_value(key).unpack()
         except GLib.Error as e:
             raise GSettingsError(f"Failed to get '{key}': {e.message}")
+
+    def _remember_original(self, key: str) -> None:
+        """Record a key's current value (as Forge sees it) for restore_all()."""
+        if key in self._original_values:
+            return
+        try:
+            if self._shell_proxy is not None:
+                current = self._shell_proxy.get_setting(key)
+                if current is None:
+                    return
+                value = self._python_to_variant(key, current)
+            else:
+                value = self._settings.get_value(key)
+            self._original_values[key] = value
+        except (GLib.Error, TypeError, ValueError):
+            pass
+
+    def _write(self, key: str, variant: GLib.Variant) -> None:
+        """Write a main-schema value. With a shell proxy the write goes through the
+        extension and returns once Forge has finished the work its handler queued."""
+        if self._shell_proxy is None:
+            self._settings.set_value(key, variant)
+            return
+        if not self._shell_proxy.set_setting(key, variant.get_type_string(), variant.unpack()):
+            raise GSettingsError(f"Failed to set '{key}' through the extension")
+        self._shell_proxy.wait_for_forge_settled()
 
     def set(self, key: str, value: Any) -> None:
         """
@@ -117,17 +153,10 @@ class ForgeSettings:
         if not self._settings:
             raise GSettingsError("Not connected to GSettings")
 
-        # Store original value for restoration
-        if key not in self._original_values:
-            try:
-                self._original_values[key] = self._settings.get_value(key)
-            except GLib.Error:
-                pass
+        self._remember_original(key)
 
         try:
-            # Convert Python value to GLib.Variant
-            variant = self._python_to_variant(key, value)
-            self._settings.set_value(key, variant)
+            self._write(key, self._python_to_variant(key, value))
         except GLib.Error as e:
             raise GSettingsError(f"Failed to set '{key}': {e.message}")
 
@@ -162,9 +191,9 @@ class ForgeSettings:
         """
         if key in self._original_values and self._settings:
             try:
-                self._settings.set_value(key, self._original_values[key])
+                self._write(key, self._original_values[key])
                 del self._original_values[key]
-            except GLib.Error:
+            except (GLib.Error, GSettingsError, WaitTimeoutError):
                 pass
 
     def restore_all(self) -> None:
@@ -172,8 +201,8 @@ class ForgeSettings:
         if self._settings:
             for key, value in list(self._original_values.items()):
                 try:
-                    self._settings.set_value(key, value)
-                except GLib.Error:
+                    self._write(key, value)
+                except (GLib.Error, GSettingsError, WaitTimeoutError):
                     pass
             self._original_values.clear()
 
@@ -195,14 +224,10 @@ class ForgeSettings:
         if not self._settings:
             raise GSettingsError("Not connected to GSettings")
 
-        # Store original for restoration
-        if key not in self._original_values:
-            try:
-                self._original_values[key] = self._settings.get_value(key)
-            except GLib.Error:
-                pass
+        self._remember_original(key)
 
-        self._settings.reset(key)
+        schema = self._settings.get_property("settings-schema")
+        self._write(key, schema.get_key(key).get_default_value())
 
     # Convenience methods for common settings
 

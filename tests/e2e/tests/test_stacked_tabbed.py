@@ -68,7 +68,6 @@ def _enable_stacked_tabbed_modes(restore_settings):
     """
     restore_settings.set_stacked_tiling_mode_enabled(True)
     restore_settings.set_tabbed_tiling_mode_enabled(True)
-    time.sleep(Timing.SETTINGS_SETTLE)
 
 
 class TestStackedLayout:

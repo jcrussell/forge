@@ -10,8 +10,6 @@ the previously-unverified Mutter assumption that unmake_above() actually lowers
 the float BELOW the fullscreen window in the stacking order.
 """
 
-import time
-
 from framework.constants import Timing
 from framework.wait import wait_for
 
@@ -66,7 +64,6 @@ class TestFullscreenDemoteFloat:
         self, shell_proxy, restore_settings, two_windows
     ):
         restore_settings.set_float_always_on_top(True)
-        time.sleep(Timing.SETTINGS_SETTLE)
         shell_proxy.ensure_focus()
 
         # Float the focused window; with float-always-on-top it is pinned above.

@@ -871,40 +871,45 @@ class ShellProxy:
         opts = json.dumps({"src": src, "tgt": tgt, "zone": zone, "vias": vias or []})
         return self.eval("globalThis._forgeTestBridge.fuzzDragPath(%s)" % opts)
 
+    def set_setting(self, key: str, type_string: str, value: Any) -> bool:
+        """Write a Forge GSetting through the running extension (bridge.setSetting).
+
+        Forge's 'changed' handler has run by the time this returns; a write from
+        the test process would reach gnome-shell only later. `type_string` is the
+        key's GVariant type ("b", "u", "s", ...). Returns True on success.
+        """
+        self._ensure_bridge()
+        return (
+            self.eval(
+                "globalThis._forgeTestBridge.setSetting(%s, %s, %s)"
+                % (json.dumps(key), json.dumps(type_string), json.dumps(value))
+            )
+            == "ok"
+        )
+
+    def get_setting(self, key: str) -> Any:
+        """A Forge GSetting as the running extension sees it (None if Forge isn't loaded)."""
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.getSetting(%s)" % json.dumps(key))["value"]
+
     def set_window_gap(self, size: int) -> bool:
         """Reset Forge's window gap (GSettings window-gap-size) to an absolute value.
 
         Teardown helper for the fuzzer: the GapSize chaos action drifts the persisted gap,
-        which would skew the gap-aware overlap oracle in later sessions. Writes through the
-        live extension's settings object (bare `Main` is an Eval-global; imports.ui.main is
-        not loadable in the Eval scope) so the 'changed' handler re-renders. Returns True on
-        success, False if the extension/settings are unavailable.
+        which would skew the gap-aware overlap oracle in later sessions. Writes through
+        set_setting so the 'changed' handler re-renders. Returns True on success, False if
+        the extension/settings are unavailable.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_uint('window-gap-size', %d);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), int(size))
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("window-gap-size", "u", int(size))
 
     def set_workspace_skip_tile(self, value: str = "") -> bool:
         """Reset Forge's `workspace-skip-tile` GSetting (which workspaces are floated).
 
         Teardown helper for the fuzzer: WorkspaceActiveTileToggle persists which workspaces
         are floated; left set, a later session/replay starts with a floated workspace and
-        diverges. Default "" un-floats all. Mirrors set_window_gap (writes through the live
-        extension's settings so the 'changed' handler re-renders). Returns True on success.
+        diverges. Default "" un-floats all. Mirrors set_window_gap. Returns True on success.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_string('workspace-skip-tile', %s);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), json.dumps(value))
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("workspace-skip-tile", "s", value)
 
     def set_showtab_decoration(self, enabled: bool = True) -> bool:
         """Reset Forge's `showtab-decoration-enabled` GSetting (schema default True).
@@ -913,14 +918,7 @@ class ShellProxy:
         tab decorations suppressed, hiding the very decoration-lifecycle paths the fuzzer wants
         to exercise. Mirrors set_window_gap. Returns True on success.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_boolean('showtab-decoration-enabled', %s);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("showtab-decoration-enabled", "b", bool(enabled))
 
     def set_tiling_mode(self, enabled: bool = True) -> bool:
         """Reset Forge's `tiling-mode-enabled` GSetting (schema default True).
@@ -929,14 +927,7 @@ class ShellProxy:
         later sessions run with tiling globally disabled (everything floats), hiding the tiling
         paths the fuzzer targets. Mirrors set_window_gap. Returns True on success.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_boolean('tiling-mode-enabled', %s);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("tiling-mode-enabled", "b", bool(enabled))
 
     def set_focus_border(self, enabled: bool = True) -> bool:
         """Reset Forge's `focus-border-toggle` GSetting (schema default True).
@@ -945,14 +936,7 @@ class ShellProxy:
         tests asserting focus/split border rendering fail (forge-4b6). Mirrors
         set_tiling_mode. Returns True on success.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_boolean('focus-border-toggle', %s);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("focus-border-toggle", "b", bool(enabled))
 
     def set_auto_split(self, enabled: bool) -> bool:
         """Set Forge's `auto-split-enabled` GSetting (schema default False).
@@ -960,14 +944,7 @@ class ShellProxy:
         Fuzzer band selector: ON makes each new window SPLIT the focused one (deep nested trees),
         OFF appends flat siblings. Mirrors set_window_gap. Returns True on success.
         """
-        self._ensure_bridge()
-        js = (
-            "(function(){const f=Main.extensionManager.lookup(%s);"
-            "if(!f||!f.stateObj||!f.stateObj.settings)return 'no-ext';"
-            "f.stateObj.settings.set_boolean('auto-split-enabled', %s);return 'ok';})()"
-            % (json.dumps(self.FORGE_UUID), "true" if enabled else "false")
-        )
-        return self.eval(js) == "ok"
+        return self.set_setting("auto-split-enabled", "b", bool(enabled))
 
     def activate_workspace(self, ws_index: int) -> dict:
         """Switch the active workspace to ws_index (creating it if needed).

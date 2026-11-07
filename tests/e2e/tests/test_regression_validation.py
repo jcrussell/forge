@@ -42,7 +42,6 @@ class TestBug125VerticalStackedTiling:
         """
         restore_settings.set_stacked_tiling_mode_enabled(True)
         restore_settings.set_tabbed_tiling_mode_enabled(True)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
     def test_stacked_layout_changes_window_arrangement(
         self, shell_proxy, window_helper, input_sim, three_windows
@@ -194,7 +193,6 @@ class TestBug057SplitConSiblings:
         """Stacked mode defaults OFF; without it StackedLayoutToggle bails early."""
         restore_settings.set_stacked_tiling_mode_enabled(True)
         restore_settings.set_tabbed_tiling_mode_enabled(True)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
     def test_window_count_stable_after_layout_toggle(self, shell_proxy, input_sim, three_windows):
         """Verify toggling layout preserves window count."""

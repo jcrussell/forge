@@ -41,7 +41,6 @@ class TestEdgeTilingFollowsTilingMode:
         # is NOT currently overriding edge-tiling.
         rs.set("disable-edge-tiling", True)
         rs.set("tiling-mode-enabled", False)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         # Establish a known "native" value while Forge is not overriding.
         _set_edge_tiling(shell_proxy, True)
@@ -53,14 +52,12 @@ class TestEdgeTilingFollowsTilingMode:
         # Toggle tiling ON -> Forge applies its override (edge-tiling off),
         # capturing the native value (true) as the restore target.
         rs.set("tiling-mode-enabled", True)
-        time.sleep(Timing.SETTINGS_SETTLE)
         assert _get_edge_tiling(shell_proxy) is False, (
             "edge-tiling should be overridden (false) when tiling is on"
         )
 
         # Toggle tiling OFF -> Forge restores the captured native value (true).
         rs.set("tiling-mode-enabled", False)
-        time.sleep(Timing.SETTINGS_SETTLE)
         assert _get_edge_tiling(shell_proxy) is True, (
             "edge-tiling should be restored to native (true) when tiling is off"
         )

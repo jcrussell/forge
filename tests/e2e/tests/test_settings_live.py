@@ -111,14 +111,10 @@ class TestTilingModeToggle:
         before_rects = [w["rect"] for w in window_helper.get_windows_sorted_by_position("x")]
         assert len(before_rects) >= 2, "expected the two tiled fixture windows"
 
+        # A render queued while tiling was still on would lay out after the flip,
+        # so start from a Forge with nothing pending.
+        shell_proxy.wait_for_forge_settled()
         restore_settings.set_tiling_mode_enabled(False)
-        # Gate on the GSetting actually flipping (its propagation to Forge is the
-        # real precondition for the launch below).
-        wait_for(
-            lambda: restore_settings.get("tiling-mode-enabled"),
-            predicate=lambda enabled: not enabled,
-            message="tiling-mode-enabled did not flip to False",
-        )
         assert not restore_settings.get("tiling-mode-enabled"), "tiling mode should be disabled"
 
         # Open a NEW window with tiling disabled; renderTree is skipped, so each
@@ -152,8 +148,6 @@ class TestTilingModeToggle:
 
         # Disable then re-enable
         restore_settings.set_tiling_mode_enabled(False)
-        # fixed: intermediate settle so the disable registers before we re-enable.
-        time.sleep(Timing.SETTINGS_SETTLE)
         restore_settings.set_tiling_mode_enabled(True)
         wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
 
@@ -184,9 +178,6 @@ class TestStackedTabbedSettings:
         """Disabling stacked/tabbed setting should prevent toggling to that mode."""
         # Disable the mode via settings
         getattr(restore_settings, setting_method)(False)
-        # fixed: GSetting propagation to Forge has no clean observable to poll before
-        # the toggle attempt; the toggle itself (toggle_method) self-settles.
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         # Try to toggle to the disabled mode (toggle_stacked/tabbed self-settle)
         getattr(input_sim, toggle_method)()
@@ -213,7 +204,6 @@ class TestDefaultWindowLayoutSetting:
         restore_settings.set_stacked_tiling_mode_enabled(True)
         restore_settings.set_tabbed_tiling_mode_enabled(True)
         restore_settings.set("default-window-layout", layout_value)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.ensure_focus()
         input_sim.split_vertical()
@@ -228,7 +218,6 @@ class TestDefaultWindowLayoutSetting:
     ):
         """Control: with default-window-layout=tiled, a split stays a plain split."""
         restore_settings.set("default-window-layout", "tiled")
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.ensure_focus()
         input_sim.split_vertical()
@@ -254,7 +243,6 @@ class TestAutoSplitSetting:
         trackWindow). Without auto-split the windows stay flat under MONITOR.
         """
         restore_settings.set("auto-split-enabled", True)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.ensure_focus()
         rect = shell_proxy.get_focused_window().get("rect", {})
@@ -276,7 +264,6 @@ class TestAutoSplitSetting:
     ):
         """Control: without auto-split the third window stays a flat sibling."""
         restore_settings.set("auto-split-enabled", False)
-        time.sleep(Timing.SETTINGS_SETTLE)
 
         shell_proxy.ensure_focus()
         launch_window()
