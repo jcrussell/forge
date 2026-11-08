@@ -87,8 +87,10 @@ jobs:
       - name: Generate release notes
         # Runs on dispatch too, so a dry run still shows what the notes would say
         # (check the step log). Needs the tags + history that fetch-depth: 0 gives us.
+        # GH_TOKEN lets it resolve contributors to @handles (read-only GraphQL).
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           ./.github/scripts/release-notes.sh "${{ github.ref_name }}" | tee RELEASE_NOTES.md
 

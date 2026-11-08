@@ -34,7 +34,10 @@ attests and prints the notes, but publishes nothing.
 [`release-notes.sh`](.github/scripts/release-notes.sh) builds the notes from
 commit subjects since the previous tag (for a stable tag, the previous stable tag),
 grouped by conventional-commit type. `type!:` commits also go under Breaking
-Changes; Maintenance and unparsed subjects (Other) are collapsed.
+Changes; Maintenance and unparsed subjects (Other) are collapsed. Contributors
+lists each commit author and `Co-authored-by` co-author (AI and bots excluded) as
+an `@handle`, resolved through the GitHub API, or as a plain name when their email
+isn't linked to an account.
 
 A release that needs a human note (a changed default, a migration step) gets an
 **annotated** tag; its message goes above the generated sections:
@@ -56,6 +59,8 @@ Preview any range locally:
 ```bash
 ./.github/scripts/release-notes.sh HEAD v49-89   # <tag> [previous-tag]
 ```
+
+Without a logged-in `gh`, the preview lists contributors by name rather than handle.
 
 ## Pre-releases (betas)
 

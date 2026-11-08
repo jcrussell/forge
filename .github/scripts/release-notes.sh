@@ -83,7 +83,75 @@ section "Other" "$(subjects |
   grep -vE '^(feat|fix|docs|i18n|refactor|tooling|chore|ci|build|style|perf|test)(\([^)]*\))?!?: ' |
   sed 's/^/- /' || true)" collapse
 
-REPO_URL="https://github.com/${GITHUB_REPOSITORY:-jcrussell/forge}"
+REPO="${GITHUB_REPOSITORY:-jcrussell/forge}"
+
+# Everyone credited on a commit: its author, then its Co-authored-by trailers (how
+# a reimplemented PR credits the contributor), as `<login>\t<name>\t<email>` lines.
+# Login is empty here; git_people only knows names.
+git_people() { # git_people <rev-list args...>
+  git log --no-merges --format='%aN <%aE>%n%(trailers:key=Co-authored-by,valueonly)' "$@" |
+    sed -nE 's/^ *(.*[^ ]) *<([^>]*)>$/\t\1\t\2/p'
+}
+
+# Same lines with GitHub logins filled in. GraphQL's Commit.authors resolves the
+# author and co-authors to accounts; REST only resolves the author. Fails if gh
+# can't reach GitHub. A commit GitHub doesn't have (an unpushed local preview)
+# falls back to git_people.
+github_people() {
+  local shas batch query sha
+  shas="$(git rev-list --no-merges "$RANGE")" || return 1
+  [ -n "$shas" ] || return 0
+  while read -r batch; do
+    query="{ repository(owner: \"${REPO%/*}\", name: \"${REPO#*/}\") {"
+    for sha in $batch; do
+      query+=" c$sha: object(oid: \"$sha\") { ... on Commit { authors(first: 100) { nodes { name email user { login } } } } }"
+    done
+    gh api graphql -f query="$query } }" --jq '.data.repository | to_entries[] |
+      if .value == null then "MISSING\t\(.key[1:])"
+      else .value.authors.nodes[] | "\(.user.login // "")\t\(.name)\t\(.email)" end' |
+      while IFS= read -r line; do
+        case "$line" in
+          MISSING*) git_people -1 "${line#MISSING	}" ;;
+          *) printf '%s\n' "$line" ;;
+        esac
+      done || return 1
+  done < <(xargs -n 100 <<<"$shas")
+}
+
+# Contributors as `- @login`, or `- Name` when the email isn't linked to an account.
+# Handles let GitHub show the release's contributor avatars. AI co-authors and bots
+# are dropped. Names are untrusted text (anyone can commit as anyone), so every
+# ASCII punctuation character is backslash-escaped: a name renders literally, never
+# as a link, image, HTML, issue reference or @mention.
+contributors() {
+  local people kind who
+  if command -v gh >/dev/null &&
+    { [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ] || gh auth status >/dev/null 2>&1; }; then
+    people="$(github_people)" || {
+      echo "::warning::Contributor handle lookup failed; listing names instead" >&2
+      people="$(git_people "$RANGE")"
+    }
+  else
+    people="$(git_people "$RANGE")"
+  fi
+  awk -F'\t' '
+    tolower($3) == "noreply@anthropic.com" || $1 ~ /\[bot\]$/ || $3 ~ /\[bot\]@/ { next }
+    $1 != "" { key = "@" tolower($1); row = "L\t" $1 }
+    $1 == "" && $2 != "" { key = tolower($2); row = "N\t" $2 }
+    !(key in seen) { seen[key] = 1; print key "\t" row }' <<<"$people" |
+    sort | cut -f2- |
+    while IFS=$'\t' read -r kind who; do
+      if [ "$kind" = L ]; then
+        printf -- '- @%s\n' "$who"
+      else
+        printf -- '- %s\n' "$(sed 's/[][!"#$%&'\''()*+,./:;<=>?@\\^_`{|}~-]/\\&/g' <<<"$who")"
+      fi
+    done
+}
+
+section "Contributors" "$(contributors || true)"
+
+REPO_URL="https://github.com/${REPO}"
 if [ -n "$PREV" ]; then
   printf '**Full Changelog**: %s/compare/%s...%s\n' "$REPO_URL" "$PREV" "$TAG"
 else
