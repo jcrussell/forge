@@ -102,10 +102,39 @@ wrong way is reimplemented.
   on its own. Bundled PRs are judged commit by commit.
 - Fill in the [PR template](.github/pull_request_template.md). It asks for the root
   cause and why you chose that layer.
-- Commit messages say what changed and why, not the story of how you got there.
+- Commit messages follow [the format below](#commit-messages).
 - Your PR is rebased onto `main` and lands with linear history. Clean commits that
   each pass the tests are kept as you wrote them. Messy commits are squashed, one
   commit per change. Either way you stay the author.
+
+### Commit messages
+
+```text
+type(scope): what changed
+
+Why it changed and what the code does now, not the story of how you got there.
+
+Closes forge-xxxx
+Co-authored-by: Name <email>
+```
+
+The [release notes](RELEASING.md#release-notes) are built from subjects, so the
+type decides where a commit is listed. A subject without a type lands under
+**Other**.
+
+| Type                                              | Release notes                |
+| ------------------------------------------------- | ---------------------------- |
+| `feat`                                            | Features                     |
+| `fix`                                             | Bug Fixes                    |
+| `docs`, `i18n`                                    | Documentation & Translations |
+| any other, e.g. `test`, `refactor`, `chore`, `ci` | Maintenance (collapsed)      |
+
+- **Scope** is optional: the area touched, e.g. `fix(window):`, `feat(prefs):`.
+- **Breaking change:** add `!` after the type or scope (`feat!:`), which also lists
+  the commit under Breaking Changes. A `BREAKING CHANGE:` footer alone isn't picked up.
+- **Trailers:** `Closes <id>` for the issue the commit fixes (a bd id, or `#123` for a
+  GitHub issue), or `Refs <id>` if it only relates to one. `Co-authored-by` credits
+  everyone else who wrote it, and they're listed as contributors in the release notes.
 
 ## Maintainers
 
