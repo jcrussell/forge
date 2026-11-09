@@ -12,9 +12,9 @@ attests its provenance and publishes the release.
   `v<gnome-major>-<ego-build>` tags (`v49-90-beta.4`) under version sort.
 - The version says *when*, not *what*: breaking changes (a changed default
   keybinding, a config format change, a dropped GNOME version) are flagged in the
-  notes instead. Mark the commit `type!:` (e.g. `feat!: ...`) and it is listed
-  under **Breaking Changes**; a `BREAKING CHANGE:` footer alone is not picked up.
-  Add migration steps in an annotated tag (below).
+  notes instead. Mark the commit breaking with `!`
+  ([commit format](CONTRIBUTING.md#commit-messages)) and add migration steps in an
+  annotated tag (below).
 - Don't set `version` in `metadata.json` (it is EGO's upload counter); the build
   stamps the tag into `version-name`. `package.json`'s `version` isn't shipped.
 - Lightweight tags are fine; CI doesn't check signatures.
@@ -33,8 +33,8 @@ attests and prints the notes, but publishes nothing.
 
 [`release-notes.sh`](.github/scripts/release-notes.sh) builds the notes from
 commit subjects since the previous tag (for a stable tag, the previous stable tag),
-grouped by conventional-commit type. `type!:` commits also go under Breaking
-Changes; Maintenance and unparsed subjects (Other) are collapsed. Contributors
+grouped by [commit type](CONTRIBUTING.md#commit-messages). `type!:` commits also
+go under Breaking Changes; Maintenance and unparsed subjects (Other) are collapsed. Contributors
 lists each commit author and `Co-authored-by` co-author (AI and bots excluded) as
 an `@handle`, resolved through the GitHub API, or as a plain name when their email
 isn't linked to an account.
