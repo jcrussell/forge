@@ -70,17 +70,21 @@ emit() { # emit <heading> <type-regex> [bang-regex] [collapse]
     sed -nE "s/^(${types})(\([^)]*\))?${bang}: (.*)$/- \3/p" || true)" "${4:-}"
 }
 
+# Types and their sections are documented in CONTRIBUTING.md#commit-messages.
 # `type!:` marks a breaking change; it is listed here and under its own type.
-emit "Breaking Changes" '[a-z]+' '!'
+emit "Breaking Changes" '[a-z][a-z0-9]*' '!'
 emit "Features" 'feat'
 emit "Bug Fixes" 'fix'
 emit "Documentation & Translations" 'docs|i18n'
-emit "Maintenance" 'refactor|tooling|chore|ci|build|style|perf|test' '!?' collapse
 
-# Anything that does not parse as a conventional commit still has to surface, or
-# the notes would silently drop it. Folded: it is mostly pre-convention history.
+# Every other type (test, refactor, chore, ci, ...) is maintenance, so the list of
+# types can't drift. Subjects with no type at all still surface under Other, or the
+# notes would silently drop them. Both folded.
+section "Maintenance" "$(subjects |
+  grep -vE '^(feat|fix|docs|i18n)(\([^)]*\))?!?: ' |
+  sed -nE 's/^[a-z][a-z0-9]*(\([^)]*\))?!?: (.*)$/- \2/p' || true)" collapse
 section "Other" "$(subjects |
-  grep -vE '^(feat|fix|docs|i18n|refactor|tooling|chore|ci|build|style|perf|test)(\([^)]*\))?!?: ' |
+  grep -vE '^[a-z][a-z0-9]*(\([^)]*\))?!?: ' |
   sed 's/^/- /' || true)" collapse
 
 REPO="${GITHUB_REPOSITORY:-jcrussell/forge}"
