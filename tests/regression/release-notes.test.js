@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 /**
- * release-notes.sh lists contributors from commit authors and Co-authored-by
+ * release-notes.sh groups subjects by type: feat, fix and docs/i18n get their own
+ * sections, any other type is Maintenance, and a subject with no type is Other.
+ * It lists contributors from commit authors and Co-authored-by
  * trailers, dropping AI co-authors and bots. Names are untrusted text in a
  * Markdown release body (forge-fw33 treats them the same way in the build), so
  * a plain name must render literally: no links, images, HTML or @mentions, and
@@ -55,7 +57,7 @@ sep=
   printf '}}}'; } | jq -r "$jqx"
 `;
 
-describe.skipIf(!hasTools)("release-notes.sh: Contributors section", () => {
+describe.skipIf(!hasTools)("release-notes.sh", () => {
   let repo, bin, stubDir;
   const shas = {};
 
@@ -109,6 +111,9 @@ describe.skipIf(!hasTools)("release-notes.sh: Contributors section", () => {
     commit("imposter", "Carol Contributor", "imposter@x", "fix: four");
     commit("lower", "alice", "lower@x", "fix: five");
     commit("botname", "Robo [bot] Fan", "fan@x", "fix: six");
+    commit("revert", "Alice Example", "alice@x", "revert(tree): undo the walk");
+    commit("i18n", "Alice Example", "alice@x", "i18n: new strings");
+    commit("plain", "Alice Example", "alice@x", "Plain subject: no type");
     commit(
       "bot",
       "dependabot[bot]",
@@ -125,6 +130,17 @@ describe.skipIf(!hasTools)("release-notes.sh: Contributors section", () => {
 
   afterAll(() => {
     if (repo) rmSync(repo, { recursive: true, force: true });
+  });
+
+  it("lists docs/i18n with docs, any other type under Maintenance, and no type under Other", () => {
+    const notes = run();
+    const sectionOf = (heading) => notes.split(heading)[1].split(/\n(###|<details>|\*\*Full)/)[0];
+    expect(sectionOf("### Documentation & Translations")).toContain("- new strings");
+    expect(sectionOf("<b>Maintenance</b>")).toMatch(
+      /- undo the walk\n[^]*- bump|- bump\n[^]*- undo the walk/
+    );
+    expect(sectionOf("<b>Other</b>")).toContain("- Plain subject: no type");
+    expect(sectionOf("<b>Other</b>")).not.toMatch(/new strings|undo the walk/);
   });
 
   it("without a GitHub login, lists authors and co-authors by name, minus AI and bots", () => {
