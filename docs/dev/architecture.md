@@ -84,19 +84,23 @@ is gated by the modifier mask in `allowDragDropTile()` (`keybindings.js`).
 ## GObject lifecycle discipline
 
 Core classes are GObjects registered with `static { GObject.registerClass(this); }`.
-Every subsystem **tracks its signal IDs and disconnects them on teardown**: GNOME
-Shell reloads extensions in-process, so a leaked handler outlives `disable()` and
-crashes later.
+Every subsystem **tracks its signal handlers and disconnects them on teardown**:
+GNOME Shell reloads extensions in-process, so a leaked handler outlives `disable()`
+and crashes later.
 
 - `WindowManager._bindSignals()` / `_removeSignals()` own the display,
-  workspace-manager and per-window signals. The disconnect tolerates
-  already-finalized objects.
+  window-manager, workspace-manager, settings and overview handlers, tracked with
+  `connectObject(..., this)`, and the per-window handlers, whose ids live on the
+  window (`windowSignals`) and its actor (`actorSignals`). The per-window
+  disconnect tolerates already-finalized windows (Bug #328).
 - Managers own their signals, e.g. `WorkspaceManager._workspaceSignals`, unbound in
   `removeWorkspace`/`destroy`.
 - Idle and timeout source IDs are cleared in a `finally`, so one throw can't wedge
   them ([rendering.md](rendering.md#rendertreefrom-force--windowjs)).
 
-[hazards.md](hazards.md) lists the guardrails that enforce this.
+[hazards.md § 3](hazards.md#3-signal-connectdisconnect-discipline) says which
+idiom each kind of source uses and why; hazards.md also lists the guardrails that
+enforce this.
 
 ## Configuration sources
 

@@ -78,8 +78,25 @@ fires after `disable()` — the classic extension leak.
   `GObject.Object` typing (`types/signal-tracker.d.mts`) can't tell the processes
   apart, so `no-restricted-syntax` (in `eslint.config.js`) bans both in
   `lib/prefs/`, `prefs.js` and `lib/shared/` (which prefs also loads).
-- **Gap:** three manual tracking idioms still coexist in `window.js` and
-  `config-sync.js`, not yet migrated to `connectObject`/`disconnectObject`.
+- **Which idiom where:**
+  - `connectObject` for the shell's process-wide sources (`global.display`,
+    `global.window_manager`, `global.workspace_manager`, `Main.overview`,
+    `Main.layoutManager`, `Main.sessionMode`, the extension's settings). The owner
+    is the subsystem, which drops them with `disconnectObject(this)` on teardown,
+    or an actor whose `destroy` should end them (the cheatsheet backdrop's
+    `monitors-changed`).
+  - Explicit ids for `Meta.Window` and `Meta.Workspace` (`windowSignals`, which
+    also marks a window as bound, and `WorkspaceManager._workspaceSignals`). The
+    shell keeps a strong map entry per emitter until `disconnectObject`, so a
+    window or workspace that goes away first would stay pinned in it, and
+    `disconnectObject` on a finalized wrapper throws just like `disconnect()`.
+    `disconnectSignals`' per-id try/catch (Bug #328) stays for that case. The
+    window actor's handlers (`actorSignals`, the first-frame handler) are kept and
+    released with the window's in `_releaseWindow`.
+  - Explicit ids in `lib/shared/` (`config-sync.js`), which prefs also loads.
+  - Plain `connect()` for an actor's handlers on itself or its children (the
+    `tree.js` tab buttons), with a scoped `eslint-disable` and the reason: they
+    are freed with the actor.
 
 ### 4. Actor use-after-destroy
 Touching a Clutter/St actor (or a window's `get_compositor_private()`) after it
