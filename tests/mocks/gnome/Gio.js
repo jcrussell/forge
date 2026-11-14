@@ -159,6 +159,15 @@ export const FileQueryInfoFlags = {
   NOFOLLOW_SYMLINKS: 1 << 0,
 };
 
+export const SettingsBindFlags = {
+  DEFAULT: 0,
+  GET: 1 << 0,
+  SET: 1 << 1,
+  NO_SENSITIVITY: 1 << 2,
+  GET_NO_CHANGES: 1 << 3,
+  INVERT_BOOLEAN: 1 << 4,
+};
+
 export const FileCopyFlags = {
   NONE: 0,
   OVERWRITE: 1 << 0,
@@ -175,4 +184,5 @@ export default {
   FileCreateFlags,
   FileCopyFlags,
   FileQueryInfoFlags,
+  SettingsBindFlags,
 };
