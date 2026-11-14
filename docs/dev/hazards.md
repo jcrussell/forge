@@ -73,7 +73,11 @@ fires after `disable()` — the classic extension leak.
   `globalThis`, which is never destroyed. `connectObject` frees handlers only
   through `disconnectObject(owner)` or a `destroy` signal on an actor emitter or
   owner, never on finalization, and `disconnectObject` on a finalized window
-  throws like `disconnect()`. Neither method exists in the prefs process.
+  throws like `disconnect()`.
+- **Guardrail (blocking):** neither method exists in the prefs process, and their
+  `GObject.Object` typing (`types/signal-tracker.d.mts`) can't tell the processes
+  apart, so `no-restricted-syntax` (in `eslint.config.js`) bans both in
+  `lib/prefs/`, `prefs.js` and `lib/shared/` (which prefs also loads).
 - **Gap:** three manual tracking idioms still coexist in `window.js` and
   `config-sync.js`, not yet migrated to `connectObject`/`disconnectObject`.
 

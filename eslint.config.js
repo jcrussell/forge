@@ -66,6 +66,30 @@ const extensionGlobals = {
   TextDecoder: "readonly",
 };
 
+// no-restricted-syntax selectors for API GNOME 51 removed: St's `vertical` and
+// Clutter.get_default_backend(). Both are reached only through compat.js shims
+// (Compat.stBoxOrientation / Compat.getClutterBackend), which is exempted below.
+const gnome51Removed = [
+  {
+    selector:
+      "CallExpression[callee.object.name='Clutter'][callee.property.name='get_default_backend']",
+    message: "Removed in GNOME 51: use Compat.getClutterBackend().",
+  },
+  {
+    selector:
+      "NewExpression[callee.object.name='St'] > ObjectExpression > Property[key.name='vertical']",
+    message: "St `vertical` was removed in GNOME 51: spread Compat.stBoxOrientation(vertical).",
+  },
+  {
+    selector: "CallExpression[callee.property.name='set_vertical']",
+    message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
+  },
+  {
+    selector: "AssignmentExpression > MemberExpression.left[property.name='vertical']",
+    message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
+  },
+];
+
 module.exports = [
   {
     // Lint for the extension's own ES-module sources under js.configs.recommended plus the
@@ -103,31 +127,7 @@ module.exports = [
       "local/no-untracked-connect": "error",
       "local/no-unguarded-window-deref": "error",
       "local/no-raw-window-activation": "error",
-      // GNOME 51 removed St's `vertical` and Clutter.get_default_backend(); both are
-      // reached only through compat.js shims (Compat.stBoxOrientation /
-      // Compat.getClutterBackend), which is exempted below.
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector:
-            "CallExpression[callee.object.name='Clutter'][callee.property.name='get_default_backend']",
-          message: "Removed in GNOME 51: use Compat.getClutterBackend().",
-        },
-        {
-          selector:
-            "NewExpression[callee.object.name='St'] > ObjectExpression > Property[key.name='vertical']",
-          message:
-            "St `vertical` was removed in GNOME 51: spread Compat.stBoxOrientation(vertical).",
-        },
-        {
-          selector: "CallExpression[callee.property.name='set_vertical']",
-          message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
-        },
-        {
-          selector: "AssignmentExpression > MemberExpression.left[property.name='vertical']",
-          message: "St `vertical` was removed in GNOME 51: use Compat.stBoxOrientation(vertical).",
-        },
-      ],
+      "no-restricted-syntax": ["error", ...gnome51Removed],
     },
   },
   {
@@ -144,6 +144,25 @@ module.exports = [
     files: ["lib/prefs/**/*.js", "prefs.js"],
     rules: {
       "local/no-untracked-connect": "off",
+    },
+  },
+  {
+    // connectObject/disconnectObject are added to GObject.Object by the shell's
+    // misc/signalTracker.js, which the prefs process never loads, so a call there
+    // throws "not a function". lib/shared is imported by prefs too. Their
+    // GObject.Object typing (types/signal-tracker.d.mts) can't tell the processes
+    // apart, so this is what catches it.
+    files: ["lib/prefs/**/*.js", "prefs.js", "lib/shared/**/*.js"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...gnome51Removed,
+        {
+          selector: "CallExpression[callee.property.name=/^(connectObject|disconnectObject)$/]",
+          message:
+            "connectObject/disconnectObject exist only in the shell process (signalTracker.js), not in prefs: keep the handler id and disconnect() it.",
+        },
+      ],
     },
   },
   {
