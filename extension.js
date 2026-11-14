@@ -28,6 +28,7 @@ import { ConfigSync } from "./lib/shared/config-sync.js";
 import {
   SETTINGS_OVERRIDES,
   SNAPSHOT_KEY,
+  isOverrideValue,
   overrideId,
   parseSnapshot,
   shouldApplyOverride,
@@ -44,6 +45,9 @@ import { ExtensionThemeManager } from "./lib/extension/extension-theme-manager.j
 
 // SETTINGS_OVERRIDES + shouldApplyOverride live in lib/shared/gnome-overrides.js
 // (GTK-free) so the gating policy is unit-testable.
+
+const getterFor = (desc) => (desc.type === "boolean" ? "get_boolean" : "get_strv");
+const setterFor = (desc) => (desc.type === "boolean" ? "set_boolean" : "set_strv");
 
 export default class ForgeExtension extends Extension {
   enable() {
@@ -173,29 +177,34 @@ export default class ForgeExtension extends Extension {
     if (!this._savedSettings) return; // already disabled
     const gsettings = this._gnomeSettingsFor(desc);
     if (!gsettings) return;
-    const getter = desc.type === "boolean" ? "get_boolean" : "get_strv";
-    const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
     const id = overrideId(desc);
     const snapshot = this._readSnapshot();
-    const current = gsettings[getter](desc.key);
-    const leftApplied = id in snapshot && JSON.stringify(current) === JSON.stringify(desc.newValue);
+    const current = gsettings[getterFor(desc)](desc.key);
+    const leftApplied = id in snapshot && isOverrideValue(desc, current);
     if (!leftApplied) {
       snapshot[id] = current;
       this._writeSnapshot(snapshot);
     }
-    gsettings[setter](desc.key, desc.newValue);
-    this._savedSettings.push({
-      schemaId: desc.schemaId,
-      gsettings,
-      key: desc.key,
-      original: snapshot[id],
-      setter,
-    });
+    gsettings[setterFor(desc)](desc.key, desc.newValue);
+    this._savedSettings.push({ desc, gsettings, original: snapshot[id] });
   }
 
   /**
-   * Restore one override to its saved original, drop it from _savedSettings
-   * and the snapshot (so a later re-apply re-captures the current value). Also
+   * Write an override's original back, unless the live value is no longer the
+   * override value: then the user changed the key in GNOME while it was
+   * overridden, and their value is kept (forge-6rce). A user who sets the key
+   * to the override value itself (e.g. clears a binding) gets the original back.
+   */
+  _writeBackOriginal(desc, gsettings, original) {
+    if (isOverrideValue(desc, gsettings[getterFor(desc)](desc.key))) {
+      gsettings[setterFor(desc)](desc.key, original);
+    }
+  }
+
+  /**
+   * Restore one override to its saved original (see _writeBackOriginal), drop
+   * it from _savedSettings and the snapshot (so a later re-apply re-captures the
+   * current value). Also
    * restores an original that only the snapshot holds (applied in an earlier
    * session that exited uncleanly). The cached Gio.Settings in _gnomeSettings is
    * kept for possible re-apply (forge-abk).
@@ -204,16 +213,14 @@ export default class ForgeExtension extends Extension {
     if (!this._savedSettings) return; // already disabled
     const id = overrideId(desc);
     const snapshot = this._readSnapshot();
-    const idx = this._savedSettings.findIndex(
-      (s) => s.schemaId === desc.schemaId && s.key === desc.key
-    );
+    const idx = this._savedSettings.findIndex((s) => s.desc === desc);
     if (idx >= 0) {
       const saved = this._savedSettings[idx];
-      saved.gsettings[saved.setter](saved.key, saved.original);
+      this._writeBackOriginal(desc, saved.gsettings, saved.original);
       this._savedSettings.splice(idx, 1);
     } else if (id in snapshot) {
-      const setter = desc.type === "boolean" ? "set_boolean" : "set_strv";
-      this._gnomeSettingsFor(desc)?.[setter](desc.key, snapshot[id]);
+      const gsettings = this._gnomeSettingsFor(desc);
+      if (gsettings) this._writeBackOriginal(desc, gsettings, snapshot[id]);
     } else {
       return;
     }
@@ -223,7 +230,7 @@ export default class ForgeExtension extends Extension {
 
   _isOverrideSaved(desc) {
     if (!this._savedSettings) return false; // already disabled
-    return this._savedSettings.some((s) => s.schemaId === desc.schemaId && s.key === desc.key);
+    return this._savedSettings.some((s) => s.desc === desc);
   }
 
   /**
@@ -269,11 +276,11 @@ export default class ForgeExtension extends Extension {
     // Restore GNOME settings and keybindings (#461, #288)
     if (this._savedSettings) {
       try {
-        for (const saved of this._savedSettings) {
-          saved.gsettings[saved.setter](saved.key, saved.original);
+        for (const { desc, gsettings, original } of this._savedSettings) {
+          this._writeBackOriginal(desc, gsettings, original);
         }
-        // Every original is back in dconf; a failed write above leaves the
-        // snapshot for the next enable() to restore from.
+        // Every key holds its original or the user's own value; a failed write
+        // above leaves the snapshot for the next enable() to restore from.
         this._writeSnapshot({});
         Logger.info("Restored GNOME settings and keybindings");
       } catch (e) {

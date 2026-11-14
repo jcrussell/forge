@@ -23,8 +23,10 @@ for Mutter API drift.
   → `ConfigSync` → theme → `WindowManager` → `Keybindings` → `Cheatsheet`, and calls
   `extWm.enable()`.
 - **`disable()`**: restores the GNOME settings, clears the snapshot once all of them
-  are back, then tears down
-  the subsystems and nulls every reference.
+  are back, then tears down the subsystems and nulls every reference. A key whose
+  live value is no longer the override value was changed by the user while Forge
+  was enabled; it keeps that value instead of the original (`_writeBackOriginal`,
+  also used by the runtime restore).
 - **Session modes** (`_onSessionModeChanged`): on the lock screen Forge keeps the
   tree in memory but drops keybindings and the indicator, and restores them in the
   `user` session. The tree is never serialized, so locking must not lose it.

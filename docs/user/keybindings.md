@@ -46,7 +46,10 @@ unambiguous way to cycle a stacked or tabbed container.
 While enabled, Forge clears GNOME settings that collide with its own: edge tiling,
 auto-maximize, the half-tile, maximize, unmaximize and minimize keys, the
 notification-list keys (`Super+v`, `Super+m`) and `Super+l` lock (use `Super+q`). The originals
-are saved first and restored on disable, even after a crash.
+are saved first and restored on disable, even after a crash. A setting you change
+in GNOME while Forge is enabled keeps your value on disable, unless you set it to
+the value Forge uses (e.g. clear the minimize binding or turn edge tiling off):
+then disable puts the original back.
 
 To keep GNOME's edge tiling, turn off **Disable GNOME edge-tiling** in Preferences →
 Tiling. Turning Forge tiling off (`Super+w`) also restores it.
