@@ -99,6 +99,17 @@ Each session prints its peak achieved shape — `maxDepth nodes cons fanout` —
 whether a run actually built deep trees (the ON band should show clearly higher `maxDepth`).
 `FORGE_FUZZ_WINDOWS` (default 4) sets the initial window count.
 
+```bash
+make e2e-fuzz FORGE_FUZZ_HAZARDS=3       # bias toward disposal/ordering hazard sequences
+make e2e-fuzz FORGE_FUZZ_DIFF=1          # also run the auto-split ON/OFF differential
+```
+
+`FORGE_FUZZ_HAZARDS` (default 0, off) is the generator weight for hazard sequences: a
+dispose or workspace switch placed right after the step that created or moved the actor
+(spawn then close, drag then close, a tiling action then a switch). `FORGE_FUZZ_DIFF=1`
+enables `test_fuzz_autosplit_differential`, which runs one seed with auto-split on, replays
+the same steps with it off, and asserts both are clean and end with the same window count.
+
 It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh adds
 `-m "not fuzz"` by default).
 

@@ -6,6 +6,5 @@ fuzzCheckInvariants), tiled-window geometry, and the live gnome-shell log for th
 exceptions. A failing run is persisted as a replayable repro and shrunk to a minimal
 sequence with ddmin (K-times replay, since the environment is not bit-deterministic).
 
-See tests/e2e/README.md ("Fuzzing") and the plan at
-.claude/plans/fuzzers-are-great-for-dazzling-puzzle.md.
+See tests/e2e/README.md ("Fuzzing").
 """
