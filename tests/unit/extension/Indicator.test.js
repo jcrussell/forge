@@ -21,9 +21,6 @@ vi.mock("resource:///org/gnome/shell/ui/popupMenu.js", async () => {
       this.state = !this.state;
       this.emit("toggled", this, this.state);
     }
-    destroy() {
-      this.emit("destroy");
-    }
   }
   class PopupSeparatorMenuItem extends St.Widget {}
   return { PopupSwitchMenuItem, PopupSeparatorMenuItem };
@@ -132,9 +129,11 @@ describe("Indicator", () => {
 
     it("stops syncing a switch once it is destroyed", () => {
       const item = toggle._focusMovePointer;
+      const setToggleState = vi.spyOn(item, "setToggleState");
       item.destroy();
       expect(settings.getHandlerCount("changed::move-pointer-focus-enabled")).toBe(0);
       change(settings, "move-pointer-focus-enabled", true);
+      expect(setToggleState).not.toHaveBeenCalled();
       expect(item.state).toBe(false);
     });
 
