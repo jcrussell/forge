@@ -33,6 +33,7 @@ bd close <id>         # Complete work
 
 ### Rules
 
+- File and re-rate beads by [docs/dev/triage.md](docs/dev/triage.md): P1 = breaks the session or user data on a default setup; tasks and chores are never P1; every bug ends with a `Why P<n>:` line.
 - Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files

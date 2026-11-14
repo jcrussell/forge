@@ -19,6 +19,7 @@ symbol, not line number; use your editor's symbol search.
 - [Rendering](dev/rendering.md): the render pipeline, tree reloads, floating, the theme engine.
 - [Compat](dev/compat.md): Mutter API drift across GNOME versions and how to shim it.
 - [Hazards](dev/hazards.md): recurring bug classes and the guardrails against them.
+- [Triage](dev/triage.md): bead priority, type and labels.
 - [Translations](dev/translations.md): gettext workflow.
 - [Unit tests](../tests/README.md) and [e2e tests](../tests/e2e/README.md).
 - [Releasing](../RELEASING.md).
