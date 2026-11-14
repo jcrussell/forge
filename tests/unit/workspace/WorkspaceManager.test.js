@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WorkspaceManager } from "../../../lib/extension/workspace.js";
 import { Tree, NODE_TYPES, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
-import { installGnomeGlobals } from "../../mocks/helpers/index.js";
+import { installGnomeGlobals, createMockSettings } from "../../mocks/helpers/index.js";
 
 /**
  * WorkspaceManager unit tests
@@ -61,6 +61,7 @@ describe("WorkspaceManager", () => {
       determineSplitLayout: vi.fn(() => LAYOUT_TYPES.HSPLIT),
       updateMetaWorkspaceMonitor: vi.fn(),
       _wsWindowAddSrcId: 0,
+      ext: { settings: createMockSettings() },
     };
 
     // Create WorkspaceManager instance
