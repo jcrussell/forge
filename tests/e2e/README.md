@@ -20,8 +20,10 @@ make e2e-debug                   # shell inside the container
 
 The Makefile has the rest (lanes, fuzzing, recording); results land in
 `e2e-results/`, mounted in the container as `/app/e2e-results`.
-`make e2e-test-record` writes a screencast to `e2e-results/recording.webm`; it is
-pinned to GNOME 50, the only lane where its capture route finalizes a file.
+`make e2e-test-record` writes a screencast to `e2e-results/recording.webm`. It
+defaults to GNOME 50, the only lane where the default capture route finalizes a
+file; on GNOME 49 use the ScreenCast fallback route:
+`make e2e-test-record GNOME_VERSION=49 FORGE_E2E_RECORD_ROUTE=B`.
 
 ## Lanes: atomic and workflow
 

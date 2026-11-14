@@ -336,8 +336,10 @@ E2E_DOCKER_OPTS = --privileged \
 # Build E2E test container (builds extension first, then Docker image)
 # RECORD=1 opts into the screencast recording stack (forge-qgg): installs
 # pipewire/gstreamer in the image (build-arg gated, so RECORD-less builds are
-# byte-identical) and passes FORGE_E2E_RECORD=1 into BOTH docker exec calls below.
-RECORD_ENV = $(if $(RECORD),-e FORGE_E2E_RECORD=1,)
+# byte-identical) and passes FORGE_E2E_RECORD=1 into BOTH docker exec calls below,
+# plus FORGE_E2E_RECORD_ROUTE when set (B selects record-monitor.py's ScreenCast
+# fallback, the route that records on GNOME 49).
+RECORD_ENV = $(if $(RECORD),-e FORGE_E2E_RECORD=1 $(if $(FORGE_E2E_RECORD_ROUTE),-e FORGE_E2E_RECORD_ROUTE=$(FORGE_E2E_RECORD_ROUTE),),)
 
 # Optional pytest marker expression threaded into run-tests.sh (mirrors RECORD_ENV).
 # `make e2e-test PYTEST_MARKER=workflow` runs only the matching lane; empty = full suite.
@@ -412,12 +414,15 @@ e2e-test-multimonitor:
 	@$(MAKE) e2e-test MULTIMONITOR=1
 
 # Run E2E tests with screencast recording (forge-qgg). Wayland-only, so this
-# forces the latest GNOME lane (F44/GNOME50; the default F42 lane is X11).
-# Produces e2e-results/recording.webm. Recursive sub-make so GNOME_VERSION=50 ->
-# FEDORA_VERSION:=44 -> E2E_IMAGE all resolve, and RECORD=1 reaches e2e-build
+# defaults to the GNOME 50 lane (F44; the default F42 lane is X11), whose default
+# capture route finalizes a file. Another Wayland lane takes GNOME_VERSION on the
+# command line only (one from the environment could pick an X11 lane that records
+# nothing), e.g. `make e2e-test-record GNOME_VERSION=49 FORGE_E2E_RECORD_ROUTE=B`.
+# Produces e2e-results/recording.webm. Recursive sub-make so GNOME_VERSION ->
+# FEDORA_VERSION -> E2E_IMAGE all resolve, and RECORD=1 reaches e2e-build
 # (build-arg) plus both docker exec calls.
 e2e-test-record:
-	@$(MAKE) e2e-test GNOME_VERSION=50 RECORD=1
+	@$(MAKE) e2e-test GNOME_VERSION=$(if $(filter command line,$(origin GNOME_VERSION)),$(GNOME_VERSION),50) RECORD=1
 
 # Run E2E tests for all supported versions
 e2e-test-all:
