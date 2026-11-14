@@ -9,25 +9,39 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
-      include: ["lib/**/*.js"],
+      include: ["lib/**/*.js", "extension.js"],
       exclude: [
-        "lib/prefs/**", // Preferences UI, not testable without GTK4
-        "lib/extension/cheatsheet.js", // UI-only (St/Clutter widgets)
-        "lib/extension/indicator.js", // UI-only (Quick Settings panel)
-        "lib/extension/extension-theme-manager.js", // UI-only (stylesheet management)
+        // The prefs window is GTK4/Adw widget code; only its pure helpers run here.
+        "lib/prefs/!(floating-overrides|keyboard-accel).js",
         "**/*.test.js",
         "**/mocks/**",
       ],
       all: true,
-      // Regression ratchet (forge-fhen.8): set a few points below the measured
-      // baseline (stmts/lines 92.41%, branches 86.69%, funcs 92.15%) so a drop in
-      // coverage fails CI without an immediately-red build. Raise these as coverage
-      // improves; do NOT lower them to make a red build pass.
+      // Regression ratchet: each floor sits a few points below the measured value
+      // so a drop fails CI without an immediately-red build. The global floor
+      // covers every measured file (measured 94.2 stmts/lines, 87.52 branches,
+      // 93.91 funcs). The entry point and the shell UI files are small enough to
+      // vanish into the global number, so each also has its own floor, 2-3 points
+      // under its measured value. Raise these as coverage improves; do NOT lower
+      // them to make a red build pass.
       thresholds: {
         lines: 90,
         branches: 85,
         functions: 90,
         statements: 90,
+        // measured 94.25 / 65.67 / 100 / 94.25
+        "extension.js": { statements: 92, branches: 63, functions: 97, lines: 92 },
+        // measured 98.96 / 75.8 / 100 / 98.96
+        "lib/extension/cheatsheet.js": { statements: 96, branches: 73, functions: 97, lines: 96 },
+        // measured 100 / 90 / 100 / 100
+        "lib/extension/indicator.js": { statements: 97, branches: 87, functions: 97, lines: 97 },
+        // measured 96.66 / 92.3 / 100 / 96.66
+        "lib/extension/extension-theme-manager.js": {
+          statements: 94,
+          branches: 90,
+          functions: 97,
+          lines: 94,
+        },
       },
     },
   },

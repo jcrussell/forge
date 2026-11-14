@@ -31,6 +31,10 @@ never runs there.
 
 ## Coverage
 
-`vitest.config.js` sets the coverage floor (raise it, never lower it) and excludes
-only UI glue that would need GTK4 or a real St/Clutter stack: the prefs, the
-cheatsheet, the quick-settings indicator and the extension's theme manager.
+`vitest.config.js` sets the coverage floors (raise them, never lower them). It
+measures `lib/` and `extension.js` and excludes only the GTK4 prefs window
+(`prefs.js` and `lib/prefs/`, apart from the pure helpers `floating-overrides.js`
+and `keyboard-accel.js`). Besides the global floor, `extension.js`, the
+cheatsheet, the quick-settings indicator and the extension's theme manager each
+have their own floor, so a lost test there fails even when the global number
+barely moves.
