@@ -18,7 +18,8 @@ import { Bin } from "../mocks/gnome/St.js";
  * immediate parent instead of the nearest tabbed/stacked ancestor.
  *
  * Fix: FocusManager.updateGroupFocus raises everything the outermost group's
- * member shows (Tree.shownWindows), the focused window last.
+ * member shows (Tree.shownWindows), the focused window last. Each test stacks
+ * W1 on top, as it is when the group still shows it.
  */
 describe("forge-0zvq: focusing a window in a split member raises the whole split", () => {
   let ctx;
@@ -52,10 +53,20 @@ describe("forge-0zvq: focusing a window in a split member raises the whole split
     return node;
   }
 
+  /** Mutter stacks `node` on top of the other windows. */
+  function stackOnTop(node) {
+    ctx.display.sort_windows_by_stacking.mockImplementation((wins) => [
+      ...wins.filter((w) => w !== node.nodeValue),
+      ...wins.filter((w) => w === node.nodeValue),
+    ]);
+  }
+
   for (const layout of [LAYOUT_TYPES.TABBED, LAYOUT_TYPES.STACKED]) {
     it(`${layout}[W1, HSPLIT[W2, W3]]: focusing W2 raises W3, then W2 on top`, () => {
+      const W1 = win("W1");
       const W2 = win("W2");
-      monitor.appendChild(con(layout, [win("W1"), con(LAYOUT_TYPES.HSPLIT, [W2, win("W3")])]));
+      monitor.appendChild(con(layout, [W1, con(LAYOUT_TYPES.HSPLIT, [W2, win("W3")])]));
+      stackOnTop(W1);
 
       focusManager.updateGroupFocus(W2);
 
@@ -65,13 +76,13 @@ describe("forge-0zvq: focusing a window in a split member raises the whole split
 
   it("raises only the shown tab of a group nested in the member split", () => {
     // TABBED[W1, HSPLIT[TABBED[a, b], W3]] with b shown: focusing W3 raises b, not a.
+    const W1 = win("W1");
     const b = win("b");
     const W3 = win("W3");
     const inner = con(LAYOUT_TYPES.TABBED, [win("a"), b]);
     inner.lastTabFocus = b.nodeValue;
-    monitor.appendChild(
-      con(LAYOUT_TYPES.TABBED, [win("W1"), con(LAYOUT_TYPES.HSPLIT, [inner, W3])])
-    );
+    monitor.appendChild(con(LAYOUT_TYPES.TABBED, [W1, con(LAYOUT_TYPES.HSPLIT, [inner, W3])]));
+    stackOnTop(W1);
 
     focusManager.updateGroupFocus(W3);
 
