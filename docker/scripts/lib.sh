@@ -145,7 +145,7 @@ wait_for_forge_extension() {
     return 1
 }
 
-# Get GNOME Shell version
+# Get GNOME Shell version as reported, e.g. 50.1 or a pre-release 52.alpha
 # Usage: get_gnome_version
 get_gnome_version() {
     local result
@@ -154,7 +154,7 @@ get_gnome_version() {
         --object-path /org/gnome/Shell \
         --method org.freedesktop.DBus.Properties.Get \
         "org.gnome.Shell" "ShellVersion" 2>/dev/null)
-    echo "$result" | sed -n "s/.*'\([0-9.]*\)'.*/\1/p"
+    echo "$result" | sed -n "s/.*'\([^']*\)'.*/\1/p"
 }
 
 # Print system info for debugging
