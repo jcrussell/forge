@@ -14,9 +14,15 @@ This serves as a proof of concept for:
 import time
 
 import pytest
-from framework.constants import Timing
+from framework.constants import Timing, Tolerance
 from framework.tree_queries import FOCUS_WINDOW_SIBLING_OF_CON, con_child_window_counts
-from framework.wait import wait_for_layout, wait_for_layout_settled, wait_for_window_count
+from framework.wait import (
+    wait_for_layout,
+    wait_for_layout_settled,
+    wait_for_stable,
+    wait_for_window_count,
+)
+from framework.workflow import invoke_resize
 
 
 class TestBug125VerticalStackedTiling:
@@ -125,39 +131,34 @@ class TestBug305Resize:
     """
 
     def test_two_window_resize_proportions(self, shell_proxy, window_helper, two_windows):
-        """Verify two windows split evenly and maintain valid proportions."""
-        window1, window2 = two_windows
-
-        # Get window info
-        windows = wait_for_window_count(shell_proxy, 2)
-        assert len(windows) >= 2, f"Expected 2 windows, got {len(windows)}"
-
-        # Get workspace dimensions
+        """Resizing the shared boundary moves only that boundary: the left window grows
+        by what the right one loses, and the outer edges stay put."""
         workspace = window_helper.get_workspace_rect()
-
-        # Both windows should be visible with reasonable width
-        for window in windows:
-            rect = window.get("rect", {})
-            width = rect.get("width", 0)
-            # Each window should have at least 1/3 of workspace width
-            min_expected = workspace["width"] // 3
-            assert width >= min_expected, (
-                f"Window too narrow: {width}px (min expected: {min_expected}px)"
+        left, right = (w["rect"] for w in window_helper.get_windows_sorted_by_position("x"))
+        for rect in (left, right):
+            assert abs(rect["width"] - workspace["width"] / 2) < Tolerance.ALIGNMENT, (
+                f"two windows should split evenly: {left} | {right}"
             )
 
-    def test_three_windows_all_visible(self, shell_proxy, three_windows):
-        """Verify all three windows are tiled and visible."""
-        window1, window2, window3 = three_windows
+        invoke_resize(shell_proxy, "WindowResizeRight", focus_window="leftmost")
+        left_after, right_after = (
+            w["rect"]
+            for w in wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+        )
 
-        # Get all windows
-        windows = wait_for_window_count(shell_proxy, 3)
-        assert len(windows) >= 3, f"Expected 3 windows, got {len(windows)}"
-
-        # All windows should have reasonable dimensions
-        for window in windows:
-            rect = window.get("rect", {})
-            assert rect.get("width", 0) > 50, f"Window width too small: {rect.get('width')}"
-            assert rect.get("height", 0) > 50, f"Window height too small: {rect.get('height')}"
+        grown = left_after["width"] - left["width"]
+        shrunk = right["width"] - right_after["width"]
+        assert grown > Tolerance.RESIZE_MIN_DELTA, f"left should grow: {left} -> {left_after}"
+        assert abs(grown - shrunk) <= Tolerance.POSITION, (
+            f"right should shrink by what left grew ({grown}), shrank by {shrunk}"
+        )
+        assert abs(left_after["x"] - left["x"]) <= Tolerance.POSITION, "left edge moved"
+        right_edge = right["x"] + right["width"]
+        right_edge_after = right_after["x"] + right_after["width"]
+        assert abs(right_edge_after - right_edge) <= Tolerance.POSITION, "right edge moved"
+        assert left_after["x"] + left_after["width"] <= right_after["x"], (
+            f"windows overlap: {left_after} | {right_after}"
+        )
 
     def test_windows_fill_workspace(self, shell_proxy, window_helper, three_windows):
         """Verify windows together fill most of the workspace."""

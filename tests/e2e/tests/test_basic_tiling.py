@@ -8,6 +8,7 @@ Tests fundamental tiling behavior:
 """
 
 from framework.constants import Tolerance
+from framework.geometry import as_rect, layout_fill_error
 from framework.wait import wait_for_window_count
 
 
@@ -55,20 +56,26 @@ class TestBasicTiling:
         wm_class2 = window2.get("wmClass")
         window_helper.assert_windows_equal_height(wm_class1, wm_class2)
 
-    def test_three_windows_layout(self, shell_proxy, window_helper, three_windows):
-        """Three windows should tile appropriately."""
-        window1, window2, window3 = three_windows
+    def test_three_windows_layout(self, window_helper, three_windows):
+        """Three windows split the workspace into equal side-by-side thirds."""
+        workspace = window_helper.get_workspace_rect()
+        rects = [as_rect(w["rect"]) for w in window_helper.get_windows_sorted_by_position("x")]
+        assert len(rects) == 3, f"Expected 3 windows, got {rects}"
 
-        windows = shell_proxy.get_windows()
-        assert len(windows) >= 3, f"Expected 3 windows, got {len(windows)}"
-
-        # All windows should have reasonable dimensions
-        for window in [window1, window2, window3]:
-            wm_class = window.get("wmClass")
-            if wm_class:
-                rect = window_helper.get_window_rect(wm_class)
-                assert rect[2] > 100, f"Window width too small: {rect[2]}"
-                assert rect[3] > 100, f"Window height too small: {rect[3]}"
+        # The leftmost tile's offset from the work area is the window gap.
+        gap = rects[0][0] - workspace["x"]
+        expected_width = workspace["width"] / 3 - 2 * gap
+        expected_height = workspace["height"] - 2 * gap
+        for x, _, width, height in rects:
+            assert abs(width - expected_width) <= Tolerance.POSITION, (
+                f"width {width} should be ~{expected_width:.0f} (a third, gap {gap}): {rects}"
+            )
+            assert abs(height - expected_height) <= Tolerance.POSITION, (
+                f"height {height} should be ~{expected_height} (gap {gap}): {rects}"
+            )
+        assert rects[0][0] < rects[1][0] < rects[2][0], f"x should increase: {rects}"
+        error = layout_fill_error(rects, as_rect(workspace))
+        assert error is None, error
 
     def test_windows_dont_overlap(self, shell_proxy, two_windows):
         """Tiled windows should not overlap."""

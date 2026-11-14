@@ -80,13 +80,25 @@ class TestKeyboardResize:
     def test_resize_preserves_coverage(self, shell_proxy, window_helper, two_windows):
         """Windows should still fill workspace after resize."""
         # Wait for the initial two-window tiling to settle before resizing.
-        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+        left, right = (
+            w["rect"]
+            for w in wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+        )
 
-        _invoke_resize(shell_proxy, "WindowResizeRight")
+        _invoke_resize(shell_proxy, "WindowResizeRight", focus_window="leftmost")
         # Only the focused window moves until the grab-end render reflows its
         # neighbour, and the fill check now fails on that transient overlap.
-        wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+        left_after, right_after = (
+            w["rect"]
+            for w in wait_for_stable(lambda: window_helper.get_windows_sorted_by_position("x"))
+        )
 
+        grown = left_after["width"] - left["width"]
+        shrunk = right["width"] - right_after["width"]
+        assert grown > Tolerance.RESIZE_MIN_DELTA, f"left should grow: {left} -> {left_after}"
+        assert abs(grown - shrunk) <= Tolerance.POSITION, (
+            f"right should shrink by what left grew ({grown}), shrank by {shrunk}"
+        )
         window_helper.assert_windows_fill_workspace()
 
 
