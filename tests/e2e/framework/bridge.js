@@ -1735,6 +1735,20 @@
       }
     },
 
+    // Disable/enable Forge the way the Extensions app does (the fuzzer's ext_cycle step,
+    // forge-o4hk). disableExtension/enableExtension write the enabled-extensions setting and
+    // the shell applies it on its own turn, so the caller polls fuzzExtState.
+    fuzzExtSetEnabled(enabled) {
+      const em = Main.extensionManager;
+      return String(enabled ? em.enableExtension(FORGE_UUID) : em.disableExtension(FORGE_UUID));
+    },
+
+    // Forge's ExtensionState number, or "-1" when the shell doesn't know the extension.
+    fuzzExtState() {
+      const forge = Main.extensionManager.lookup(FORGE_UUID);
+      return String(forge ? forge.state : -1);
+    },
+
     // Resource-leak METRIC (Angle 3, logged, never a session failure). Consolidates the
     // ALREADY-tracked collections scattered across WindowManager + the tree into one cheap
     // snapshot the engine logs at session end:

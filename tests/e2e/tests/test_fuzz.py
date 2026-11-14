@@ -15,6 +15,7 @@ Env knobs (all optional):
     FORGE_FUZZ_HAZARDS    menu weight for disposal/ordering hazard sequences (0=off) (default 0)
     FORGE_FUZZ_AUTOSPLIT  1 pins auto-split on (deep trees), 0 pins it off (flat) (default unset)
     FORGE_FUZZ_DIFF       1 to run test_fuzz_autosplit_differential (skips otherwise)
+    FORGE_FUZZ_EXT_CYCLE  menu weight for the disable/re-enable Forge step (0=off) (default 0)
 
 The fuzz library (generator / engine / shrinker) lives in tests/e2e/fuzz/; this file
 is just the pytest harness so the default `testpaths = tests` collection picks it up.
@@ -54,12 +55,15 @@ def fuzz_engine(shell_proxy, launch_window):
     # forge-fhen.9: disposal/ordering hazard sequences are opt-in and default OFF (0), so the
     # existing default lane runs the exact pre-hazard generator. Set >0 to bias toward them.
     hazard_weight = _env_int("FORGE_FUZZ_HAZARDS", 0)
+    # forge-o4hk: the disable/re-enable step is opt-in the same way.
+    ext_cycle_weight = _env_int("FORGE_FUZZ_EXT_CYCLE", 0)
     engine = FuzzEngine(
         shell_proxy,
         launch_window,
         results_dir=_RESULTS_DIR,
         auto_split=auto_split,
         hazard_weight=hazard_weight,
+        ext_cycle_weight=ext_cycle_weight,
     )
     yield engine
     # forge-4b6: run_session only resets state at session START (so each seed starts

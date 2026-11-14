@@ -875,6 +875,25 @@ class ShellProxy:
         except (ValueError, TypeError):
             return {"violations": []}
 
+    def fuzz_ext_set_enabled(self, enabled: bool):
+        """Enable or disable Forge through Main.extensionManager (the fuzzer's ext_cycle step).
+
+        This writes GNOME's enabled-extensions setting, and the shell applies it on its own
+        turn, so poll fuzz_ext_state for the result. See bridge.fuzzExtSetEnabled.
+        """
+        self._ensure_bridge()
+        js_bool = "true" if enabled else "false"
+        return self.eval(f"globalThis._forgeTestBridge.fuzzExtSetEnabled({js_bool})")
+
+    def fuzz_ext_state(self):
+        """Forge's ExtensionState number (1 active, 2 inactive), or None if not loaded."""
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.fuzzExtState()")
+        try:
+            return int(result)
+        except (TypeError, ValueError):
+            return None
+
     def fuzz_resource_counts(self) -> dict:
         """Return a resource snapshot: {'timers','decorations','tabs','previewHints'}.
 

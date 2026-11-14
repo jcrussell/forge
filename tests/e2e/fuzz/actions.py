@@ -13,6 +13,7 @@ Step shapes::
     {"kind": "spawn"}
     {"kind": "close"}
     {"kind": "switch_ws", "index": 1}
+    {"kind": "ext_cycle"}
 
 Action names/params mirror the D-Bus dispatch surface (lib/extension/command.js) and
 the kwargs the keybinding callbacks pass (see input_simulator.py). We route everything
@@ -300,7 +301,9 @@ _HAZARDS = [
 ]
 
 
-def generate_step(rng, window_count, workspace_count, monitor_count=1, hazard_weight=0):
+def generate_step(
+    rng, window_count, workspace_count, monitor_count=1, hazard_weight=0, ext_cycle_weight=0
+):
     """Produce one concrete step (or a hazard SEQUENCE), gating chaos on window/workspace state.
 
     window_count is the number of windows on the active workspace; chaos actions are
@@ -331,6 +334,10 @@ def generate_step(rng, window_count, workspace_count, monitor_count=1, hazard_we
     # draws + identical sessions). Appended LAST so, when present, it never reorders existing entries.
     if hazard_weight > 0 and window_count >= 1:
         menu.append(("hazard", hazard_weight))
+    # forge-o4hk: disable then re-enable Forge (FuzzEngine._cycle_extension). Opt-in like the
+    # hazards: absent at weight 0 (identical draws), appended last when present.
+    if ext_cycle_weight > 0:
+        menu.append(("ext_cycle", ext_cycle_weight))
 
     kind = _weighted_choice(rng, menu, lambda m: m[1])[0]
 
@@ -357,6 +364,8 @@ def generate_step(rng, window_count, workspace_count, monitor_count=1, hazard_we
         in_range = rng.randrange(max(1, monitor_count))
         out_range = monitor_count + rng.randint(1, 3)
         return {"kind": "rehome", "monitor": rng.choice([in_range, out_range])}
+    if kind == "ext_cycle":
+        return {"kind": "ext_cycle"}
     if kind == "hazard":
         # Pick an eligible hazard sequence by weight; return its flat list of sub-steps. Defensive
         # fallback (unreachable while window_count>=1, since action_switch/ws_churn are always

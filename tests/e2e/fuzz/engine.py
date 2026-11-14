@@ -25,16 +25,23 @@ import json
 import time
 from pathlib import Path
 
-from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, FORGE_UUID, Timing
+from framework.constants import APP_PALETTE, DEFAULT_TEST_APP, FORGE_UUID, Timeout, Timing
 from framework.shell_proxy import ShellProxyError
-from framework.wait import WaitTimeoutError
+from framework.wait import WaitTimeoutError, wait_for
 from framework.window_helper import drain_all_windows
 
 # Oracle rules sourced from a one-shot, non-re-readable signal: the LogScanner advances its
 # byte offset PAST the matched line on read, and a dead/unresponsive shell can't be re-eval'd.
 # A FIRST-check hit on one of these is AUTHORITATIVE (returned immediately, no re-confirm);
 # every other rule is re-readable structure/geometry and goes through the transient guard (B1).
-AUTHORITATIVE_RULES = frozenset({"shell-log-error", "shell-dead", "shell-unresponsive"})
+AUTHORITATIVE_RULES = frozenset(
+    {"shell-log-error", "shell-dead", "shell-unresponsive", "ext-disable-leak"}
+)
+
+# Extension states (GNOME Shell misc/extensionUtils ExtensionState): ACTIVE (ENABLED before
+# GNOME 46) and INACTIVE (DISABLED) keep the values 1 and 2 on every supported shell.
+EXT_STATE_ACTIVE = 1
+EXT_STATE_INACTIVE = 2
 
 # Live gnome-shell stdout/stderr redirect inside the container
 # (docker/scripts/start-user-session.sh). NOT the e2e-results copy, which is only
@@ -163,6 +170,7 @@ class FuzzEngine:
         tol=8,
         auto_split=None,
         hazard_weight=0,
+        ext_cycle_weight=0,
     ):
         """
         Args:
@@ -177,6 +185,8 @@ class FuzzEngine:
                 SEQUENCES (forge-fhen.9). 0 (default) = off: sessions are byte-identical to the
                 pre-hazard generator. >0 biases toward adjacency hazards; each emitted sub-step
                 still runs the full settle+oracle, so replay/shrink are unaffected.
+            ext_cycle_weight: menu weight for the ext_cycle step (disable + re-enable Forge,
+                forge-o4hk). 0 (default) = off, with the same byte-identical guarantee.
         """
         self.shell = shell_proxy
         self.launch_fn = launch_fn
@@ -185,6 +195,8 @@ class FuzzEngine:
         self.tol = tol
         self.auto_split = auto_split
         self.hazard_weight = hazard_weight
+        self.ext_cycle_weight = ext_cycle_weight
+        self._ext_cycle_hit = None  # post-disable finding from the last ext_cycle step
         self.log = LogScanner(log_path)
         self._session_stats = {}  # peak {maxDepth,nodes,cons,maxSplitFanout} for the current session
         self._monitor_count = None  # cached per session (headless monitor set is static)
@@ -249,6 +261,9 @@ class FuzzEngine:
         if kind == "rehome":
             self.shell.move_focused_window_to_monitor(int(step.get("monitor", 0)))
             return
+        if kind == "ext_cycle":
+            self._ext_cycle_hit = self._cycle_extension()
+            return
         if kind == "action":
             action = {"name": step["name"], **(step.get("params") or {})}
             self.shell.invoke_forge_action(
@@ -259,6 +274,52 @@ class FuzzEngine:
             return
         raise ValueError("unknown step kind: %r" % (kind,))
 
+    def _wait_ext_state(self, state):
+        """Wait until Forge reaches the given extension state.
+
+        A timeout raises ShellProxyError, not WaitTimeoutError: run_session drops a step that
+        raises WaitTimeoutError as a spawn flake, which would hide a stuck disable/enable.
+        """
+        try:
+            wait_for(
+                lambda: self.shell.fuzz_ext_state(),
+                timeout=Timeout.DEFAULT,
+                message="Forge did not reach extension state %d" % state,
+                predicate=lambda s: s == state,
+            )
+        except WaitTimeoutError as e:
+            raise ShellProxyError(str(e)) from e
+
+    def _cycle_extension(self):
+        """Disable Forge, check it left nothing in window_group, re-enable it.
+
+        Returns ("ext-disable-leak", detail) when a decoration or border outlived disable(),
+        else None. The finding is reported by the next _check: the disabled state can't be
+        re-read once Forge is back, so the rule is AUTHORITATIVE. A stuck disable or enable, or
+        a probe that threw, raises ShellProxyError; Forge is turned back on either way.
+        """
+        self.shell.fuzz_ext_set_enabled(False)
+        try:
+            self._wait_ext_state(EXT_STATE_INACTIVE)
+            left = self.shell.fuzz_orphan_actors()
+        finally:
+            # disableExtension also removed Forge from enabled-extensions, so a failure here
+            # would leave it off for every later session unless we turn it back on.
+            self.shell.fuzz_ext_set_enabled(True)
+        self._wait_ext_state(EXT_STATE_ACTIVE)
+        if "error" in left:
+            # A probe that threw has no counts; reading them as 0 would pass a leak.
+            raise ShellProxyError("orphan probe failed with Forge disabled: %s" % left["error"])
+        decorations = left.get("decorations", 0)
+        borders = left.get("borders", 0)
+        if decorations or borders:
+            return (
+                "ext-disable-leak",
+                "%d decoration(s) and %d border(s) left in window_group after disable"
+                % (decorations, borders),
+            )
+        return None
+
     def _check(self):
         """Run the oracle bundle once. Return (rule, detail) on violation, else None."""
         # 1. liveness — let a dead shell surface as its own rule (callers treat as fatal).
@@ -267,6 +328,11 @@ class FuzzEngine:
                 return ("shell-unresponsive", "eval('1') returned None")
         except Exception as e:  # noqa: BLE001 - any failure here means the shell is gone
             return ("shell-dead", str(e))
+
+        # 1b. what the last ext_cycle step saw while Forge was disabled (one-shot).
+        hit, self._ext_cycle_hit = self._ext_cycle_hit, None
+        if hit:
+            return hit
 
         # 2. structure + geometry (render already forced in _settle; skip a second one).
         try:
@@ -410,6 +476,7 @@ class FuzzEngine:
         from . import actions
 
         rng = random.Random(seed)
+        self._ext_cycle_hit = None  # a session that died in _settle can leave one behind
         self._session_stats = {}  # fresh peak-shape metrics per session (depth instrumentation)
         self._monitor_count = None  # re-probe monitor count for this session
         # Start every seeded session from an empty, ws0 baseline (M1) — switch_ws/GapSize/
@@ -440,6 +507,7 @@ class FuzzEngine:
                 actions.MAX_WORKSPACES,
                 self._monitors(),
                 hazard_weight=self.hazard_weight,
+                ext_cycle_weight=self.ext_cycle_weight,
             )
             # generate_step may return a single step or a HAZARD SEQUENCE (a list of concrete steps
             # composed from the same primitives — forge-fhen.9). Flatten to a list so every sub-step
@@ -491,6 +559,7 @@ class FuzzEngine:
         if reset_first:
             self._reset_workspace()
         self.log.reset()
+        self._ext_cycle_hit = None
         for step in steps:
             try:
                 self.execute(step)
@@ -543,6 +612,11 @@ class FuzzEngine:
         suite-level teardown drains the same way), then return to ws0. Finally revert
         GapSize/float side-effects so the oracle baseline (gap, overrides) matches self.gap.
         """
+        # A failed ext_cycle step can leave Forge disabled or in ERROR. Bring it back first, or
+        # every later session runs without Forge; a timeout here raises rather than fuzzing on.
+        if self.shell.fuzz_ext_state() != EXT_STATE_ACTIVE:
+            self.shell.fuzz_ext_set_enabled(True)
+            self._wait_ext_state(EXT_STATE_ACTIVE)
         drain_all_windows(self.shell)
         try:
             self.shell.activate_workspace(0)

@@ -102,6 +102,7 @@ whether a run actually built deep trees (the ON band should show clearly higher 
 ```bash
 make e2e-fuzz FORGE_FUZZ_HAZARDS=3       # bias toward disposal/ordering hazard sequences
 make e2e-fuzz FORGE_FUZZ_DIFF=1          # also run the auto-split ON/OFF differential
+make e2e-fuzz FORGE_FUZZ_EXT_CYCLE=2     # mix in disable + re-enable of Forge
 ```
 
 `FORGE_FUZZ_HAZARDS` (default 0, off) is the generator weight for hazard sequences: a
@@ -109,6 +110,10 @@ dispose or workspace switch placed right after the step that created or moved th
 (spawn then close, drag then close, a tiling action then a switch). `FORGE_FUZZ_DIFF=1`
 enables `test_fuzz_autosplit_differential`, which runs one seed with auto-split on, replays
 the same steps with it off, and asserts both are clean and end with the same window count.
+`FORGE_FUZZ_EXT_CYCLE` (default 0, off) is the weight of the `ext_cycle` step: it disables
+Forge through `Main.extensionManager`, fails the session (`ext-disable-leak`) if any Forge
+decoration or border is still in `global.window_group`, re-enables Forge and runs the normal
+oracle on the rebuilt tree.
 
 It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh adds
 `-m "not fuzz"` by default).
