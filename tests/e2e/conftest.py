@@ -314,7 +314,13 @@ def clean_workspace(shell_proxy, input_sim) -> Generator[None, None, None]:
         )
     shell_proxy.wait_for_forge_settled()
     yield
-    _close_all_windows(shell_proxy)
+    try:
+        _close_all_windows(shell_proxy)
+    finally:
+        _park_pointer(input_sim)
+
+
+def _park_pointer(input_sim) -> None:
     # Warp the pointer to a neutral spot between tests. An xdotool drag
     # (test_drag_drop_tiling) leaves the pointer stranded at the drop location;
     # the NEXT test's first focused-window op (swap/move/close-refocus) then
@@ -351,6 +357,15 @@ def clean_workspace(shell_proxy, input_sim) -> Generator[None, None, None]:
         warnings.warn(f"pointer reset in teardown failed: {e}")
 
 
+# Every test-window process _launch_window started and has not reaped yet.
+_launched_procs: list = []
+
+
+def _reap_exited_procs() -> None:
+    """Drop the processes that have exited (poll() reaps them)."""
+    _launched_procs[:] = [p for p in _launched_procs if p.poll() is None]
+
+
 def _close_all_windows(shell_proxy: ShellProxy) -> None:
     """Close all windows on EVERY workspace one-by-one via D-Bus.
 
@@ -361,7 +376,12 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
     switch_ws chaos strands windows on other workspaces, and leftovers used to
     survive this teardown for the rest of the suite (forge-4b6).
 
-    Raises if any window is left: a dirty session must not leak into the next test.
+    A window that ignores delete() (a hung client) is closed by killing the test
+    processes this session launched; only those, never a pid the compositor
+    reports, so nothing outside the suite is touched. The kill leaves the
+    session clean for the next test, but this still raises, so the owning test
+    errors at teardown: Forge may be what made the window ignore close. The
+    windows listed before the kill go to teardown-kills.log.
     """
     remaining = drain_all_windows(shell_proxy)
     if remaining != 0:
@@ -369,7 +389,37 @@ def _close_all_windows(shell_proxy: ShellProxy) -> None:
             windows = shell_proxy.get_windows()
         except Exception as e:
             windows = f"<get_windows failed: {e}>"
-        raise RuntimeError(f"windows left after closing all ({remaining}): {windows!r}")
+        _log_teardown_kill(remaining, windows)
+        _reap_exited_procs()
+        for proc in _launched_procs:
+            try:
+                proc.kill()
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                warnings.warn(f"test window process {proc.pid} did not exit after kill")
+            except Exception as e:
+                warnings.warn(f"killing test window process {proc.pid} failed: {e}")
+        _launched_procs.clear()
+        try:
+            wait_for(
+                shell_proxy.get_total_window_count,
+                predicate=lambda n: n == 0,
+                timeout=Timeout.DEFAULT,
+                interval=Timing.POLL_INTERVAL_WINDOW,
+            )
+        except WaitTimeoutError:
+            raise RuntimeError(f"windows left after closing all ({remaining}): {windows!r}")
+        raise RuntimeError(f"killed test windows that ignored close ({remaining}): {windows!r}")
+    _reap_exited_procs()
+
+
+def _log_teardown_kill(remaining: int, windows) -> None:
+    """Append the windows left before a teardown kill to teardown-kills.log."""
+    diag_path = E2E_RESULTS_DIR / "teardown-kills.log"
+    diag_path.parent.mkdir(parents=True, exist_ok=True)
+    with diag_path.open("a") as f:
+        f.write(f"--- {remaining} window(s) ignored close @ {time.time():.3f} ---\n")
+        f.write(f"windows={windows!r}\n\n")
 
 
 @pytest.fixture
@@ -474,6 +524,7 @@ def _launch_window(app: str, shell_proxy: ShellProxy, app_args: Optional[list] =
         stderr_fp.write(f"--- {title} {app_args} @ {time.time():.3f} ---\n")
         stderr_fp.flush()
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=stderr_fp, env=env)
+    _launched_procs.append(proc)
 
     def find_window():
         if proc.poll() is not None:
