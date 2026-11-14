@@ -34,8 +34,15 @@ before an async hop may be dead by the time the handler runs.
   `disconnect()` in `try/catch` for the same reason.
 - **Guardrail (runtime):** the e2e fuzzer's log scan treats `finalized` /
   `deallocated` / `Gjs-CRITICAL` frames as failures.
-- **Gap:** no static rule — many raw getters (`get_frame_rect`, `get_title`, …)
-  rely on the caller's context being "known live". Hard to prove statically.
+- **Guardrail (blocking):** `local/no-unguarded-window-deref` flags a
+  `.minimized` read on a node's wrapper (`X.nodeValue.minimized`,
+  `X._data.minimized`) unless `Utils.isWindowAlive()` on that receiver guards
+  it in the same `&&`/`||` chain, an enclosing `if`, or an earlier early return.
+  It cannot see a captured local (`const w = node.nodeValue; … w.minimized`) or
+  a bare `metaWindow.minimized`.
+- **Gap:** no static rule for other accessors — many raw getters
+  (`get_frame_rect`, `get_title`, …) rely on the caller's context being "known
+  live". Hard to prove statically.
 
 ### 2a. Unmanaged but not finalized window
 Between Mutter's `unmanaged` and the actor's `destroy` (the close animation), the

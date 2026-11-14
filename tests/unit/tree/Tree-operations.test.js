@@ -11,6 +11,7 @@ import { WINDOW_MODES } from "../../../lib/extension/window.js";
 import {
   createMockWindow,
   createTreeFixture,
+  finalizeWindow,
   getWorkspaceAndMonitor,
 } from "../../mocks/helpers/index.js";
 import { Bin } from "../../mocks/gnome/St.js";
@@ -656,6 +657,20 @@ describe("Tree Operations", () => {
       const result = ctx.tree.move(node, MotionDirection.RIGHT);
 
       expect(result).toBe(false);
+    });
+
+    it("skips a window whose Meta.Window is finalized", () => {
+      const { monitor } = getWorkspaceAndMonitor(ctx);
+      monitor.layout = LAYOUT_TYPES.HSPLIT;
+
+      const node1 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      const node2 = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, createMockWindow());
+      node1.mode = WINDOW_MODES.TILE;
+      node2.mode = WINDOW_MODES.TILE;
+      finalizeWindow(node1.nodeValue);
+
+      expect(ctx.tree.move(node1, MotionDirection.RIGHT)).toBe(false);
+      expect(node1.index).toBe(0);
     });
 
     it("should handle moving into stacked container", () => {
