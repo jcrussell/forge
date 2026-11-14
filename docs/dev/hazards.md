@@ -63,11 +63,17 @@ settings, a shared actor) whose id is discarded outlives Forge's teardown and
 fires after `disable()` — the classic extension leak.
 
 - **Guardrail (blocking):** `local/no-untracked-connect` fails on a discarded
-  `.connect()` id. Exempt shapes: `connectObject(...)` (auto-tracked),
+  `.connect()` id. Exempt shapes: `connectObject(..., owner)` (auto-tracked),
   `this.connect(...)` (self-connect — freed with the instance), and
   actor-lifetime-bound connects carrying a scoped `eslint-disable` with the reason
   (a destroyed actor auto-disconnects its own handlers). **Prefs** sources are
   exempt by file scope — the prefs GTK4 process is torn down wholesale on close.
+- **Guardrail (blocking):** the same rule fails on a `connectObject(...)` with no
+  owner as its last argument. The shell then tracks the handlers under
+  `globalThis`, which is never destroyed. `connectObject` frees handlers only
+  through `disconnectObject(owner)` or a `destroy` signal on an actor emitter or
+  owner, never on finalization, and `disconnectObject` on a finalized window
+  throws like `disconnect()`. Neither method exists in the prefs process.
 - **Gap:** three manual tracking idioms still coexist in `window.js` and
   `config-sync.js`, not yet migrated to `connectObject`/`disconnectObject`.
 
