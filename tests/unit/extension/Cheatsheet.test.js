@@ -148,15 +148,18 @@ describe("Cheatsheet", () => {
     });
 
     it("never strands a parented overlay/backdrop if show() throws (forge-0rb6)", () => {
-      // The real bug: connecting monitors-changed on the wrong object threw
-      // mid-show, AFTER parenting the reactive backdrop+panel but BEFORE
-      // _visible was set — leaving an input-grabbing overlay that no dismiss
-      // path could clear. show() must catch any such throw and tear down.
-      Main.layoutManager.connect = vi.fn(() => {
-        throw new Error("No signal 'monitors-changed' on object 'MetaDisplay'");
+      // The real bug: a step threw mid-show, AFTER parenting the reactive
+      // backdrop+panel but BEFORE _visible was set, leaving an input-grabbing
+      // overlay that no dismiss path could clear. show() must catch any such
+      // throw and tear down. Throw from the first step after both are parented.
+      let parentedAtThrow = 0;
+      uiGroup.set_child_above_sibling = vi.fn(() => {
+        parentedAtThrow = uiGroup.children.length;
+        throw new Error("set_child_above_sibling failed");
       });
 
       expect(() => cheatsheet.show()).not.toThrow();
+      expect(parentedAtThrow).toBe(2);
 
       expect(cheatsheet.visible).toBe(false);
       // Nothing cheatsheet-owned may remain parented in the uiGroup.
@@ -263,6 +266,33 @@ describe("Cheatsheet", () => {
       cheatsheet.hide();
       expect(disconnectSpy).toHaveBeenCalled();
       expect(Main.layoutManager.hasHandlers("monitors-changed")).toBe(false);
+    });
+
+    it("stops re-centering once hidden", () => {
+      cheatsheet.show();
+      const overlay = cheatsheet._overlay;
+      overlay.ease = vi.fn(); // keep the fading overlay alive
+      cheatsheet.hide();
+      const setPosSpy = vi.spyOn(overlay, "set_position");
+      Main.layoutManager.emit("monitors-changed");
+      expect(setPosSpy).not.toHaveBeenCalled();
+      expect(Main.layoutManager.getHandlerCount("monitors-changed")).toBe(0);
+    });
+
+    it("keeps exactly one handler across show/hide/show", () => {
+      cheatsheet.show();
+      cheatsheet.hide();
+      cheatsheet.show();
+      expect(Main.layoutManager.getHandlerCount("monitors-changed")).toBe(1);
+    });
+
+    it("keeps exactly one handler when re-shown during the hide ease", () => {
+      cheatsheet.show();
+      // Defer the ease so the overlay outlives hide() and is reused by show().
+      cheatsheet._overlay.ease = vi.fn();
+      cheatsheet.hide();
+      cheatsheet.show();
+      expect(Main.layoutManager.getHandlerCount("monitors-changed")).toBe(1);
     });
 
     it("disconnects monitors-changed on destroy", () => {
