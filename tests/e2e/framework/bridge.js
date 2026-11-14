@@ -1658,29 +1658,97 @@
       }
     },
 
-    // Resource-leak METRIC (Angle 3, demoted to a logged metric — exact-baseline-after-disable
-    // is flaky from GJS GC timing). Consolidates the ALREADY-tracked collections scattered across
-    // WindowManager + the tree into one cheap snapshot the engine logs / non-growth-warns on:
-    //  - signals: total length of the bound-once global signal arrays (_displaySignals,
-    //    _windowManagerSignals, _workspaceManagerSignals, _settingsSignals, _overviewSignals).
-    //    These are bound once in _bindSignals and never grow — so growth here is a real leak.
+    // Orphaned Forge actors in global.window_group (forge-o4hk). Forge parents two kinds of
+    // actor straight into window_group, so a teardown that misses one leaves it there for good:
+    //  - container decorations (St.BoxLayout, type "forge-deco", tree.js _createDecoration):
+    //    each must point (parentNode) at a CON reachable from the tree root whose .decoration
+    //    is this actor.
+    //  - focus/split borders (St.Bin, window-*-border style classes, window.js trackWindow and
+    //    decoration.js): each must be the .border or .splitBorder of a live window actor whose
+    //    Meta.Window the tree still tracks.
+    // Structural facts about live actors, not GC timing. With Forge disabled there is no tree,
+    // so every such actor is an orphan (the ext_cycle step's post-disable check).
+    // Returns {violations:[{rule,detail,path}], decorations, borders} (the counts are of actors
+    // found in window_group).
+    fuzzOrphanActors() {
+      try {
+        const r = root();
+        const nodes = new Set();
+        const tracked = new Set();
+        reduceTree(
+          r,
+          (acc, n) => {
+            nodes.add(n);
+            if (n.nodeType === "WINDOW" && n.nodeValue) tracked.add(n.nodeValue);
+            return { acc };
+          },
+          null
+        );
+        const owners = new Map();
+        for (const actor of global.get_window_actors()) {
+          if (actor.border) owners.set(actor.border, actor);
+          if (actor.splitBorder) owners.set(actor.splitBorder, actor);
+        }
+        const BORDER_CLASS = /\bwindow-(tiled|stacked|tabbed|floated|split)-border\b/;
+        const violations = [];
+        let decorations = 0;
+        let borders = 0;
+        for (const a of global.window_group.get_children()) {
+          if (a.type === "forge-deco") {
+            decorations++;
+            const p = a.parentNode;
+            if (!p || !nodes.has(p) || p.decoration !== a)
+              violations.push({
+                rule: "orphan-decoration",
+                detail: !p
+                  ? "decoration with no parentNode"
+                  : !nodes.has(p)
+                  ? `decoration of a ${p.nodeType} ${p.layout} node no longer in the tree`
+                  : "decoration is not its node's .decoration",
+                path: "window_group",
+              });
+            continue;
+          }
+          const cls = a.get_style_class_name ? a.get_style_class_name() : null;
+          if (!cls || !BORDER_CLASS.test(cls)) continue;
+          borders++;
+          const owner = owners.get(a);
+          let mw = null;
+          try {
+            mw = owner ? owner.get_meta_window() : null;
+          } catch (e) {
+            mw = null;
+          }
+          if (!mw || !tracked.has(mw))
+            violations.push({
+              rule: "orphan-decoration",
+              detail: !owner
+                ? `border (${cls}) owned by no window actor`
+                : `border (${cls}) of a window the tree no longer tracks`,
+              path: "window_group",
+            });
+        }
+        return JSON.stringify({ violations, decorations, borders });
+      } catch (e) {
+        // A thrown probe is not a Forge bug; never fail a session on it.
+        return JSON.stringify({ violations: [], error: String(e) });
+      }
+    },
+
+    // Resource-leak METRIC (Angle 3, logged, never a session failure). Consolidates the
+    // ALREADY-tracked collections scattered across WindowManager + the tree into one cheap
+    // snapshot the engine logs at session end:
     //  - timers: count of LIVE tracked GLib source ids (the set _removeSignals clears). Transient
     //    by nature (come and go), reported for visibility, NOT a non-growth target.
     //  - decorations/tabs/previewHints: per-node actors counted by walking the tree (Node.tab /
     //    Node.decoration / Node.previewHint, tree.js:85-86). Scale with tabbed/stacked containers
     //    and windows, so reported but NOT a steady-state non-growth target.
+    // Orphaned actors are a session-failing oracle instead: fuzzOrphanActors.
     fuzzResourceCounts() {
       try {
         const ext = forgeExt();
         const wm = ext && ext.extWm;
         if (!wm) return JSON.stringify({ error: "no-wm" });
-        const arrLen = (a) => (Array.isArray(a) ? a.length : 0);
-        const signals =
-          arrLen(wm._displaySignals) +
-          arrLen(wm._windowManagerSignals) +
-          arrLen(wm._workspaceManagerSignals) +
-          arrLen(wm._settingsSignals) +
-          arrLen(wm._overviewSignals);
         const timerIds = [...PENDING_TIMER_IDS, "_pointerFocusTimeoutId"];
         let timers = 0;
         for (const id of timerIds) if (wm[id]) timers += 1;
@@ -1700,7 +1768,7 @@
             null
           );
         }
-        return JSON.stringify({ signals, timers, decorations, tabs, previewHints });
+        return JSON.stringify({ timers, decorations, tabs, previewHints });
       } catch (e) {
         return JSON.stringify({ error: String(e) });
       }

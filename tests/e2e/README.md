@@ -149,7 +149,11 @@ not a depth heuristic), nodeType + layout domain, no empty CON, no CON wrapping 
 CON, WINDOW nodes are leaves, no two WINDOW nodes share a `Meta.Window`, and tiled-sibling
 non-overlap under HSPLIT/VSPLIT. The overlap set comes from the shell's own
 `getTiledChildren` (an all-floated CON keeps a stale rect and is correctly excluded);
-STACKED/TABBED are skipped (their children share a rect by design).
+STACKED/TABBED are skipped (their children share a rect by design). Beyond the tree,
+`orphan-decoration` (`bridge.fuzzOrphanActors`) checks the actors Forge parents straight
+into `global.window_group`: every container decoration (`type "forge-deco"`) must be the
+`.decoration` of a CON still in the tree, and every focus/split border must be the
+`.border`/`.splitBorder` of a window the tree still tracks.
 
 **Deliberately NOT invariants** — do not re-add these; the code contradicts them:
 

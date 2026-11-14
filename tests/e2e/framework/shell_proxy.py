@@ -858,13 +858,29 @@ class ShellProxy:
         except (ValueError, TypeError):
             return {"violations": []}
 
-    def fuzz_resource_counts(self) -> dict:
-        """Return a leak-metric snapshot: {'signals','timers','decorations','tabs','previewHints'}.
+    def fuzz_orphan_actors(self) -> dict:
+        """Return orphaned Forge actors in window_group: {'violations', 'decorations', 'borders'}.
 
-        Angle 3 (logged metric, not a session-failing oracle): consolidates Forge's already-
-        tracked signal arrays, GLib timer ids, and per-node actors. 'signals' is bound-once and
-        should never grow — the engine non-growth-WARNS on it. Returns {'error': ...} when the
-        WindowManager is unavailable. See bridge.fuzzResourceCounts.
+        Each violation is {rule: 'orphan-decoration', detail, path}: a container decoration
+        whose CON left the tree, or a border no tracked window owns. With Forge disabled every
+        Forge actor still in window_group is one. Never throws; a non-dict result degrades to
+        no violations. See bridge.fuzzOrphanActors.
+        """
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.fuzzOrphanActors()")
+        if isinstance(result, dict):
+            return result
+        try:
+            return json.loads(result)
+        except (ValueError, TypeError):
+            return {"violations": []}
+
+    def fuzz_resource_counts(self) -> dict:
+        """Return a resource snapshot: {'timers','decorations','tabs','previewHints'}.
+
+        Angle 3 (logged metric, not a session-failing oracle): consolidates Forge's live GLib
+        timer ids and per-node actors. Returns {'error': ...} when the WindowManager is
+        unavailable. See bridge.fuzzResourceCounts.
         """
         self._ensure_bridge()
         result = self.eval("globalThis._forgeTestBridge.fuzzResourceCounts()")

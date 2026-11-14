@@ -8,6 +8,8 @@ original session did.
 Oracle bundle, run after every step (post a forced synchronous render):
   1. liveness  — eval("1"); a throw means the shell died (fatal, not a tree bug).
   2. structure+geometry — bridge.fuzz_check_invariants (the SOUND rule set).
+  2d. orphans  — bridge.fuzzOrphanActors: no Forge decoration/border left in window_group
+                 without a node/window the tree still holds.
   3. log scan  — new JS ERROR / finalized-object lines on the live gnome-shell log.
 
 A re-readable structure/geometry violation is re-checked once after an extra settle before
@@ -187,7 +189,6 @@ class FuzzEngine:
         self._session_stats = {}  # peak {maxDepth,nodes,cons,maxSplitFanout} for the current session
         self._monitor_count = None  # cached per session (headless monitor set is static)
         self._last_steps = []  # last run_session's executed step list (reused by the diff test)
-        self._res_baseline = None  # resource counts after the initial settle (leak metric)
         self._res_final = None  # resource counts at session end (leak metric)
 
     # --- low-level ----------------------------------------------------------------------------
@@ -316,6 +317,19 @@ class FuzzEngine:
                     "%s [%s]" % (v.get("detail", ""), v.get("path", "")),
                 )
 
+        # 2d. orphaned actors (forge-o4hk): every Forge decoration/border in window_group must
+        # belong to a node/window the tree still holds. Re-readable (structural, not GC timing).
+        try:
+            orphans = self.shell.fuzz_orphan_actors()
+        except ShellProxyError:
+            orphans = None
+        if isinstance(orphans, dict):
+            oviol = orphans.get("violations") or []
+            if oviol:
+                v = oviol[0]
+                extra = ("; +%d more" % (len(oviol) - 1)) if len(oviol) > 1 else ""
+                return (v.get("rule", "orphan-decoration"), v.get("detail", "") + extra)
+
         # 3. log scan — thrown exceptions on the live shell log since the last step.
         errs = self.log.new_errors()
         if errs:
@@ -372,27 +386,16 @@ class FuzzEngine:
         return res if isinstance(res, dict) and "error" not in res else None
 
     def resource_summary_str(self):
-        """One-line leak-metric summary for the session (Angle 3, LOGGED — not a failure).
-
-        Reports the end-of-session counts and, when both samples exist, whether the bound-once
-        signal total GREW (the only count that should be invariant — a non-growth WARNING, never
-        a hard session failure: GJS GC timing makes a stricter assertion flaky).
-        """
+        """One-line end-of-session resource summary (Angle 3, LOGGED — never a failure)."""
         f = self._res_final
         if not f:
             return "resources=unavailable"
-        base = self._res_baseline or {}
-        s = "resources signals=%s timers=%s decorations=%s tabs=%s previewHints=%s" % (
-            f.get("signals"),
+        return "resources timers=%s decorations=%s tabs=%s previewHints=%s" % (
             f.get("timers"),
             f.get("decorations"),
             f.get("tabs"),
             f.get("previewHints"),
         )
-        b_sig, f_sig = base.get("signals"), f.get("signals")
-        if isinstance(b_sig, int) and isinstance(f_sig, int) and f_sig > b_sig:
-            s += " WARNING signal-leak %d->%d" % (b_sig, f_sig)
-        return s
 
     # --- high-level ---------------------------------------------------------------------------
 
@@ -414,8 +417,7 @@ class FuzzEngine:
         # log scanner so teardown noise isn't mis-read as a finding.
         self._reset_workspace()
         self.log.reset()
-        self._res_baseline = None  # leak-metric samples for this session (Angle 3)
-        self._res_final = None
+        self._res_final = None  # end-of-session resource sample (Angle 3)
         executed = []
         self._last_steps = executed  # same list object, mutated in place; reused by the diff test
 
@@ -430,8 +432,6 @@ class FuzzEngine:
             self._settle()
         except ShellProxyError as e:
             return FuzzFailure("shell-dead", str(e), executed, seed, len(executed) - 1)
-        # Leak-metric baseline AFTER the working set is up + settled (Angle 3, logged metric).
-        self._res_baseline = self._resource_counts()
 
         for i in range(n_steps):
             generated = actions.generate_step(
