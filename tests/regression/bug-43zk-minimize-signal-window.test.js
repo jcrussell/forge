@@ -25,7 +25,7 @@ describe("Bug forge-43zk: minimize resets the signal window's container", () => 
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
-    vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
+    vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
     vi.spyOn(wm(), "hideWindowBorders").mockImplementation(() => {});
   });
 

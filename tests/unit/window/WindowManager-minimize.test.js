@@ -56,13 +56,13 @@ describe("WindowManager - minimize/unminimize (_onMinimizeChange)", () => {
 
     const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
     const hideSpy = vi.spyOn(wm(), "hideWindowBorders");
-    const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
     wm()._onMinimizeChange("minimize", { hideBorders: true, resetGrandparentIfEmpty: true });
 
     expect(hideSpy).toHaveBeenCalled();
     expect(resetSpy).toHaveBeenCalledWith(parent);
-    expect(renderSpy).toHaveBeenCalledWith("minimize");
+    expect(renderSpy).toHaveBeenCalledWith("minimize", true);
   });
 
   it("minimize resets the grandparent when the parent has no tiled children left", () => {
@@ -85,24 +85,24 @@ describe("WindowManager - minimize/unminimize (_onMinimizeChange)", () => {
 
     const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
     const hideSpy = vi.spyOn(wm(), "hideWindowBorders");
-    const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
     wm()._onMinimizeChange("unminimize");
 
     expect(hideSpy).not.toHaveBeenCalled();
     expect(resetSpy).toHaveBeenCalledWith(parent);
     expect(resetSpy).not.toHaveBeenCalledWith(parent.parentNode);
-    expect(renderSpy).toHaveBeenCalledWith("unminimize");
+    expect(renderSpy).toHaveBeenCalledWith("unminimize", true);
   });
 
   it("is a no-op (only renders) when there is no focused node", () => {
     focusOn(null);
     const resetSpy = vi.spyOn(ctx.tree, "resetSiblingPercent");
-    const renderSpy = vi.spyOn(wm(), "_renderWithFreezeState").mockImplementation(() => {});
+    const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
     wm()._onMinimizeChange("minimize", { hideBorders: true, resetGrandparentIfEmpty: true });
 
     expect(resetSpy).not.toHaveBeenCalled();
-    expect(renderSpy).toHaveBeenCalledWith("minimize");
+    expect(renderSpy).toHaveBeenCalledWith("minimize", true);
   });
 });
