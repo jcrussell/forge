@@ -128,6 +128,18 @@ fi
 # D-Bus env for all subsequent commands
 DBUS_ENV="$BASE_ENV DBUS_SESSION_BUS_ADDRESS=unix:path=$BUS_SOCKET"
 
+# Give D-Bus-activated services the X display, before the shell starts so the
+# ones it activates at startup get it too. The bus starts them with its own
+# environment, which has none, so on X11 they exit with "cannot open display:"
+# (org.gnome.Shell.Extensions, which opens extension prefs windows). On Wayland
+# libwayland finds the socket by its wayland-0 default. There is no user
+# systemd manager to import it into (dbus-update-activation-environment
+# --systemd, systemctl --user), so set it on the bus directly.
+if [ "$SESSION_TYPE" = "x11" ]; then
+    su - gnomeshell -c "$DBUS_ENV gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.UpdateActivationEnvironment \"{'DISPLAY': ':${DISPLAY_NUM}'}\"" >/dev/null \
+        || echo "WARNING: could not set the D-Bus activation environment"
+fi
+
 # Enable Forge extension via gsettings before starting GNOME Shell
 echo "Pre-enabling Forge extension via gsettings..."
 su - gnomeshell -c "$DBUS_ENV gsettings set org.gnome.shell enabled-extensions \"['forge@jcrussell.github.io']\"" 2>/dev/null || true
