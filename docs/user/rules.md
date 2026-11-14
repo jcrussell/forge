@@ -43,6 +43,10 @@ before it next writes one.
 The toggles add and remove only single-class and per-window rules; edit comma-list
 and title rules in the file. To tile an app a comma-list rule floats (Steam,
 Blender), `Super+Shift+c` adds a class `tile` rule, and pressing it again removes it.
+When an app-wide rule can't flip the focused window (a title rule or a comma-list
+`tile` rule outranks it, or the window is a dialog), `Super+Shift+c` writes a rule
+for just that window, like `Super+c`. Neither toggle floats a window that a title
+`tile` rule tiles; edit that rule.
 
 ## Finding a window's class
 
