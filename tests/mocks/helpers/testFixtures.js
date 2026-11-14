@@ -8,6 +8,7 @@
 
 import { vi } from "vitest";
 import { installGnomeGlobals } from "./globalSetup.js";
+import { addSignalSupport } from "./signalMixin.js";
 import { WindowManager } from "../../../lib/extension/window.js";
 import { Tree, LAYOUT_TYPES } from "../../../lib/extension/tree.js";
 
@@ -60,7 +61,8 @@ export const DEFAULT_SETTINGS = {
  * Create a mock settings object
  *
  * @param {Object} overrides - Setting values to override defaults
- * @returns {Object} Mock settings object with get/set methods
+ * @returns {Object} Mock settings object with get/set methods and, like a
+ *   Gio.Settings in the shell, connect/disconnect and connectObject/disconnectObject
  *
  * @example
  * const settings = createMockSettings({ 'tiling-mode-enabled': false });
@@ -69,7 +71,7 @@ export const DEFAULT_SETTINGS = {
 export function createMockSettings(overrides = {}) {
   const values = { ...DEFAULT_SETTINGS, ...overrides };
 
-  return {
+  return addSignalSupport({
     get_boolean: vi.fn((key) => {
       const value = values[key];
       return typeof value === "boolean" ? value : false;
@@ -93,7 +95,7 @@ export function createMockSettings(overrides = {}) {
     }),
     // Access to internal values for testing
     _values: values,
-  };
+  });
 }
 
 /**

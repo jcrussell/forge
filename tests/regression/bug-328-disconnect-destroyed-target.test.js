@@ -32,9 +32,6 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
 
   function seedSignalState(windows) {
     wm()._signalsBound = true;
-    wm()._displaySignals = [];
-    wm()._workspaceManagerSignals = [];
-    wm()._overviewSignals = [];
     ctx.display.get_tab_list = vi.fn(() => windows);
   }
 
@@ -63,10 +60,10 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
     expect(wm()._signalsBound).toBe(false);
   });
 
-  it("a missing target with pending signal ids is a no-op, not a TypeError", () => {
-    seedSignalState([]);
-    // Simulate a torn-down global: ids recorded but the target is gone.
-    wm()._windowManagerSignals = [201];
+  it("a torn-down source with handlers tracked is a no-op, not a TypeError", () => {
+    ctx.display.get_tab_list = vi.fn(() => []);
+    wm()._bindSignals();
+    // Simulate a torn-down global: handlers tracked but the source is gone.
     const savedWindowManager = global.window_manager;
     global.window_manager = undefined;
 
@@ -75,6 +72,7 @@ describe("Bug #328: disconnect on destroyed targets must not abort cleanup", () 
       expect(wm()._signalsBound).toBe(false);
     } finally {
       global.window_manager = savedWindowManager;
+      savedWindowManager.disconnectObject(wm());
     }
   });
 });

@@ -61,7 +61,6 @@ describe("Bug forge-gw2c: workspace signal map is object-anchored", () => {
   });
 
   it("the workspaces-reordered handler rebuilds the signal map (destroy + reload)", () => {
-    ctx.settings.connect = vi.fn(() => 1);
     const destroySpy = vi.spyOn(wsm, "destroy");
     const reload = vi.spyOn(ctx.windowManager, "reloadTree").mockImplementation(() => {});
 

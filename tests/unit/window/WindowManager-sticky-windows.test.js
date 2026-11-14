@@ -130,7 +130,6 @@ describe("WindowManager - sticky windows follow the active workspace", () => {
     setup();
     const sticky = addWindow(mon(0, 0), 1);
     vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
-    ctx.settings.connect ??= vi.fn(() => 1);
     wm()._bindSignals();
 
     // Mutter appends ws3 and activates it before emitting workspace-added.
@@ -149,9 +148,6 @@ describe("WindowManager - sticky windows follow the active workspace", () => {
     setup();
     const sticky = addWindow(mon(0, 0), 1);
     vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
-    // _bindSignals wires every source at once; only the workspace manager's
-    // handlers matter here, so give the other sources an inert connect().
-    ctx.settings.connect ??= vi.fn(() => 1);
     wm()._bindSignals();
 
     activate(1);

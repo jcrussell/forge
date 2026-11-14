@@ -16,7 +16,6 @@ describe("forge-33b7: workspace-skip-tile follows workspaces when they are added
       globals: { workspaceManager: { workspaceCount: 3, activeWorkspaceIndex: 0 } },
       settings: { "workspace-skip-tile": skip },
     });
-    ctx.settings.connect = vi.fn(() => 1);
     ctx.windowManager._bindSignals();
   }
 

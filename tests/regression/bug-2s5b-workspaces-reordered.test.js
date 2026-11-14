@@ -23,9 +23,6 @@ describe("forge-2s5b: workspaces-reordered triggers a tree reload to fix stale k
     ctx = createWindowManagerFixture({
       globals: { workspaceManager: { workspaceCount: 3, activeWorkspaceIndex: 0 } },
     });
-    // Give the mock settings a connect() so the rest of _bindSignals runs (same
-    // idiom as bug-85ex-monitors-changed).
-    ctx.settings.connect = vi.fn(() => 1);
   });
 
   afterEach(() => {
