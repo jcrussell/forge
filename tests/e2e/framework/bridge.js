@@ -1427,6 +1427,25 @@
       return id;
     },
 
+    // Move a window's frame from the compositor side, as an app or Mutter placement would.
+    // No grab begins, so Forge does not mark the window as placed by the user. Returns the
+    // frame rect read straight after the move, before Forge can react to it.
+    moveWindowFrame(title, x, y) {
+      const w = global.display.list_all_windows().find((win) => win.get_title() === title);
+      if (!w) return "NO_WINDOW";
+      w.move_frame(true, x, y);
+      return JSON.stringify(rect(w.get_frame_rect()));
+    },
+
+    // Queue a full Forge render (renderTree), the path that also runs processFloats.
+    // fuzzRenderNow calls tree.render() directly and skips processFloats.
+    requestRender() {
+      const wm = forgeExt()?.extWm;
+      if (!wm) return "no-wm";
+      wm.renderTree("e2e");
+      return "ok";
+    },
+
     // was ensure_focus (no try/catch)
     ensureFocus() {
       if (global.display.get_focus_window()) return "already_focused";

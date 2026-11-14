@@ -1,8 +1,9 @@
 """
 Dialog Window Tests for Forge.
 
-Tests that dialog/transient windows are not tiled and don't
-disrupt the tiling layout of other windows.
+Tests that dialog/transient windows are not tiled, don't
+disrupt the tiling layout of other windows and are not left
+on top of a tiled neighbour of their parent.
 
 The dialog is the test window's own modal child (transient-for set to the test
 window), opened and closed by signalling the test window's process, so it opens
@@ -14,7 +15,9 @@ float vs tile about 200ms after a window appears, not when it is first listed.
 import os
 import signal
 
+import pytest
 from framework.constants import Tolerance
+from framework.geometry import as_rect, overlap_area
 from framework.wait import wait_for, wait_for_stable
 
 
@@ -130,4 +133,61 @@ class TestDialogCloseBehavior:
         assert abs(width - workspace["width"]) < Tolerance.SIZE, (
             f"Window should still fill workspace after dialogs: "
             f"width {width} vs {workspace['width']}"
+        )
+
+
+def _rect_of(shell_proxy, title):
+    return next(as_rect(w["rect"]) for w in shell_proxy.get_windows() if w.get("title") == title)
+
+
+MUTTER = "imports.gi.Gio.Settings.new('org.gnome.mutter')"
+
+
+@pytest.fixture
+def detached_dialogs(shell_proxy):
+    """Turn off attach-modal-dialogs (GNOME Shell turns it on), under which Mutter
+    keeps a modal dialog centred on its parent and no move can misplace it."""
+    prior = shell_proxy.eval(f"{MUTTER}.get_boolean('attach-modal-dialogs')")
+    shell_proxy.eval(f"{MUTTER}.set_boolean('attach-modal-dialogs', false)")
+    yield
+    shell_proxy.eval(
+        f"{MUTTER}.set_boolean('attach-modal-dialogs', {'true' if prior is True else 'false'})"
+    )
+
+
+class TestDialogPlacement:
+    """A dialog that lands on its parent's tiled neighbour is moved back over its
+    parent (forge-2ew, _repositionOccludedDialog in processFloats)."""
+
+    def test_dialog_on_neighbour_moves_over_parent(
+        self, shell_proxy, window_helper, detached_dialogs, two_windows
+    ):
+        left, right = sorted(two_windows, key=lambda w: _main_window_rect(shell_proxy, w)["x"])
+        right_rect = as_rect(_main_window_rect(shell_proxy, right))
+        dialog = _dialog_title(left)
+
+        _open_dialog(shell_proxy, window_helper, left)
+        dx, dy, dw, dh = _rect_of(shell_proxy, dialog)
+        assert overlap_area((dx, dy, dw, dh), right_rect) == 0, (
+            f"dialog {(dx, dy, dw, dh)} opened over the neighbour {right_rect}"
+        )
+
+        # Put the dialog on the neighbour without a grab, as a misplacement would.
+        rx, ry, rw, rh = right_rect
+        landed = shell_proxy.move_window_frame(dialog, rx + (rw - dw) // 2, ry + (rh - dh) // 2)
+        assert overlap_area(as_rect(landed), right_rect) > 0, (
+            f"the dialog did not move onto the neighbour: {landed}"
+        )
+
+        shell_proxy.request_render()
+        shell_proxy.wait_for_forge_settled()
+        moved = wait_for(
+            lambda: _rect_of(shell_proxy, dialog),
+            predicate=lambda r: overlap_area(r, right_rect) == 0,
+            message="the dialog stayed on the neighbour",
+        )
+        px, py, pw, ph = as_rect(_main_window_rect(shell_proxy, left))
+        cx, cy = moved[0] + moved[2] / 2, moved[1] + moved[3] / 2
+        assert px <= cx <= px + pw and py <= cy <= py + ph, (
+            f"dialog {moved} should be centred over its parent {(px, py, pw, ph)}"
         )

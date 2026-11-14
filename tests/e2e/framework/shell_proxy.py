@@ -500,6 +500,24 @@ class ShellProxy:
         self._ensure_bridge()
         return self.eval("globalThis._forgeTestBridge.closeFocusedWindow()")
 
+    def move_window_frame(self, title: str, x: int, y: int) -> dict:
+        """Move the window titled `title` to (x, y) without a grab and return its frame
+        rect straight after the move (bridge.moveWindowFrame)."""
+        self._ensure_bridge()
+        result = self.eval(
+            "globalThis._forgeTestBridge.moveWindowFrame(%s, %d, %d)" % (json.dumps(title), x, y)
+        )
+        if not isinstance(result, dict):
+            raise ShellProxyError(f"move_window_frame({title!r}): {result}")
+        return result
+
+    def request_render(self) -> None:
+        """Queue a Forge renderTree, which also runs processFloats (bridge.requestRender)."""
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.requestRender()")
+        if result != "ok":
+            raise ShellProxyError(f"request_render: {result}")
+
     def ensure_focus(self) -> bool:
         """
         Ensure a window has focus on the active workspace.
