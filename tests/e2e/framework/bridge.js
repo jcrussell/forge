@@ -1437,6 +1437,38 @@
       return JSON.stringify(rect(w.get_frame_rect()));
     },
 
+    // Focus the window titled `title`: the way to target one tab of a stacked/tabbed
+    // group, whose windows share a rect that positional focus hints cannot tell apart.
+    activateWindow(title) {
+      const w = global.display.list_all_windows().find((win) => win.get_title() === title);
+      if (!w) return "NO_WINDOW";
+      w.activate(global.display.get_current_time_roundtrip());
+      return "ok";
+    },
+
+    // Tab bars on screen that belong to no live stacked/tabbed container: visible
+    // "forge-deco" actors whose container has left the tree, has another bar, switched to
+    // a split or holds no tiled window.
+    strayTabBars() {
+      const tree = root();
+      if (!tree) return JSON.stringify([]);
+      const cons = tree.getNodeByType("CON");
+      const strayReason = (bar) => {
+        const con = bar.parentNode;
+        if (!cons.includes(con)) return "container gone";
+        if (con.decoration !== bar) return "orphan";
+        if (!con.isStackedOrTabbed()) return "not tabbed or stacked";
+        if (!con.childNodes.some((n) => n.isWindow() && n.isTile())) return "no tabs";
+        return "";
+      };
+      const stray = global.window_group
+        .get_children()
+        .filter((c) => c.type === "forge-deco" && c.visible && c.width > 0 && c.height > 0)
+        .map((c) => ({ rect: rect(c), tabs: c.get_n_children(), reason: strayReason(c) }))
+        .filter((bar) => bar.reason);
+      return JSON.stringify(stray);
+    },
+
     // Queue a full Forge render (renderTree), the path that also runs processFloats.
     // fuzzRenderNow calls tree.render() directly and skips processFloats.
     requestRender() {

@@ -511,6 +511,25 @@ class ShellProxy:
             raise ShellProxyError(f"move_window_frame({title!r}): {result}")
         return result
 
+    def activate_window(self, title: str, timeout: float = Timeout.DEFAULT) -> None:
+        """Focus the window titled `title` and wait until it has focus (bridge.activateWindow)."""
+        self._ensure_bridge()
+        result = self.eval("globalThis._forgeTestBridge.activateWindow(%s)" % json.dumps(title))
+        if result != "ok":
+            raise ShellProxyError(f"activate_window({title!r}): {result}")
+        start = time.time()
+        while self.eval("global.display.get_focus_window()?.get_title() ?? ''") != title:
+            if time.time() - start > timeout:
+                raise WaitTimeoutError(f"{title} did not take focus within {timeout}s")
+            time.sleep(SETTLE_POLL_INTERVAL)
+
+    def get_stray_tab_bars(self) -> list:
+        """Visible tab bars of no live stacked/tabbed container (left the tree,
+        replaced, now a split, or empty), as [{rect, tabs, reason}]
+        (bridge.strayTabBars)."""
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.strayTabBars()")
+
     def request_render(self) -> None:
         """Queue a Forge renderTree, which also runs processFloats (bridge.requestRender)."""
         self._ensure_bridge()
