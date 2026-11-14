@@ -95,9 +95,9 @@ export default class ForgeExtension extends Extension {
       // than returning null); kept for type-narrowing. Throwing rather than
       // returning routes it through the same restore path as any other failure.
       if (!settings) throw new Error("enable: settings unavailable");
-      this._overrideReconcileIds = ["tiling-mode-enabled", "disable-edge-tiling"].map((key) =>
-        settings.connect(`changed::${key}`, () => this._reconcileOverridesFor(key))
-      );
+      for (const key of ["tiling-mode-enabled", "disable-edge-tiling"]) {
+        settings.connectObject(`changed::${key}`, () => this._reconcileOverridesFor(key), this);
+      }
 
       this.configMgr = new ConfigManager(this);
 
@@ -116,7 +116,7 @@ export default class ForgeExtension extends Extension {
       this.keybindings.cheatsheet = this.cheatsheet;
 
       this._onSessionModeChanged(Main.sessionMode);
-      this._sessionId = Main.sessionMode.connect("updated", this._onSessionModeChanged.bind(this));
+      Main.sessionMode.connectObject("updated", this._onSessionModeChanged.bind(this), this);
 
       this.theme.patchCss();
       this.theme.reloadStylesheet();
@@ -259,19 +259,11 @@ export default class ForgeExtension extends Extension {
     Logger.info("disable");
 
     // See session mode unlock-dialog explanation on _onSessionModeChanged()
-    if (this._sessionId) {
-      Main.sessionMode.disconnect(this._sessionId);
-      this._sessionId = null;
-    }
+    Main.sessionMode.disconnectObject(this);
 
     // forge-abk: drop the runtime override-reconcile listeners BEFORE restoring,
     // so a settings write during teardown can't re-enter the reconcile handler.
-    if (this._overrideReconcileIds) {
-      for (const id of this._overrideReconcileIds) {
-        this.settings?.disconnect(id);
-      }
-      this._overrideReconcileIds = null;
-    }
+    this.settings?.disconnectObject(this);
 
     // Restore GNOME settings and keybindings (#461, #288)
     if (this._savedSettings) {

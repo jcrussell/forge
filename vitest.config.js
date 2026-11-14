@@ -29,8 +29,8 @@ export default defineConfig({
         branches: 85,
         functions: 90,
         statements: 90,
-        // measured 94.25 / 65.67 / 100 / 94.25
-        "extension.js": { statements: 92, branches: 63, functions: 97, lines: 92 },
+        // measured 97.22 / 82.43 / 100 / 97.22
+        "extension.js": { statements: 95, branches: 80, functions: 97, lines: 95 },
         // measured 98.96 / 75.8 / 100 / 98.96
         "lib/extension/cheatsheet.js": { statements: 96, branches: 73, functions: 97, lines: 96 },
         // measured 100 / 90 / 100 / 100
