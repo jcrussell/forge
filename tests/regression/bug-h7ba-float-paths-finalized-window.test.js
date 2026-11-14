@@ -13,7 +13,7 @@ import {
  * with no isWindowAlive() probe:
  *  - cleanupAlwaysFloat/restoreAlwaysFloat iterate allNodeWindows calling
  *    is_above()/make_above()/unmake_above() on nodeValue, and
- *  - windowDestroy -> removeFloatOverride -> _updateWindowOverrides calls
+ *  - windowDestroy -> removeWindowOverrides -> _updateWindowOverrides calls
  *    get_wm_class()/get_id().
  * On a fast/Wayland close the wrapper finalizes first, so the accessor throws
  * "already deallocated", aborting the loop / the rest of windowDestroy.
@@ -75,10 +75,10 @@ describe("Bug forge-h7ba: float paths skip finalized windows", () => {
     expect(livePinned).toBe(true);
   });
 
-  it("removeFloatOverride does not throw on a finalized window", () => {
+  it("removeWindowOverrides does not throw on a finalized window", () => {
     const dead = createMockWindow({ id: 8005 });
     finalizeWindow(dead);
 
-    expect(() => ctx.windowManager.removeFloatOverride(dead, true)).not.toThrow();
+    expect(() => ctx.windowManager.removeWindowOverrides(dead)).not.toThrow();
   });
 });

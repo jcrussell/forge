@@ -36,7 +36,7 @@ describe("Bug #470: focus restoration on close stays on the closed window's work
     // Keep the test focused on focus restoration, not rendering side effects.
     vi.spyOn(ctx.windowManager, "renderTree").mockImplementation(() => {});
     vi.spyOn(ctx.windowManager, "queueEvent").mockImplementation(() => {});
-    vi.spyOn(ctx.windowManager, "removeFloatOverride").mockImplementation(() => {});
+    vi.spyOn(ctx.windowManager, "removeWindowOverrides").mockImplementation(() => {});
   });
 
   afterEach(() => {

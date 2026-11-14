@@ -419,8 +419,8 @@ class ShellProxy:
         """Strip any class-wide float override (no wmId, no wmTitle) for wm_class.
 
         Teardown helper for class-float tests: a class-wide override is never
-        removed by windowDestroy (it calls removeFloatOverride withWmId=true,
-        matching only per-instance wmId entries) and clean_workspace never
+        removed by windowDestroy (it calls removeWindowOverrides, matching
+        only per-instance wmId entries) and clean_workspace never
         touches windows.json — so a test that floats the editor class and then
         fails mid-run would leak a persistent float into every later test.
         Returns the number of overrides removed.

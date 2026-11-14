@@ -265,7 +265,7 @@ describe("WindowManager - Window Lifecycle", () => {
       expect(finalNodeCount).toBe(initialNodeCount);
     });
 
-    it("should remove float override for destroyed window", () => {
+    it("should remove per-window overrides for destroyed window", () => {
       const metaWindow = createMockWindow();
       const { monitor } = getWorkspaceAndMonitor(ctx);
       const nodeWindow = ctx.tree.createNode(monitor.nodeValue, NODE_TYPES.WINDOW, metaWindow);
@@ -274,11 +274,11 @@ describe("WindowManager - Window Lifecycle", () => {
       actor.nodeWindow = nodeWindow;
 
       vi.spyOn(ctx.tree, "findNodeByActor").mockReturnValue(nodeWindow);
-      const removeOverrideSpy = vi.spyOn(wm(), "removeFloatOverride");
+      const removeOverrideSpy = vi.spyOn(wm(), "removeWindowOverrides");
 
       wm().windowDestroy(actor);
 
-      expect(removeOverrideSpy).toHaveBeenCalledWith(metaWindow, true);
+      expect(removeOverrideSpy).toHaveBeenCalledWith(metaWindow);
     });
 
     it("should queue render event after destruction", () => {
