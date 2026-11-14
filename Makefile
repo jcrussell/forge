@@ -46,6 +46,8 @@ schemas/gschemas.compiled: schemas/*.gschema.xml
 # forge-fw33: author identities are untrusted text, so serialise them with
 # json.dumps (valid JS) rather than splicing them into JS source. HEAD, not
 # --all, so a fetched-but-unmerged PR branch can't put its authors in a build.
+# Drops the same identities as .github/scripts/release-notes.sh: Claude's
+# noreply@anthropic.com and [bot] accounts.
 metadata:
 	@echo "Generating developer metadata..."
 	@# Check before the redirect below truncates lib/prefs/metadata.js.
@@ -54,7 +56,7 @@ metadata:
 		seen = {}; \
 		matches = (re.fullmatch(r"\s*\d+\t(.*) <(.*)>", line.rstrip("\n")) for line in sys.stdin); \
 		[seen.setdefault(m[2], f"{m[1]} <{m[2]}>") for m in matches \
-			if m and not re.search("dependabot|noreply", m[0])]; \
+			if m and m[2].lower() != "noreply@anthropic.com" and "[bot]" not in m[1] + m[2]]; \
 		print("export const developers = [\n" + "".join(f"  {json.dumps(d)},\n" for d in seen.values()) + "];")' \
 		> lib/prefs/metadata.js
 
