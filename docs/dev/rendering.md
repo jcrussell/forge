@@ -15,7 +15,9 @@ GNOME signals that follow one user action collapse into one layout pass.
   live, and `move()` skips the grabbed window itself.
 - Otherwise it schedules the idle body **once** (guarded by `_renderTreeSrcId`).
 
-The idle body (`window.js`) runs this exact order — **the order is
+The idle body first re-checks the same condition (`_renderSuppressed()`), so a
+freeze or tiling-off that lands after scheduling skips the render. Otherwise it
+(`window.js`) runs this exact order — **the order is
 load-bearing**:
 
 ```
