@@ -1,7 +1,7 @@
 // Mock Clutter namespace
 import { withSignals } from "../helpers/signalMixin.js";
 
-export class Actor extends withSignals() {
+export class Actor extends withSignals(class {}, { destroySignal: true }) {
   constructor(params = {}) {
     super();
     this.name = params.name || "";
@@ -48,7 +48,7 @@ export class Actor extends withSignals() {
   }
 
   destroy() {
-    // Mock destroy
+    this.emit("destroy", this);
   }
 }
 

@@ -13,29 +13,31 @@ vi.mock("gi://Clutter", () => GnomeMocks.Clutter);
 vi.mock("gi://GObject", () => GnomeMocks.GObject);
 
 // Create shared mock objects that tests can modify
-// Using vi.hoisted() ensures these are created before mocks and are mutable
-const { mockOverview, mockWm, mockPanel } = vi.hoisted(() => {
-  return {
-    mockOverview: {
-      visible: false,
-      connect: (signal, callback) => Math.random(),
-      disconnect: (id) => {},
-      _signals: {},
-    },
-    mockWm: {
-      addKeybinding: () => {},
-      removeKeybinding: () => {},
-      allowKeybinding: () => {},
-    },
-    mockPanel: {
-      statusArea: {
-        quickSettings: {
-          addExternalIndicator: () => {},
+// Using vi.hoisted() ensures these are created before mocks and are mutable.
+// Main.overview, Main.layoutManager and Main.sessionMode are JS EventEmitters in
+// the shell, so they get connect/emit and connectObject/disconnectObject.
+const { mockOverview, mockLayoutManager, mockSessionMode, mockWm, mockPanel } = await vi.hoisted(
+  async () => {
+    const { addSignalSupport } = await import("./mocks/helpers/signalMixin.js");
+    return {
+      mockOverview: addSignalSupport({ visible: false }),
+      mockLayoutManager: addSignalSupport({}),
+      mockSessionMode: addSignalSupport({ isLocked: false }),
+      mockWm: {
+        addKeybinding: () => {},
+        removeKeybinding: () => {},
+        allowKeybinding: () => {},
+      },
+      mockPanel: {
+        statusArea: {
+          quickSettings: {
+            addExternalIndicator: () => {},
+          },
         },
       },
-    },
-  };
-});
+    };
+  }
+);
 
 // Mock GNOME Shell resources
 vi.mock("resource:///org/gnome/shell/misc/config.js", () => ({
@@ -57,11 +59,12 @@ vi.mock("resource:///org/gnome/shell/extensions/extension.js", () => ({
 
 vi.mock("resource:///org/gnome/shell/ui/main.js", () => ({
   overview: mockOverview,
+  layoutManager: mockLayoutManager,
   wm: mockWm,
   panel: mockPanel,
   notify: () => {},
   modalCount: 0,
-  sessionMode: { isLocked: false },
+  sessionMode: mockSessionMode,
 }));
 
 // Also set global.Main to use the same overview object reference

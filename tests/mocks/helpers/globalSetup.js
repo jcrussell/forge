@@ -7,7 +7,7 @@
 
 import { vi } from "vitest";
 import { Workspace, Rectangle } from "../gnome/Meta.js";
-import { addSignalSupport } from "./signalMixin.js";
+import { addSignalSupport, connectObject, disconnectObject } from "./signalMixin.js";
 
 /**
  * Default monitor geometry
@@ -185,6 +185,8 @@ export function createMockOverview(options = {}) {
         _signals[signal] = _signals[signal].filter((s) => s.id !== id);
       }
     }),
+    connectObject,
+    disconnectObject,
   };
 }
 
