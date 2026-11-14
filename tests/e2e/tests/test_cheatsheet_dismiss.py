@@ -10,7 +10,11 @@ cheatsheet actor is left parented (a stranded reactive backdrop) after dismissal
 """
 
 import json
+import os
 import time
+
+import pytest
+from framework.wait import wait_for
 
 # Resolve the live Cheatsheet and snapshot the state that distinguishes a clean
 # overlay from a stranded, input-grabbing one.
@@ -40,6 +44,11 @@ function state(tag) {
 
 # Long enough for the 100ms hide ease + its onComplete teardown to settle.
 FADE_SETTLE = 0.4
+
+SHELL_LOG = "/tmp/gnome-shell.log"
+# St names the overlay in the critical it logs when the actor is touched after
+# it left the stage.
+LOG_MARKER = "forge-cheatsheet"
 
 
 def _run(shell_proxy, body):
@@ -77,9 +86,60 @@ def test_cheatsheet_show_does_not_throw_and_closes_clean(shell_proxy):
     assert after["reactiveOrphans"] == 0, f"stranded reactive actor after close: {after}"
 
 
-def test_cheatsheet_rapid_toggle_never_strands_input(shell_proxy):
-    """Interleave show/hide without waiting for the fade. show() must never throw
-    and no reactive orphan may survive; a fresh open must still work."""
+def _log_offset():
+    try:
+        return os.path.getsize(SHELL_LOG)
+    except OSError:
+        return 0
+
+
+def _log_lines_since(offset):
+    with open(SHELL_LOG, errors="replace") as fh:
+        fh.seek(offset)
+        return fh.read().splitlines()
+
+
+INTERFACE = "imports.gi.Gio.Settings.new('org.gnome.desktop.interface')"
+ST_SETTINGS = "imports.gi.St.Settings.get()"
+
+
+def _eval_bool(shell_proxy, js):
+    value = shell_proxy.eval(js)
+    return value is True or value == "true"
+
+
+@pytest.fixture
+def animations(shell_proxy):
+    """Turn animations on (the e2e session turns them off), so hide() eases out
+    and the next show() lands mid-fade, as it does for a user. Teardown undoes
+    exactly what setup changed, even when setup fails part way."""
+    prior = _eval_bool(shell_proxy, f"{INTERFACE}.get_boolean('enable-animations')")
+    uninhibited = False
+    try:
+        shell_proxy.eval(f"{INTERFACE}.set_boolean('enable-animations', true)")
+        # GNOME Shell inhibits animations on software rendering, which the
+        # container uses.
+        if not _eval_bool(shell_proxy, f"{ST_SETTINGS}.enable_animations"):
+            shell_proxy.eval(f"{ST_SETTINGS}.uninhibit_animations()")
+            uninhibited = True
+        wait_for(
+            lambda: _eval_bool(shell_proxy, f"{ST_SETTINGS}.enable_animations"),
+            message="St enable_animations never became true",
+        )
+        yield
+    finally:
+        if uninhibited:
+            shell_proxy.eval(f"{ST_SETTINGS}.inhibit_animations()")
+        shell_proxy.eval(
+            f"{INTERFACE}.set_boolean('enable-animations', {'true' if prior else 'false'})"
+        )
+
+
+def test_cheatsheet_rapid_toggle_never_strands_input(shell_proxy, animations):
+    """Interleave show/hide without waiting for the fade. show() must never throw,
+    no reactive orphan may survive, nothing may touch an overlay after it left the
+    stage, and a fresh open must still work."""
+    log_offset = _log_offset()
     rapid = _run(
         shell_proxy,
         r"""
@@ -100,6 +160,8 @@ def test_cheatsheet_rapid_toggle_never_strands_input(shell_proxy):
     settled = _run(shell_proxy, "return JSON.stringify(state('settled'));")
     print("settled:", json.dumps(settled, indent=2))
     assert settled["reactiveOrphans"] == 0, f"stranded reactive actor after rapid toggle: {settled}"
+    logged = [line for line in _log_lines_since(log_offset) if LOG_MARKER in line]
+    assert logged == [], f"overlay touched off-stage during rapid toggle: {logged}"
 
     # Re-open must still produce a working, visible panel (not a dead reused actor).
     reopened = _run(
