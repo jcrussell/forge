@@ -73,13 +73,15 @@ describe("forge-dyt2: tree.apply preserves a lone tiled window's maximize", () =
     monitor.rect = { x: 0, y: 0, width: 1920, height: 1080 };
 
     const { metaWindow: win1, node: node1 } = tileWindow(monitor, 7101);
-    tileWindow(monitor, 7102); // second tiled window -> not lone
+    const { metaWindow: win2 } = tileWindow(monitor, 7102); // not lone
     node1.renderRect = { x: 0, y: 0, width: 960, height: 1080 };
 
     win1.maximize();
+    // The sibling has focus, so the maximize-in-tile keep does not apply either.
+    global.display.get_focus_window.mockReturnValue(win2);
 
     // With a sibling present the lone exemption does not apply; apply re-slices it.
-    expect(ctx.windowManager._isLoneMaximizedTile(node1)).toBe(false);
+    expect(ctx.windowManager._keepsMaximizedTile(node1)).toBe(false);
     ctx.tree.apply(ctx.tree);
     expect(win1.is_maximized()).toBe(false);
   });
