@@ -697,7 +697,14 @@
           if (n.nodeType === "CON") {
             if (children.length === 0)
               add("empty-con", "CON with 0 children survived render", item.path);
-            else if (children.length === 1 && children[0].nodeType === "CON")
+            // Mirrors cleanTree's flatten (tree.js): a stacked/tabbed group whose only child
+            // is a split is kept on purpose (forge-in5v), e.g. after closing W1 in
+            // STACKED[W1, HSPLIT[W2, W3]].
+            else if (
+              children.length === 1 &&
+              children[0].nodeType === "CON" &&
+              !(n.isStackedOrTabbed() && !children[0].isStackedOrTabbed())
+            )
               add(
                 "con-single-con-child",
                 "CON wrapping a single CON should be flattened",

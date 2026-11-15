@@ -167,6 +167,8 @@ into `global.window_group`: every container decoration (`type "forge-deco"`) mus
 - *no CON with 0 tiled children* — `cleanTree` keys on `childNodes.length`, so an
   all-floated/minimized CON legitimately survives.
 - *no single-WINDOW-child CON* — `cleanTree` only flattens a CON whose lone child is a CON.
+- *no CON whose lone child is a CON* without exception — `cleanTree` keeps a stacked/tabbed
+  group whose lone child is a split (forge-in5v), so `con-single-con-child` skips that shape.
 
 **Replaying a fuzz bug** — point the replay test at the saved repro:
 
