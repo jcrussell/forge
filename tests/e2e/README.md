@@ -168,14 +168,16 @@ into `global.window_group`: every container decoration (`type "forge-deco"`) mus
   all-floated/minimized CON legitimately survives.
 - *no single-WINDOW-child CON* — `cleanTree` only flattens a CON whose lone child is a CON.
 
-**Promoting a fuzz bug to a regression test** — commit the minimal repro and point the
-replay test at it:
+**Replaying a fuzz bug** — point the replay test at the saved repro:
 
 ```bash
 make e2e-fuzz FORGE_FUZZ_REPLAY=/app/e2e-results/fuzz/repro-5.min.json
 ```
 
 `test_fuzz_replay` replays the saved step list and asserts the recorded rule reproduces.
+Use it to confirm an open bug and to check a fix by hand. Repros stay local (they are
+best-effort, so a committed one would be a flaky test). Pin the fix with a deterministic
+test instead: a unit test, a `tests/regression/bug-*.test.js`, or a focused e2e test.
 
 ## Adding a New GNOME Version
 
