@@ -37,6 +37,15 @@ Gathers the tiled windows on the workspace's first monitor into one tabbed
 container; toggling again leaves them in one flat split. Unbound by default
 (`workspace-monocle-toggle`).
 
+## Maximize
+
+The title-bar maximize button, or a double-click on the title bar, maximizes a tiled
+window even when it shares the monitor with other tiled windows. It keeps its place
+in the tree and stays maximized while it has focus, or one of its dialogs does.
+Focusing another tiled window on the same monitor puts it back in its tile. A lone
+tiled window keeps its maximize (see `window-maximize-on-single`), and dragging a
+tiled window against a screen edge to half-tile it is undone.
+
 ## Snapping
 
 `Ctrl+Alt` chords float the focused window and place it on a third, two thirds or

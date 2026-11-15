@@ -44,13 +44,14 @@ describe("Bug #461: reject external maximize/edge-snap on a tiled window", () =>
 
   const wm = () => ctx.windowManager;
 
-  it("unmaximizes a fully-maximized tiled window that has tiled siblings", () => {
+  it("unmaximizes a fully-maximized tiled window once a tiled sibling has focus", () => {
     const { monitor } = getWorkspaceAndMonitor(ctx);
     const [first, second] = createHorizontalLayout(ctx.tree, monitor, 2);
 
     const maxed = first.metaWindow;
     maxed.maximize(); // both axes -> is_maximized() true
-    ctx.display.get_focus_window.mockReturnValue(maxed);
+    // While maxed itself has focus the maximize is kept (maximize-in-tile.test.js).
+    ctx.display.get_focus_window.mockReturnValue(second.metaWindow);
 
     const renderSpy = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
 
