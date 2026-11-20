@@ -8,8 +8,9 @@ import {
 import { WindowType } from "../mocks/gnome/Meta.js";
 
 /**
- * Maximizing a tiled window that has neighbours (title-bar button or
- * double-click) keeps it maximized while it has focus. It stays a TILE node in its
+ * Maximizing a tiled window that has neighbours (title-bar button, double-click,
+ * Alt+F10, or the app itself) keeps it maximized while it has focus, once Forge
+ * has placed it; a window that opens maximized is tiled as usual. It stays a TILE node in its
  * slot, so it returns there when focus moves to another tiled window on the same
  * monitor: the render pipeline's move() unmaximizes it then. A single-axis
  * edge-snap is still rejected (#461).
@@ -67,6 +68,19 @@ describe("maximize in tile", () => {
     const [first, second] = pair();
     first.metaWindow.maximize();
     ctx.display.get_focus_window.mockReturnValue(second.metaWindow);
+
+    ctx.tree.apply(ctx.tree);
+
+    expect(first.metaWindow.is_maximized()).toBe(false);
+    const rect = first.metaWindow.get_frame_rect();
+    expect([rect.x, rect.width]).toEqual([0, 960]);
+  });
+
+  it("tiles a window that opens maximized beside a neighbour", () => {
+    const [first] = pair();
+    first.metaWindow.firstRender = true;
+    first.metaWindow.maximize();
+    ctx.display.get_focus_window.mockReturnValue(first.metaWindow);
 
     ctx.tree.apply(ctx.tree);
 

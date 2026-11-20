@@ -16,8 +16,9 @@ import {
  * stays snapped/maximized, desynced from its tiled tree slot.
  *
  * Fix: when the *changed* window is a TILE window that was externally maximized/snapped
- * (any direction) AND it is not the sole tiled window on its monitor (so the legitimate
- * window-maximize-on-single case is preserved), unmaximize it and re-tile.
+ * (any direction) and _keepsMaximizedTile does not keep it, unmaximize it and re-tile.
+ * Kept: the sole tiled window on its monitor (window-maximize-on-single), and a full
+ * maximize of a placed window while no other tiled window on its monitor has focus.
  *
  * Note: native edge-snap maximizes only one axis, so the BOTH-only `isNotMaximized`
  * helper does not catch it — the reject check must look at any maximize direction.

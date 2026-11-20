@@ -71,6 +71,11 @@ A fullscreen window keeps `mode === TILE` (fullscreen doesn't change node mode),
 
 - `apply()` must **filter `is_fullscreen`** out of its tiled children, or it
   re-slices the fullscreen window to a split rect.
+- `apply()` also **skips a maximize Forge keeps** (`_keepsMaximizedTile`): the
+  sole tiled window on its monitor, or a placed window's full maximize while no
+  other tiled window on its monitor has focus. `move()` would unmaximize it, so
+  the focus render that re-slices it is what ends the maximize. The same
+  predicate decides whether `updateMetaPositionSize()` rejects a maximize.
 - `handleMaximizeOnSingle()` (`window.js`) maximizes the sole tiled window per
   monitor — but must **skip a lone fullscreen window** (it reads as not-maximized).
 - `updateDecorationLayout()` (`window.js`) hides decorations on monitors with a

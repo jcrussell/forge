@@ -6,7 +6,7 @@ window has focus and keeps it in its tile, so focusing the neighbour puts it
 back in its slot. A single-axis edge-snap is still rejected (#461).
 """
 
-from framework.constants import Timing
+from framework.constants import Timing, Tolerance
 from framework.wait import wait_for
 
 _MAXIMIZE_FOCUSED_JS = (
@@ -16,17 +16,6 @@ _MAXIMIZE_FOCUSED_JS = (
     "if(!w) return 'none';"
     "if(typeof w.set_maximize_flags==='function') w.maximize();"
     "else w.maximize(Meta.MaximizeFlags.BOTH);"
-    "return 'ok';"
-    "})();"
-)
-
-_FOCUS_OTHER_JS = (
-    "(function(){"
-    "const f=global.display.get_focus_window();"
-    "const ws=global.workspace_manager.get_active_workspace();"
-    "const o=ws.list_windows().find(w=>w!==f&&w.get_window_type()===0);"
-    "if(!o) return 'none';"
-    "o.activate(global.get_current_time());"
     "return 'ok';"
     "})();"
 )
@@ -52,9 +41,11 @@ class TestMaximizeInTile:
         ws_width = shell_proxy.get_workspace_rect()["width"]
         focused = shell_proxy.get_focused_window()
         window_id = focused["id"]
-        assert focused["rect"]["width"] < ws_width * 0.75, (
-            f"expected a tiled half before maximizing, got {focused['rect']}"
+        slot = focused["rect"]
+        assert slot["width"] < ws_width * 0.75, (
+            f"expected a tiled half before maximizing, got {slot}"
         )
+        neighbour = next(w["title"] for w in shell_proxy.get_windows() if w["id"] != window_id)
 
         assert shell_proxy.eval(_MAXIMIZE_FOCUSED_JS) == "ok"
         wait_for(
@@ -72,7 +63,7 @@ class TestMaximizeInTile:
             "the maximized window was floated out of its tile"
         )
 
-        assert shell_proxy.eval(_FOCUS_OTHER_JS) == "ok"
+        shell_proxy.activate_window(neighbour)
         wait_for(
             lambda: shell_proxy.eval(_is_maximized_js(window_id)),
             predicate=lambda v: v == "no",
@@ -82,6 +73,7 @@ class TestMaximizeInTile:
         shell_proxy.wait_for_forge_settled()
 
         rect = next(w["rect"] for w in shell_proxy.get_windows() if w["id"] == window_id)
-        assert rect["width"] < ws_width * 0.75, (
-            f"the window did not return to its tile slot: {rect}"
-        )
+        for key in ("x", "y", "width", "height"):
+            assert abs(rect[key] - slot[key]) <= Tolerance.POSITION, (
+                f"the window did not return to its tile slot: {slot} -> {rect}"
+            )

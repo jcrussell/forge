@@ -39,12 +39,19 @@ container; toggling again leaves them in one flat split. Unbound by default
 
 ## Maximize
 
-The title-bar maximize button, or a double-click on the title bar, maximizes a tiled
-window even when it shares the monitor with other tiled windows. It keeps its place
-in the tree and stays maximized while it has focus, or one of its dialogs does.
-Focusing another tiled window on the same monitor puts it back in its tile. A lone
-tiled window keeps its maximize (see `window-maximize-on-single`), and dragging a
-tiled window against a screen edge to half-tile it is undone.
+Maximizing the focused tiled window works even when it shares the monitor with
+other tiled windows: the title-bar button, a double-click on the title bar,
+`Alt+F10`, the window menu, or the app maximizing itself while it has focus. The
+window keeps its place in the tree and stays maximized while it, one of its dialogs,
+a floating window or a window on another monitor has focus. Focusing another tiled
+window on the same monitor puts it back in its tile (a new window that tiles there
+usually takes focus, and `auto-unmaximize-for-tiling` unmaximizes it too), as does
+unmaximizing it. A window that opens already maximized is tiled as usual. A lone tiled window keeps its
+maximize (see `window-maximize-on-single`), and dragging a tiled window against a
+screen edge to half-tile it is undone.
+
+Unlike fullscreen (`F11` in most apps), a maximize leaves the top bar showing and
+lasts only until focus moves to another tile.
 
 ## Snapping
 
