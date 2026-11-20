@@ -17,8 +17,8 @@ describe("forge-5y6j: settings 'changed' handler is disconnected on disable", ()
   let ctx;
   let settings;
 
-  // The fixture's settings mock has no signal system; graft the shared signal
-  // mixin onto it so connect/disconnect/emit behave like a real GObject.
+  // Give the settings mock its own signal box, so the handler count below is
+  // this test's alone.
   function makeSignalSettings(base) {
     const SignalBox = withSignals();
     return Object.assign(new SignalBox(), base);

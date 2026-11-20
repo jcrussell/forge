@@ -49,7 +49,8 @@ as is. `Super+=` evens them out again. Unbound by default (`window-golden-ratio`
 
 ## Floating
 
-`Super+c` floats the focused window, `Super+Shift+c` its whole app. A floating
+`Super+c` floats the focused window, `Super+Shift+c` its whole app (or just that
+window, when another rule outranks an app-wide one; see [window rules](rules.md)). A floating
 window keeps its place in the tree and returns there when tiled again. Some windows
 float automatically; [window rules](rules.md) control which.
 
