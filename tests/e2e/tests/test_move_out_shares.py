@@ -1,11 +1,12 @@
 """
-Moving a window out of its container keeps the split shares adding up (#549).
+Moving a window out of its container lays the split out soundly (#549).
 
-Forge sizes a split's windows by their shares (percents). When Move takes a
-window out of its container to the level above (nothing lies in that direction
-to move into), the shares there must still add up: otherwise the windows
-overlap or run off-screen. Also checks what that must not change: Move on a
-window with nothing in that direction and no container to leave keeps every
+When Move takes a window out of its container to the level above (nothing lies
+in that direction to move into), the window must land in that split and the
+windows must still fill the workspace without overlapping or running off it.
+The shares themselves are not checked: computeSizes scales a split's shares to
+fill it, so they need not sum to 1. Also checks what Move must not change: Move
+on a window with nothing in that direction and no container to leave keeps every
 window where it is, and a container emptied by the move leaves no gap.
 
 Ported from PR #3's nested-shell scenario 14_move_out_shares.
@@ -112,6 +113,7 @@ class TestMoveOutShares:
         )
         _assert_layout_sound(shell_proxy)
 
+    @pytest.mark.multimonitor
     def test_move_out_towards_other_monitor(self, shell_proxy, launch_window):
         """With a monitor to the right, Move Right on C in HSPLIT[B, HSPLIT[A, C]]
         takes C out of its container onto this monitor's level."""
