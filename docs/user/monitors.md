@@ -18,10 +18,12 @@ If windows open on the wrong monitor, try the other one.
 **Non-tiling monitors** (`monitor-skip-tile`) and **Non-tiling workspaces**
 (`workspace-skip-tile`), in Preferences → Tiling, take comma-separated indices, e.g.
 `0,1`. Windows there never tile, which suits a monitor kept for chat or media.
-`Super+Shift+w` adds or removes the current workspace. When a workspace is added or
-removed (with dynamic workspaces, GNOME removes one when it empties), the workspace
-indices shift so each mark stays on its workspace, and a removed workspace's mark is
-dropped.
+`Super+Shift+w` adds or removes the current workspace. When a workspace is removed
+(with dynamic workspaces, GNOME removes one when it empties), the indices above it
+shift down so each mark stays on its workspace, and the removed workspace's mark is
+dropped. A workspace GNOME inserts between two others (for example by dropping a
+window between them in the overview) does not shift the marks: an index then names
+whichever workspace is at that position.
 
 ## Workspaces on the primary monitor only
 

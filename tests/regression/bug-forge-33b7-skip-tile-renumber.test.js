@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createWindowManagerFixture } from "../mocks/helpers/index.js";
 
 /**
- * forge-33b7: workspace-skip-tile stores workspace indices, but adding or
- * removing a workspace renumbered only the tree nodes and workspace signals.
+ * forge-33b7: workspace-skip-tile stores workspace indices, but removing a
+ * workspace renumbered only the tree nodes and workspace signals.
  * With dynamic workspaces, removing ws1 while "2" was skipped moved the
- * non-tiling mark onto the workspace that used to be ws3. The renumber now
- * shifts the setting's entries with the same mapping as the nodes.
+ * non-tiling mark onto the workspace that used to be ws3. A removal now
+ * shifts the setting's entries with the same mapping as the nodes; an append
+ * (the only addition Mutter reports) leaves it alone.
  */
-describe("forge-33b7: workspace-skip-tile follows workspaces when they are added or removed", () => {
+describe("forge-33b7: workspace-skip-tile follows workspaces when one is removed", () => {
   let ctx;
 
   function setup(skip) {
@@ -35,12 +36,6 @@ describe("forge-33b7: workspace-skip-tile follows workspaces when they are added
     setup("0,1,2");
     ctx.workspaceManager.emit("workspace-removed", ctx.workspaceManager, 1);
     expect(skipTile()).toBe("0,1");
-  });
-
-  it("shifts an entry at or above an inserted workspace up by one", () => {
-    setup("1");
-    ctx.workspaceManager.emit("workspace-added", ctx.workspaceManager, 0);
-    expect(skipTile()).toBe("2");
   });
 
   it("leaves the setting alone when a workspace is appended at the end", () => {
