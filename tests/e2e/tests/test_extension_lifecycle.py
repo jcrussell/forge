@@ -115,6 +115,9 @@ def _show_overview(shell_proxy):
 def test_disable_enable_cycle(shell_proxy, input_sim, window_helper, three_windows, launch_window):
     log = LogScanner()
     tree_bins = int(shell_proxy.eval(TREE_BINS))
+    # The counts below compare against this baseline, so a probe that matched
+    # nothing would pass them all.
+    assert tree_bins > 0, "TREE_BINS found no Forge tree actors in window_group"
     try:
         _set_forge_enabled(shell_proxy, False)
         opened = launch_window()

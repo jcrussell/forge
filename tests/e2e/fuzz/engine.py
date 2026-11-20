@@ -390,6 +390,10 @@ class FuzzEngine:
         except ShellProxyError:
             orphans = None
         if isinstance(orphans, dict):
+            if "error" in orphans:
+                # A probe that threw reports no violations; reading that as clean
+                # would turn this oracle off for the rest of the session.
+                return ("orphan-probe-error", str(orphans["error"]))
             oviol = orphans.get("violations") or []
             if oviol:
                 v = oviol[0]
