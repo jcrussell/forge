@@ -10,7 +10,8 @@ import {
 /**
  * forge-6ppy: Super+c on a window with no class writes a per-window rule with
  * no class. Once the app reports its class, both toggles must still remove that
- * rule, or the window stays tiled under both.
+ * rule, or the window stays tiled under both. The class toggle then writes a
+ * class-wide rule, as it does for any window whose class rule decides it.
  */
 describe("forge-6ppy: per-window rule written before the window's class arrived", () => {
   let ctx;
@@ -37,9 +38,12 @@ describe("forge-6ppy: per-window rule written before the window's class arrived"
     return win;
   }
 
-  it.each([WINDOW_TOGGLE, CLASS_TOGGLE])(
-    "$name floats the window once its class arrives, replacing the class-less rule",
-    (action) => {
+  it.each([
+    { action: WINDOW_TOGGLE, rule: { wmClass: "anki", wmId: 1, mode: "float" } },
+    { action: CLASS_TOGGLE, rule: { wmClass: "anki", mode: "float" } },
+  ])(
+    "$action.name floats the window once its class arrives, replacing the class-less rule",
+    ({ action, rule }) => {
       const win = classlessWindow(1);
       expect(isFloating(win)).toBe(true);
 
@@ -50,7 +54,7 @@ describe("forge-6ppy: per-window rule written before the window's class arrived"
       win.set_wm_class("anki");
       ctx.windowManager.toggleFloatingMode(action, win);
       expect(isFloating(win)).toBe(true);
-      expect(overrides()).toEqual([{ wmClass: "anki", wmId: 1, mode: "float" }]);
+      expect(overrides()).toEqual([rule]);
     }
   );
 });
