@@ -7,6 +7,7 @@ import {
   SETTINGS_KEYS,
   KEYBINDING_KEYS,
   KEYBINDING_STRING_KEYS,
+  SETTINGS_TYPE_MAP,
 } from "../../lib/shared/config-sync.js";
 
 /**
@@ -112,6 +113,14 @@ describe("config-sync whitelist completeness (forge-nuny / forge-eny3)", () => {
         `  In SETTINGS_KEYS but not portable gschema keys: ${JSON.stringify(onlyA)}\n` +
         `  Portable gschema keys missing from SETTINGS_KEYS: ${JSON.stringify(onlyB)}`
     ).toBe(true);
+  });
+
+  it("every SETTINGS_KEYS key has a type export and import can read and write", () => {
+    const portable = new Set(Object.values(SETTINGS_KEYS).flat());
+    const unmapped = mainKeys
+      .filter((k) => portable.has(k.name) && !(k.type in SETTINGS_TYPE_MAP))
+      .map((k) => `${k.name} (${k.type})`);
+    expect(unmapped, "add these GVariant types to SETTINGS_TYPE_MAP").toEqual([]);
   });
 
   it("every internal main-schema key actually exists (no stale exclusions)", () => {
