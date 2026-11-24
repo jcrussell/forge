@@ -927,6 +927,11 @@
         display.get_focus_window = function () {
           return src;
         };
+        // A real drag starts with a click that focuses SRC; without it the drop records SRC
+        // as its group's shown window while Mutter's focus stays elsewhere (forge-mfev).
+        try {
+          src.focus(global.get_current_time());
+        } catch (e) {}
         wm._handleGrabOpBegin(display, src, grabOp); // SRC -> GRAB_TILE, _draggedNodeWindow = src
         // Route the drop-ZONE math (calculateDropRegions/detectDropZone via getDragPointer) to the
         // chosen point inside TGT.
@@ -1036,6 +1041,11 @@
         display.get_focus_window = function () {
           return src;
         };
+        // A real drag starts with a click that focuses SRC; without it the drop records SRC
+        // as its group's shown window while Mutter's focus stays elsewhere (forge-mfev).
+        try {
+          src.focus(global.get_current_time());
+        } catch (e) {}
         wm._handleGrabOpBegin(display, src, grabOp); // SRC -> GRAB_TILE; _grabStartPointer = real pointer
         const dragged = wm._draggedNodeWindow || wm.findNodeWindow(src);
 
