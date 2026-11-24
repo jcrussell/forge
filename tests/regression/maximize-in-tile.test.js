@@ -89,6 +89,22 @@ describe("maximize in tile", () => {
     expect([rect.x, rect.width]).toEqual([0, 960]);
   });
 
+  it("leaves a window that opens maximized alone until its first frame", () => {
+    const [first] = pair();
+    first.metaWindow.firstRender = true;
+    first.metaWindow.forgeAwaitingFirstFrame = true;
+    first.metaWindow.maximize();
+    ctx.display.get_focus_window.mockReturnValue(first.metaWindow);
+    vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+
+    wm().updateMetaPositionSize(first.metaWindow, "size-changed");
+    expect(first.metaWindow.is_maximized()).toBe(true);
+
+    first.metaWindow.forgeAwaitingFirstFrame = false;
+    wm().updateMetaPositionSize(first.metaWindow, "size-changed");
+    expect(first.metaWindow.is_maximized()).toBe(false);
+  });
+
   it("keeps it maximized while one of its dialogs has focus", () => {
     const [first] = pair();
     first.metaWindow.maximize();

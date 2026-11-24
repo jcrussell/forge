@@ -102,6 +102,18 @@ describe("forge-v4wh: maximize during keyboard-resize debounce keeps percents", 
     expect(node1.grabMode).toBeNull();
   });
 
+  it("ends the grab without unmaximizing a window still awaiting its first frame", () => {
+    const { metaWindow1, node1 } = buildResizingSplit();
+
+    metaWindow1.forgeAwaitingFirstFrame = true;
+    metaWindow1.maximized_vertically = true;
+
+    ctx.windowManager.updateMetaPositionSize(metaWindow1, "size-changed");
+
+    expect(metaWindow1.maximized_vertically).toBe(true);
+    expect(node1.grabMode).toBeNull();
+  });
+
   it("still resizes normally when the window is not maximized", () => {
     const { metaWindow1, node1, node2 } = buildResizingSplit();
 

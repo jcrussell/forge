@@ -56,6 +56,16 @@ describe("Keyboard resize of a maximized window", () => {
     expect(moveSpy).not.toHaveBeenCalled();
     expect(renderSpy).toHaveBeenCalled();
   });
+
+  it("leaves a window that has not drawn its first frame to its first render", () => {
+    win1.maximize();
+    win1.forgeAwaitingFirstFrame = true;
+    vi.spyOn(ctx.windowManager, "renderTree").mockImplementation(() => {});
+
+    ctx.windowManager.resize(GrabOp.KEYBOARD_RESIZING_N, 15);
+
+    expect(win1.is_maximized()).toBe(true);
+  });
 });
 
 /**
