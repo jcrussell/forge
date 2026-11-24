@@ -267,7 +267,7 @@ describe("Bug #213: Window movement directions", () => {
       expect(next).toBe(nodeB);
     });
 
-    it("should return null for perpendicular orientation with no parent sibling", () => {
+    it("should return the -1 boundary sentinel for perpendicular orientation with no parent sibling", () => {
       // HSPLIT with [ A ] [ B ]
       const windowA = createMockWindow({ id: "A" });
       const windowB = createMockWindow({ id: "B" });
@@ -280,9 +280,9 @@ describe("Bug #213: Window movement directions", () => {
       // Moving UP in HSPLIT - should go to parent level
       const next = tree.next(nodeA, MotionDirection.UP);
 
-      // When there's no sibling in the perpendicular direction, next() returns null or -1
-      // The exact behavior depends on the parent structure
-      expect(next === null || next === undefined || next === -1).toBe(true);
+      // No sibling in the perpendicular direction: the walk reaches the monitor,
+      // and with no monitor above it next() returns the -1 boundary sentinel
+      expect(next).toBe(-1);
     });
   });
 
@@ -330,8 +330,8 @@ describe("Bug #213: Window movement directions", () => {
       // This should not create a 1x4 layout unexpectedly
       const nextNode = tree.next(nodeB, MotionDirection.UP);
 
-      // In a flat HSPLIT with no parent container, moving up should return null/-1
-      expect(nextNode === null || nextNode === undefined || nextNode === -1).toBe(true);
+      // A flat HSPLIT has nothing above B, so next() returns the -1 boundary sentinel
+      expect(nextNode).toBe(-1);
     });
   });
 });
