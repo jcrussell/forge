@@ -28,6 +28,17 @@ describe("Feature #462: a new window unmaximizes its maximized siblings", () => 
     expect(maxed.is_maximized()).toBe(false);
   });
 
+  it("leaves a sibling that has not drawn its first frame to its first render", () => {
+    const { metaWindow: maxed } = createTiledWindow(ctx, { id: 9505 });
+    maxed.maximize();
+    maxed.forgeAwaitingFirstFrame = true;
+    const { nodeWindow: newNode } = createTiledWindow(ctx, { id: 9506 });
+
+    ctx.windowManager.handleUnmaximizeForTiling(newNode);
+
+    expect(maxed.is_maximized()).toBe(true);
+  });
+
   it("leaves the sibling maximized when the new window will float (a dialog)", () => {
     const { metaWindow: maxed } = createTiledWindow(ctx, { id: 9503 });
     maxed.maximize();
