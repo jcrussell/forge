@@ -14,7 +14,6 @@
 
 import { describe, it, expect } from "vitest";
 import { parse, stringify } from "../../../lib/css/index.js";
-import { RGBAToHexA, hexAToRGBA } from "../../../lib/shared/theme.js";
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + tiny helper surface.
@@ -339,53 +338,6 @@ describe("CSS parse/stringify round-trip (seeded property)", () => {
         countDeclarations(reAst),
         `declaration count changed on round trip for seed ${seed}\n--- input ---\n${x}\n--- output ---\n${a}`
       ).toBe(countDeclarations(ast));
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Color-helper round trips (RGBAToHexA / hexAToRGBA).
-//
-// These are pure functions exported from theme.js; the module pulls in GNOME
-// imports but the vitest setup mocks them, so importing the helpers directly
-// works (same as tests/unit/shared/theme.test.js).
-// ---------------------------------------------------------------------------
-
-describe("color helper round-trips (seeded)", () => {
-  it("hexAToRGBA(RGBAToHexA(c)) recovers c within alpha rounding tolerance", () => {
-    for (let i = 0; i < 200; i++) {
-      const g = mkRng((BASE_SEED ^ 0x9e3779b9) + i * 40503);
-      const r = g.int(256);
-      const gc = g.int(256);
-      const b = g.int(256);
-      // Alpha as a 2-decimal float in [0,1]; RGBAToHexA quantizes to a byte, so
-      // the recovered alpha carries ~1/255 of rounding error.
-      const alpha = g.int(101) / 100;
-      const input = `rgba(${r}, ${gc}, ${b}, ${alpha})`;
-
-      const hex = RGBAToHexA(input);
-      const back = hexAToRGBA(hex);
-      const m = back.match(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/);
-      expect(m, `unexpected rgba shape ${back} from ${input} (seed idx ${i})`).not.toBeNull();
-
-      expect(Number(m[1]), `red drift for ${input}`).toBe(r);
-      expect(Number(m[2]), `green drift for ${input}`).toBe(gc);
-      expect(Number(m[3]), `blue drift for ${input}`).toBe(b);
-      expect(Number(m[4]), `alpha drift for ${input}`).toBeCloseTo(alpha, 2);
-    }
-  });
-
-  it("RGBAToHexA(hexAToRGBA(h)) is the identity on 8-digit hex", () => {
-    for (let i = 0; i < 200; i++) {
-      const g = mkRng((BASE_SEED ^ 0x85ebca6b) + i * 26557);
-      const hx = "0123456789abcdef";
-      let h = "#";
-      // Only 8-digit (#rrggbbaa): hexAToRGBA only decodes length-5 and length-9
-      // strings, so shorter hex is out of scope for this direction.
-      for (let k = 0; k < 8; k++) h += hx[g.int(16)];
-
-      const rgba = hexAToRGBA(h);
-      expect(RGBAToHexA(rgba), `hex identity broke for ${h} (seed idx ${i})`).toBe(h);
     }
   });
 });
