@@ -43,6 +43,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
+          # make dist lists contributors from git history (as publish.yml does)
+          fetch-depth: 0
 
       - name: Install linux tools
         run: |
