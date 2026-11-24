@@ -65,6 +65,12 @@ window with a resize pair (`node.grabLaidOut`, cleared in `_grabCleanup`):
 that window with its neighbours, so a held key stops at a neighbour's minimum
 size. A float or a lone window is moved directly and the render leaves it alone.
 
+`move()` records the rect it asked for in `_forgeRequestedRect`. On Wayland the
+frame only changes when the app commits, and GNOME 45-48 drop a request that
+matches the current frame, so an app can commit an older request afterwards.
+`updateMetaPositionSize()` renders again when a tiled window's frame differs from
+its requested rect (`_isOffItsTile`), whatever has focus.
+
 ### Fullscreen / maximize gotchas
 
 A fullscreen window keeps `mode === TILE` (fullscreen doesn't change node mode), so:
