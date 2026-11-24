@@ -116,6 +116,16 @@ describe("WorkspaceManager", () => {
       expect(result).toBe(false);
     });
 
+    it("should create nothing for an index with no workspace", () => {
+      const wsManager = global.display.get_workspace_manager();
+      vi.spyOn(wsManager, "get_workspace_by_index").mockReturnValue(null);
+
+      const result = workspaceManager.addWorkspace(5);
+
+      expect(result).toBe(false);
+      expect(mockTree.createNode).not.toHaveBeenCalled();
+    });
+
     it("should bind workspace signals", () => {
       workspaceManager.addWorkspace(0);
 
