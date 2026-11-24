@@ -9,7 +9,7 @@ the step.
 Step shapes::
 
     {"kind": "action", "name": "Focus", "params": {"direction": "Left"},
-     "focus": "leftmost", "also_activate": false}
+     "focus": "leftmost", "also_activate": true}
     {"kind": "spawn"}
     {"kind": "close"}
     {"kind": "switch_ws", "index": 1}
@@ -54,8 +54,7 @@ def _action(name, weight, build):
     return {"name": name, "weight": weight, "build": build}
 
 
-# Each builder takes the RNG and returns the step's params dict. also_activate is set
-# per-action below (resize must genuinely focus its target — forge-2n0).
+# Each builder takes the RNG and returns the step's params dict.
 TILING_ACTIONS = [
     # Weights rebalanced toward STRUCTURE (forge-cnrc depth review): Split raised, pure-geometry/
     # focus no-ops trimmed, so more steps deepen/mutate the tree instead of nudging geometry.
@@ -121,17 +120,6 @@ TILING_ACTIONS = [
     _action("MovePointerToFocus", 1, lambda r: {}),
     _action("ConfigExport", 1, lambda r: {}),
 ]
-
-# Actions whose async finalize re-reads real focus (resize/expand/shrink): must
-# genuinely activate the positional target, not just override get_focus_window.
-_ALSO_ACTIVATE = {
-    "WindowResizeLeft",
-    "WindowResizeRight",
-    "WindowResizeTop",
-    "WindowResizeBottom",
-    "WindowExpand",
-    "WindowShrink",
-}
 
 _ACTION_TOTAL_WEIGHT = sum(a["weight"] for a in TILING_ACTIONS)
 
@@ -231,7 +219,12 @@ def _action_step(rng):
         "name": a["name"],
         "params": a["build"](rng),
         "focus": rng.choice(FOCUS_HINTS),
-        "also_activate": a["name"] in _ALSO_ACTIVATE,
+        # A key press acts on the window that has focus, so every action really
+        # focuses its target. With only get_focus_window overridden, a command or
+        # the render after it records the hinted window as the one its group shows
+        # while Mutter's focus stays elsewhere, a state no user can reach that the
+        # focus-mismatch oracle reports (forge-2n0, forge-mfev).
+        "also_activate": True,
     }
 
 
