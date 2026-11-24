@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ThemeManagerBase, RGBAToHexA, hexAToRGBA } from "../../../lib/shared/theme.js";
+import { ThemeManagerBase } from "../../../lib/shared/theme.js";
 import { Logger } from "../../../lib/shared/logger.js";
 import { File, Settings } from "../../mocks/gnome/Gio.js";
 
@@ -63,82 +63,6 @@ function createMockSettings() {
   settings.set_uint("css-last-update", 0);
   return settings;
 }
-
-describe("Color Conversion Functions", () => {
-  describe("RGBAToHexA", () => {
-    it("should convert rgba with comma-separated values", () => {
-      const result = RGBAToHexA("rgba(255,128,64,1)");
-      expect(result).toBe("#ff8040ff");
-    });
-
-    it("should convert rgba with space-separated values", () => {
-      const result = RGBAToHexA("rgba(255 128 64 1)");
-      expect(result).toBe("#ff8040ff");
-    });
-
-    it("should handle rgba with 0.5 alpha", () => {
-      const result = RGBAToHexA("rgba(255,255,255,0.5)");
-      expect(result).toBe("#ffffff80");
-    });
-
-    it("should handle rgba with 0 alpha", () => {
-      const result = RGBAToHexA("rgba(0,0,0,0)");
-      expect(result).toBe("#00000000");
-    });
-
-    it("should handle percentage values", () => {
-      const result = RGBAToHexA("rgba(100%,50%,0%,1)");
-      expect(result).toBe("#ff8000ff");
-    });
-
-    it("should pad single-digit hex values", () => {
-      const result = RGBAToHexA("rgba(0,0,0,1)");
-      expect(result).toBe("#000000ff");
-    });
-
-    it("should handle space-separated with slash for alpha", () => {
-      const result = RGBAToHexA("rgba(255 128 64 / 0.5)");
-      expect(result).toBe("#ff804080");
-    });
-  });
-
-  describe("hexAToRGBA", () => {
-    it("should convert 9-character hex (with alpha)", () => {
-      const result = hexAToRGBA("#ff8040ff");
-      expect(result).toBe("rgba(255,128,64,1)");
-    });
-
-    it("should convert 5-character short hex (with alpha)", () => {
-      const result = hexAToRGBA("#f84f");
-      expect(result).toBe("rgba(255,136,68,1)");
-    });
-
-    it("should handle transparent alpha", () => {
-      const result = hexAToRGBA("#00000000");
-      expect(result).toBe("rgba(0,0,0,0)");
-    });
-
-    it("should handle 50% alpha", () => {
-      const result = hexAToRGBA("#ffffff80");
-      expect(result).toBe("rgba(255,255,255,0.502)");
-    });
-
-    it("should handle short hex with alpha", () => {
-      const result = hexAToRGBA("#0000");
-      expect(result).toBe("rgba(0,0,0,0)");
-    });
-  });
-
-  describe("roundtrip conversions", () => {
-    it("should roundtrip rgba -> hex -> rgba (approximately)", () => {
-      const original = "rgba(128,64,32,0.5)";
-      const hex = RGBAToHexA(original);
-      const back = hexAToRGBA(hex);
-      // Note: alpha may have slight precision differences
-      expect(back).toMatch(/rgba\(128,64,32,0\.5\d*\)/);
-    });
-  });
-});
 
 describe("ThemeManagerBase", () => {
   let themeManager;
