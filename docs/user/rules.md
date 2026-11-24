@@ -53,7 +53,8 @@ for just that window, like `Super+c`. Neither toggle floats a window that a titl
 Run `xprop WM_CLASS` and click the window; the class is the second string. On
 Wayland use Looking Glass (`Alt+F2`, `lg`, Windows tab).
 
-Forge floats a window while it reports no class. Some apps (Anki, the Opera Flatpak)
+Forge floats a window while it reports no class (Chromium's Picture in picture
+window never does). Some apps (Anki, the Opera Flatpak)
 report one late or never; match those by a specific title:
 
 ```json
