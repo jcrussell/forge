@@ -57,22 +57,15 @@ describe("Bug #482: Windows with null wm_class handling", () => {
       expect(isExempt).toBe(false);
     });
 
-    it("should NOT treat a window with empty string wm_class as floating exempt", () => {
-      const emptyClassWindow = createMockWindow({
+    it("floats a window whose class is an empty string, as Chromium's PiP window is on Wayland", () => {
+      const pipWindow = createMockWindow({
         wm_class: "",
-        id: "empty-1",
-        title: "Some App",
+        id: "pip-1",
+        title: "Picture in picture",
         allows_resize: true,
       });
 
-      const isExempt = ctx.windowManager.isFloatingExempt(emptyClassWindow);
-
-      // The float-by-role check tests `get_wm_class() === null` specifically; an
-      // empty string is NOT null, so it does not float by role. This window is a
-      // normal, resizable, titled window with no matching override, so it is NOT
-      // floating exempt — it tiles. (Only a genuinely null wm_class floats; see
-      // the test above.)
-      expect(isExempt).toBe(false);
+      expect(ctx.windowManager.isFloatingExempt(pipWindow)).toBe(true);
     });
   });
 
