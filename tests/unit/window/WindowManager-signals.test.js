@@ -14,6 +14,7 @@ describe("WindowManager - singleton signal teardown", () => {
   const handlerCount = (source) =>
     Object.values(source._signals).reduce((n, handlers) => n + handlers.length, 0);
   const counts = () => sources.map(handlerCount);
+  const workspaceHandlers = () => ctx.workspaces.reduce((n, ws) => n + handlerCount(ws), 0);
 
   beforeEach(() => {
     ctx = createWindowManagerFixture();
@@ -40,10 +41,12 @@ describe("WindowManager - singleton signal teardown", () => {
 
     expect(() => ctx.windowManager._bindSignals()).toThrow("bind failed");
     expect(handlerCount(ctx.display)).toBeGreaterThan(before[0]);
+    expect(workspaceHandlers()).toBeGreaterThan(0);
 
     ctx.windowManager.disable();
 
     expect(counts()).toEqual(before);
+    expect(workspaceHandlers()).toBe(0);
   });
 
   it("_removeSignals releases every source when a later step throws", () => {
