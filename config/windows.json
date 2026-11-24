@@ -26,6 +26,16 @@
       "mode": "float"
     },
     { "wmClass": "org.mozilla.firefox.desktop", "wmTitle": "!Mozilla Firefox", "mode": "float" },
+    {
+      "wmClass": "org.mozilla.firefox,firefox-esr,firefox-beta",
+      "wmTitle": "About Mozilla Firefox",
+      "mode": "float"
+    },
+    {
+      "wmClass": "org.mozilla.firefox,firefox-esr,firefox-beta",
+      "wmTitle": "!Mozilla Firefox",
+      "mode": "float"
+    },
     { "wmClass": "thunderbird", "wmTitle": "About Mozilla Thunderbird", "mode": "float" },
     { "wmClass": "thunderbird", "wmTitle": "!Mozilla Thunderbird", "mode": "float" },
     {
