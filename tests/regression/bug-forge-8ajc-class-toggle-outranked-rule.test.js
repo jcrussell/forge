@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { WINDOW_MODES } from "../../lib/extension/window.js";
@@ -123,6 +123,27 @@ describe("forge-8ajc: float toggles flip a window an outranking rule decides", (
     expect(isFloating(win)).toBe(true);
     expect(overrides()).toEqual(start);
   });
+
+  it.each([WINDOW_TOGGLE, CLASS_TOGGLE])(
+    "$name on a window it cannot flip leaves the window and the split shares alone",
+    (action) => {
+      setOverrides([{ wmClass: "gedit", wmTitle: "Notes", mode: "tile" }]);
+      const win = tiledWindow("gedit", 8, "Notes - gedit");
+      const other = tiledWindow("other", 9, "Other");
+      const node = ctx.windowManager.findNodeWindow(win);
+      const otherNode = ctx.windowManager.findNodeWindow(other);
+      node.percent = 0.7;
+      otherNode.percent = 0.3;
+      ctx.display.get_focus_window.mockReturnValue(win);
+      const move = vi.spyOn(ctx.windowManager, "move");
+
+      ctx.windowManager.command({ ...action, x: 0, y: 0, width: 0.5, height: 0.5 });
+
+      expect(move).not.toHaveBeenCalled();
+      expect([node.percent, otherNode.percent]).toEqual([0.7, 0.3]);
+      vi.restoreAllMocks();
+    }
+  );
 
   it("keeps the class tile rule when a title tile rule keeps the window tiled", () => {
     const start = [
