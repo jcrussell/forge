@@ -178,6 +178,7 @@ describe("ConfigManager", () => {
       configManager.loadFile("/custom", "file.json", defaultFile);
 
       expect(mockStream.write_all).toHaveBeenCalled();
+      expect(mockStream.close).toHaveBeenCalled();
 
       vi.restoreAllMocks();
     });
