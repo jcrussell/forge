@@ -13,7 +13,7 @@ Focus also accepts the arrow keys.
 | Focus left / down / up / right | `Super+h` / `j` / `k` / `l` |
 | Swap in a direction | `Ctrl+Super+h/j/k/l` |
 | Move in a direction | `Super+Shift+h/j/k/l` |
-| Float this window / this app | `Super+c` / `Super+Shift+c` |
+| Float this window / always float this app | `Super+c` / `Super+Shift+c` |
 | Toggle split direction | `Super+g` |
 | Split vertically / horizontally | `Super+v` / `Super+z` |
 | Stacked / tabbed layout | `Super+Shift+s` / `Super+Shift+t` |
