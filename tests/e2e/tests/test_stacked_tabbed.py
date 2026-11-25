@@ -99,6 +99,35 @@ class TestStackedLayout:
         wait_for_layout(shell_proxy, "STACKED")
         _assert_windows_within_workspace(shell_proxy)
 
+    def test_stacked_headers_fit_above_the_window(
+        self, shell_proxy, input_sim, two_windows, launch_window
+    ):
+        """Each header of a stack fits the slot the layout reserves for it, so the
+        headers end where the shown window begins instead of under it."""
+        input_sim.toggle_stacked()
+        wait_for_layout(shell_proxy, "STACKED")
+        launch_window("forge-test-window-b")
+
+        def headers() -> dict:
+            return shell_proxy.eval(
+                "(function(){let tabs=[];let walk=(a)=>{"
+                "if(a.get_style_class_name&&(a.get_style_class_name()||'')"
+                ".split(' ').includes('window-tabbed-tab')&&a.mapped){"
+                "let [,y]=a.get_transformed_position();tabs.push(Math.round(y+a.height));}"
+                "a.get_children().forEach(walk);};walk(global.window_group);"
+                "let w=global.display.get_focus_window().get_frame_rect();"
+                "return {bottoms:tabs,windowTop:w.y};})();"
+            )
+
+        seen = wait_for(
+            headers,
+            predicate=lambda h: (
+                len(h["bottoms"]) == 2 and max(h["bottoms"]) <= h["windowTop"] + Tolerance.POSITION
+            ),
+            message="a stacked header reaches below the top of the shown window",
+        )
+        assert len(seen["bottoms"]) == 2
+
     def test_stacked_toggle_wraps_focused_window_only(self, shell_proxy, input_sim, two_windows):
         """Toggling stacked on a flat monitor wraps ONLY the focused window.
 
