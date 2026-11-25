@@ -4,6 +4,7 @@ ConfigReload re-reads windows.json overrides into the WindowManager's cached
 windowProps; ConfigExport writes the current GSettings to portable config files.
 """
 
+import contextlib
 import json
 import os
 
@@ -12,6 +13,33 @@ from framework.wait import wait_for
 # A wmClass that does not exist in the bundled default windows.json, so its
 # presence in the WM's overrides is unambiguous proof the file was re-read.
 PROBE_CLASS = "ForgeReloadProbe"
+
+
+@contextlib.contextmanager
+def _float_rule_in_windows_json(shell_proxy, wm_class):
+    """Add a class float rule to the user's windows.json; restore the file and
+    reload afterwards so the rule does not leak into later tests."""
+    config_dir = shell_proxy.get_config_dir()
+    assert config_dir, "could not resolve Forge config dir from the extension"
+    win_json = os.path.join(config_dir, "config", "windows.json")
+    original = None
+    if os.path.exists(win_json):
+        with open(win_json, encoding="utf-8") as f:
+            original = f.read()
+    try:
+        os.makedirs(os.path.dirname(win_json), exist_ok=True)
+        data = json.loads(original) if original else {"overrides": []}
+        data.setdefault("overrides", []).append({"wmClass": wm_class, "mode": "float"})
+        with open(win_json, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        yield
+    finally:
+        if original is not None:
+            with open(win_json, "w", encoding="utf-8") as f:
+                f.write(original)
+        elif os.path.exists(win_json):
+            os.remove(win_json)
+        shell_proxy.invoke_forge_action({"name": "ConfigReload"})
 
 
 class TestConfigReload:
@@ -23,35 +51,16 @@ class TestConfigReload:
         edit the user windows.json, confirm the WM hasn't picked it up yet, trigger
         ConfigReload, and confirm it has.
         """
-        config_dir = shell_proxy.get_config_dir()
-        assert config_dir, "could not resolve Forge config dir from the extension"
-        win_json = os.path.join(config_dir, "config", "windows.json")
+        # Baseline: the probe override is absent from the WM's cached overrides.
+        assert PROBE_CLASS not in shell_proxy.get_wm_override_classes()
 
-        existed = os.path.exists(win_json)
-        original = None
-        if existed:
-            with open(win_json, encoding="utf-8") as f:
-                original = f.read()
-
-        try:
-            # Baseline: the probe override is absent from the WM's cached overrides.
-            assert PROBE_CLASS not in shell_proxy.get_wm_override_classes()
-
-            # Write a user windows.json adding a unique float override.
-            os.makedirs(os.path.dirname(win_json), exist_ok=True)
-            data = json.loads(original) if original else {"overrides": []}
-            data.setdefault("overrides", [])
-            data["overrides"].append({"wmClass": PROBE_CLASS, "mode": "float"})
-            with open(win_json, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-
+        with _float_rule_in_windows_json(shell_proxy, PROBE_CLASS):
             # The file changed, but nothing has told the WM to reload — its cached
             # overrides must NOT include the probe yet.
             assert PROBE_CLASS not in shell_proxy.get_wm_override_classes(), (
                 "WM should not see the new override before ConfigReload"
             )
 
-            # Trigger the reload.
             shell_proxy.invoke_forge_action({"name": "ConfigReload"})
 
             # Now the WM's cached overrides must include the probe (file re-read).
@@ -61,15 +70,21 @@ class TestConfigReload:
                 message="ConfigReload should re-read windows.json into the WM cache",
             )
             assert PROBE_CLASS in classes
-        finally:
-            # Restore windows.json to its prior state and reload so the probe
-            # override does not leak into later tests' configMgr reads.
-            if existed and original is not None:
-                with open(win_json, "w", encoding="utf-8") as f:
-                    f.write(original)
-            elif os.path.exists(win_json):
-                os.remove(win_json)
+
+    def test_reload_applies_a_new_rule_to_open_windows(self, shell_proxy, two_windows):
+        """A rule added to windows.json floats the app's open windows on reload,
+        not only at the next unrelated render."""
+        wm_class = two_windows[0].get("wmClass")
+        assert shell_proxy.count_tiled_windows_of_class(wm_class) == 2
+
+        with _float_rule_in_windows_json(shell_proxy, wm_class):
             shell_proxy.invoke_forge_action({"name": "ConfigReload"})
+            tiled = wait_for(
+                lambda: shell_proxy.count_tiled_windows_of_class(wm_class),
+                predicate=lambda n: n == 0,
+                message="open windows did not follow the reloaded rule",
+            )
+            assert tiled == 0
 
 
 class TestConfigExport:

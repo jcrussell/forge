@@ -9,8 +9,8 @@ import/export layer.
 - **Export:** Preferences → Portability → Export current settings. This also turns
   on **Auto-sync changes**, which rewrites the files whenever a setting changes.
 - **Reload:** Preferences → Portability → Import from files, or `Super+Shift+r`,
-  which re-reads all three files. It doesn't reload the stylesheet or rebuild the
-  tree.
+  which re-reads all three files and applies the window rules to the windows that
+  are open. It doesn't reload the stylesheet or rebuild the tree.
 - **On startup** Forge imports a file only if something else changed it since Forge
   last wrote or read it, so a file Forge wrote never reverts newer settings.
 
