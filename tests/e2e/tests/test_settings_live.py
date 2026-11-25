@@ -44,6 +44,26 @@ class TestGapSizeSettings:
 
         assert gap_after > gap_before, f"Gap should increase: was {gap_before}, now {gap_after}"
 
+    def test_screen_edge_margin_applies_live(
+        self, shell_proxy, window_helper, restore_settings, two_windows
+    ):
+        """A screen-edge margin moves the tiles when it is set, not at the next
+        window open or close."""
+
+        def left() -> int:
+            return window_helper.get_windows_sorted_by_position("x")[0]["rect"]["x"]
+
+        wait_for_stable(left)
+        before = left()
+
+        restore_settings.set("window-margin-left", 100)
+        after = wait_for(
+            left,
+            predicate=lambda x: x >= before + 90,
+            message="the left margin did not move the leftmost tile",
+        )
+        assert after >= before + 90
+
     def test_zero_gap_size(self, shell_proxy, window_helper, restore_settings, two_windows):
         """Setting gap to 0 should make windows nearly touch."""
         restore_settings.set_window_gap_size(0)
