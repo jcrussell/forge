@@ -184,6 +184,7 @@ def test_fuzz_replay(fuzz_engine):
 
     hit = fuzz_engine.replay(steps, expect_rule=expect_rule)
     assert hit is not None, "repro did not reproduce any violation"
+    print("[fuzz] replay hit: rule=%s %s" % (hit[0], hit[1]))
     if expect_rule:
         assert hit[0] == expect_rule, "expected rule %s, got %s (%s)" % (
             expect_rule,
