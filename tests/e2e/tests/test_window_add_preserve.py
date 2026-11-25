@@ -59,3 +59,13 @@ class TestNewWindowPreservesProportions:
             f"before={widths_before} (spread {spread_before:.2f}) -> "
             f"after={widths_after} (spread {spread_after:.2f})"
         )
+        # The newcomer gets a fair third, also on Wayland, where it has no title
+        # yet when it is created.
+        newest_width = shell_proxy.eval(
+            "(function(){let wins=global.display.list_all_windows()"
+            ".filter(w=>w.get_window_type()===0);"
+            "wins.sort((a,b)=>b.get_stable_sequence()-a.get_stable_sequence());"
+            "return wins[0].get_frame_rect().width;})();"
+        )
+        share = newest_width / sum(widths_after)
+        assert 0.30 < share < 0.36, f"new window's share is {share:.2f}: {widths_after}"
