@@ -151,6 +151,33 @@ class TestWorkspaceMonocle:
         )
         assert len(rects) == 2
 
+    def test_monocle_shows_a_tab_for_windows_from_two_groups(
+        self, shell_proxy, input_sim, two_windows
+    ):
+        """Windows gathered from different tab groups each get a tab in the
+        monocle bar: a window's tab leaves its old group with the window instead
+        of being destroyed with the emptied group."""
+        input_sim.toggle_tabbed()
+        shell_proxy.invoke_forge_action(
+            {"name": "LayoutStackedToggle"}, focus_window="leftmost", also_activate=True
+        )
+        shell_proxy.invoke_forge_action(MONOCLE_ACTION)
+
+        def shown_tabs() -> int:
+            return shell_proxy.eval(
+                "(function(){let n=0;let walk=(a)=>{"
+                "if(a.get_style_class_name&&(a.get_style_class_name()||'')"
+                ".split(' ').includes('window-tabbed-tab')&&a.mapped)n++;"
+                "a.get_children().forEach(walk);};walk(global.window_group);return n;})();"
+            )
+
+        tabs = wait_for(
+            shown_tabs,
+            predicate=lambda n: n == 2,
+            message="the monocle bar does not show one tab per window",
+        )
+        assert tabs == 2
+
     def test_monocle_toggle_off_restores_split(self, shell_proxy, window_helper, two_windows):
         """Toggling monocle off should restore a side-by-side split layout."""
         wm_class = two_windows[0].get("wmClass")
