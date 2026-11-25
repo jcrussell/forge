@@ -56,6 +56,28 @@ describe("Bug #175: Drag preview hint is always released at grab-end", () => {
     expect(wm()._draggedNodeWindow).toBeNull();
   });
 
+  it("ends the drag for the window when the drop throws", () => {
+    const dragged = makeGrabbedNode();
+    const hint = dragged.previewHint;
+    wm()._draggedNodeWindow = dragged;
+    wm().grabOp = GrabOp.MOVING_UNCONSTRAINED;
+    ctx.display.get_focus_window.mockReturnValue(dragged.nodeValue);
+    ctx.extension.keybindings = { allowDragDropTile: () => true };
+    vi.spyOn(wm(), "moveWindowToPointer").mockImplementation(() => {
+      throw new Error("drop failed");
+    });
+    const renderTree = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+
+    expect(() => wm()._handleGrabOpEnd(ctx.display, null, GrabOp.MOVING_UNCONSTRAINED)).toThrow(
+      "drop failed"
+    );
+
+    expect(dragged.mode).toBe(WINDOW_MODES.TILE);
+    expect(hint.destroy).toHaveBeenCalledTimes(1);
+    expect(wm().grabOp).toBeNull();
+    expect(renderTree).toHaveBeenCalledWith("grab-op-end");
+  });
+
   it("sweeps any leftover preview hint when the extension is disabled mid-drag", () => {
     const dragged = makeGrabbedNode();
     const hint = dragged.previewHint;
