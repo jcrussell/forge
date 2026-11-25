@@ -909,6 +909,17 @@ describe("WindowManager - Floating Mode", () => {
         expect(wm().windowProps.overrides.length).toBe(2);
       });
 
+      it("renders on a runtime reload, so open windows follow the new rules", () => {
+        const renderTree = vi.spyOn(wm(), "renderTree").mockImplementation(() => {});
+
+        wm().reloadWindowOverrides();
+        expect(renderTree).not.toHaveBeenCalled();
+
+        wm().reloadWindowOverrides(false);
+        expect(renderTree).toHaveBeenCalledWith("window-overrides-reload");
+        renderTree.mockRestore();
+      });
+
       it("should filter out wmId-based overrides", () => {
         configMgr().windowProps.overrides = [
           { wmClass: "App1", mode: "float" },
