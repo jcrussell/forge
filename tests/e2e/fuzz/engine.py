@@ -361,8 +361,8 @@ class FuzzEngine:
         if isinstance(ph, dict) and isinstance(ph.get("count"), int) and ph["count"] > 0:
             return (
                 "grab-preview-leak",
-                "%d node(s) hold a previewHint outside a grab (visible=%s)"
-                % (ph["count"], ph.get("visible")),
+                "%d node(s) hold a previewHint outside a grab (visible=%s): %s"
+                % (ph["count"], ph.get("visible"), "; ".join(ph.get("nodes") or [])),
             )
 
         # 2c. focus-correctness (Angle 3, forge-d5mm/forge-f8ka): after settle, Mutter's focused

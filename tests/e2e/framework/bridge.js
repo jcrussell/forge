@@ -1658,10 +1658,12 @@
             if (n.previewHint) {
               acc.count += 1;
               if (n.previewHint.visible) acc.visible += 1;
+              const win = n.nodeValue;
+              acc.nodes.push(`${win?.get_title?.()} mode=${n.mode} grabMode=${n.grabMode}`);
             }
             return { acc };
           },
-          { count: 0, visible: 0 }
+          { count: 0, visible: 0, nodes: [] }
         );
         return JSON.stringify(state);
       } catch (e) {
