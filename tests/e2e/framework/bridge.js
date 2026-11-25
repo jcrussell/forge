@@ -1691,6 +1691,10 @@
       try {
         const r = root();
         if (!r) return JSON.stringify({ violations: [] });
+        // With tiling off nothing renders, so a window that tiles is not recorded as shown
+        if (!forgeExt()?.settings?.get_boolean("tiling-mode-enabled")) {
+          return JSON.stringify({ violations: [] });
+        }
         const fw = global.display.get_focus_window();
         if (!fw) return JSON.stringify({ violations: [] }); // transient null focus
         let alive = false;
@@ -1716,7 +1720,10 @@
           if (group.lastTabFocus !== fw) {
             violations.push({
               rule: "focus-mismatch",
-              detail: `focused window is not the shown window of its ${group.layout} group`,
+              detail:
+                `focused window is not the shown window of its ${group.layout} group ` +
+                `(focused ${fw.get_id()}, shown ${group.lastTabFocus?.get_id?.()}, ` +
+                `members ${tiled.map((t) => t.nodeValue?.get_id?.()).join(",")})`,
               path: String(group.layout).toLowerCase(),
             });
           }
