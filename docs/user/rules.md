@@ -7,8 +7,8 @@ apps.
 ## Adding a rule
 
 - **Preferences → Windows → Add Floating Window:** a class, optionally a title.
-- **`Super+c` / `Super+Shift+c`:** float or tile the focused window or its app; the
-  toggle writes the rule.
+- **`Super+c` / `Super+Shift+c`:** float or tile the focused window, or its app from
+  now on; the toggle writes the rule. `Super+c`'s rule lasts until the window closes.
 - **The file** `~/.config/forge/config/windows.json`, then [reload](config.md):
 
 ```json

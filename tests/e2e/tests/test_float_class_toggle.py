@@ -156,3 +156,39 @@ class TestFloatClassToggle:
             assert _count_editor_class_float(shell_proxy, other_class) == 0
         finally:
             shell_proxy.remove_class_float_override(other_class)
+
+    def test_class_toggle_leaves_no_floated_window_under_a_tile(
+        self, shell_proxy, two_windows, launch_window, _strip_editor_float
+    ):
+        """Each window the press floats ends above the tile that takes its place
+        (forge-a3wq): the unfocused one keeps its old frame, and the remaining
+        tile grows over that frame."""
+        wm_class = two_windows[0].get("wmClass")
+        other_class = launch_window(OTHER_APP).get("wmClass")
+
+        def floats_under_the_tile() -> int:
+            return shell_proxy.eval(
+                "(function(){let wins=global.display.list_all_windows();"
+                "let stack=global.display.sort_windows_by_stacking(wins);"
+                f"let tile=stack.findIndex(w=>w.get_wm_class()==={other_class!r});"
+                f"return stack.filter((w,i)=>w.get_wm_class()==={wm_class!r}&&i<tile).length;"
+                "})();"
+            )
+
+        try:
+            shell_proxy.invoke_forge_action(
+                CLASS_FLOAT_ACTION, focus_window="leftmost", also_activate=True
+            )
+            wait_for(
+                lambda: shell_proxy.count_tiled_windows_of_class(wm_class),
+                predicate=lambda n: n == 0,
+                message="FloatClassToggle did not float the toggled class",
+            )
+            under = wait_for(
+                floats_under_the_tile,
+                predicate=lambda n: n == 0,
+                message="a window the class toggle floated is stacked under the tile",
+            )
+            assert under == 0
+        finally:
+            shell_proxy.remove_class_float_override(other_class)

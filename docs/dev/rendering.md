@@ -115,6 +115,10 @@ keeps its tree node, it is not detached.
   then float-by-type, then float overrides. Toggled via `toggleFloatingMode`
   (`window.js`); `Super+c` = per-window, `Super+Shift+c` = class-wide. A
   per-window remove must never delete a class-wide override.
+- **Stacking:** a focused float is raised by the focus handler (`raise-float`).
+  `processFloats` raises a tiled window that a rule starts to float (the class
+  toggle's other windows, a title rule after a retitle), since the tiles that take
+  its space would cover its old frame.
 - **Always-on-top** is re-pinned (`make_above`) by `processFloats` on every render,
   so any code changing a float's above-state must run *after* `processFloats` in the
   same idle. To put a float beneath a fullscreen window you need `unmake_above()`
