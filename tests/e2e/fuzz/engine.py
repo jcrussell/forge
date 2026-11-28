@@ -22,6 +22,8 @@ already advanced) or fail to re-eval a dead shell, losing the finding (B1).
 from __future__ import annotations
 
 import json
+import os
+import signal
 import time
 from pathlib import Path
 
@@ -47,6 +49,16 @@ EXT_STATE_INACTIVE = 2
 # often to look again meanwhile.
 FRAME_LAND_TIMEOUT = 3.0
 FRAME_LAND_POLL = 0.1
+
+# How long a dialog step waits for its dialog to appear or go.
+DIALOG_TIMEOUT = 1.0
+# Focus hint -> (rect axis, sign): the hinted window has the smallest sign * rect[axis].
+HINT_ORDER = {
+    "leftmost": ("x", 1),
+    "rightmost": ("x", -1),
+    "topmost": ("y", 1),
+    "bottommost": ("y", -1),
+}
 
 # Live gnome-shell stdout/stderr redirect inside the container
 # (docker/scripts/start-user-session.sh). NOT the e2e-results copy, which is only
@@ -266,6 +278,9 @@ class FuzzEngine:
         if kind == "rehome":
             self.shell.move_focused_window_to_monitor(int(step.get("monitor", 0)))
             return
+        if kind == "dialog":
+            self._signal_dialog(step["op"], step.get("focus"))
+            return
         if kind == "ext_cycle":
             self._ext_cycle_hit = self._cycle_extension()
             return
@@ -278,6 +293,34 @@ class FuzzEngine:
             )
             return
         raise ValueError("unknown step kind: %r" % (kind,))
+
+    def _signal_dialog(self, op, focus):
+        """Open or close the modal dialog of the test window that `focus` names.
+
+        The test app opens its dialog on SIGUSR1 and closes it on SIGUSR2. A step that
+        changes nothing (already open, already closed, the window went away) waits out
+        DIALOG_TIMEOUT and carries on.
+        """
+        listed = self.shell.get_windows()
+        # Only a test app handles these signals; they would end any other process
+        windows = [w for w in listed if w.get("wmClass") in APP_PALETTE and w.get("pid", 0) > 0]
+        if not windows:
+            return
+        axis, sign = HINT_ORDER[focus]
+        target = min(windows, key=lambda w: sign * w["rect"][axis])
+        before = len(listed)
+        try:
+            os.kill(target["pid"], signal.SIGUSR1 if op == "open" else signal.SIGUSR2)
+        except OSError:  # gone, or not ours to signal
+            return
+        try:
+            wait_for(
+                lambda: len(self.shell.get_windows()),
+                timeout=DIALOG_TIMEOUT,
+                predicate=lambda n: n != before,
+            )
+        except WaitTimeoutError:
+            pass
 
     def _wait_ext_state(self, state):
         """Wait until Forge reaches the given extension state.

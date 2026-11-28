@@ -13,6 +13,7 @@ Step shapes::
     {"kind": "spawn"}
     {"kind": "close"}
     {"kind": "switch_ws", "index": 1}
+    {"kind": "dialog", "op": "open", "focus": "leftmost"}
     {"kind": "ext_cycle"}
 
 Action names/params mirror the D-Bus dispatch surface (lib/extension/command.js) and
@@ -164,6 +165,12 @@ DRAG_PATH_WEIGHT = 4
 # range-guards it (returns OUT_OF_RANGE) — out-of-range exercises that guard, in-range exercises
 # the real reparent. Single-monitor-reachable; true dual-display stays deferred (forge-leqs/62ja).
 REHOME_WEIGHT = 2
+
+# Dialog class: open or close the modal dialog of an open window (a transient child Forge
+# floats over its parent), by signalling the test app. Opening one that is open, or closing
+# one that is not, does nothing.
+DIALOG_OPS = ["open", "close"]
+DIALOG_WEIGHT = 3
 
 
 # App palette as a weighted (name, weight) list for the spawn step (Angle 2). Drawn mostly
@@ -333,6 +340,8 @@ def generate_step(
         menu.append(("drag_path", DRAG_PATH_WEIGHT))
     if window_count >= 1:
         menu.append(("rehome", REHOME_WEIGHT))
+    if window_count >= 1:
+        menu.append(("dialog", DIALOG_WEIGHT))
     # forge-fhen.9: only offered when explicitly enabled (default 0 -> entry absent -> identical rng
     # draws + identical sessions). Appended LAST so, when present, it never reorders existing entries.
     if hazard_weight > 0 and window_count >= 1:
@@ -367,6 +376,8 @@ def generate_step(
         in_range = rng.randrange(max(1, monitor_count))
         out_range = monitor_count + rng.randint(1, 3)
         return {"kind": "rehome", "monitor": rng.choice([in_range, out_range])}
+    if kind == "dialog":
+        return {"kind": "dialog", "op": rng.choice(DIALOG_OPS), "focus": rng.choice(FOCUS_HINTS)}
     if kind == "ext_cycle":
         return {"kind": "ext_cycle"}
     if kind == "hazard":
@@ -405,4 +416,6 @@ def describe(step):
         )
     if kind == "rehome":
         return "rehome(mon=%s)" % step.get("monitor")
+    if kind == "dialog":
+        return "dialog:%s@%s" % (step.get("op"), step.get("focus"))
     return kind

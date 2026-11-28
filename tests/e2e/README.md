@@ -128,7 +128,8 @@ It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh 
    stick/unstick: raw Meta.Window state that leaves/rejoins the tile tree or pins a window to
    every workspace), **misc command toggles** (show-tab-decoration, float-by-
    class, config-reload), **drag-drop tile** (drag a window onto a zone of another — the only path
-   keybindings can't reach), and **lifecycle chaos** (spawn/close/workspace-switch) at low weight.
+   keybindings can't reach), **dialogs** (open or close the modal dialog of an open window),
+   and **lifecycle chaos** (spawn/close/workspace-switch) at low weight.
    Spawns draw from `APP_PALETTE` (`framework/constants.py`): two plain tiled classes, a
    window with a modal dialog, a window with a minimum size wider than a half-screen tile,
    and a fixed-size window.

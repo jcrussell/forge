@@ -1248,6 +1248,7 @@
           id: w.get_id(),
           title: w.get_title(),
           wmClass: w.get_wm_class(),
+          pid: w.get_pid(),
           rect: rect(w.get_frame_rect()),
           isFocused: w.has_focus(),
         }))
