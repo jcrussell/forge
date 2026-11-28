@@ -1,0 +1,74 @@
+# Weekly fuzzer run for Forge
+# Drives seeded random action sequences against a real GNOME Shell and checks the
+# tree, the layout against the compositor, and the shell log after every step
+# (tests/e2e/README.md, "Fuzzing"). Not a merge gate: sessions are long and each
+# run uses new seeds, so a failure is a finding to file, with its repro in the
+# uploaded results. Failures are not shrunk here (one recurring finding would replay
+# for hours); shrink the ones worth filing locally from their seed.
+#
+# One-monitor lanes run on the oldest, the default (X11) and the newest supported
+# Fedora; the e2e-testing matrix covers the versions between. The two-monitor
+# lane needs headless Wayland (F43+): X11/Xvfb cannot fake a second output.
+
+name: fuzz-weekly
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Base seed (default: derived from the run number)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { fedora: 39, monitors: 1 }
+          - { fedora: 42, monitors: 1 }
+          - { fedora: 45, monitors: 1 }
+          - { fedora: 43, monitors: 2 }
+    env:
+      SEED_INPUT: ${{ github.event.inputs.seed }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the fuzzer
+        run: |
+          # A new block of seeds every run; the log names each session's seed.
+          make e2e-fuzz FEDORA_VERSION=${{ matrix.fedora }} \
+            ${{ matrix.monitors == 2 && 'MULTIMONITOR=1' || '' }} \
+            FORGE_FUZZ_SEED="${SEED_INPUT:-$((GITHUB_RUN_NUMBER * 1000))}" \
+            FORGE_FUZZ_SESSIONS=20 \
+            FORGE_FUZZ_STEPS=60 \
+            FORGE_FUZZ_SHRINK=0 \
+            FORGE_FUZZ_HAZARDS=1 \
+            FORGE_FUZZ_EXT_CYCLE=1 \
+            FORGE_FUZZ_CONTINUE=1
+
+      - name: Upload results and repros
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fuzz-results-fedora${{ matrix.fedora }}-monitors${{ matrix.monitors }}
+          path: e2e-results/
+          retention-days: 30

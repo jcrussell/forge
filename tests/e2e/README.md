@@ -116,7 +116,11 @@ decoration or border is still in `global.window_group`, re-enables Forge and run
 oracle on the rebuilt tree.
 
 It is **opt-in**: marked `fuzz` and excluded from `make e2e-test` (run-tests.sh adds
-`-m "not fuzz"` by default).
+`-m "not fuzz"` by default). CI runs it every week with new seeds on the oldest, the
+default and the newest supported Fedora, and once on two monitors
+(`.github/workflows/fuzz-weekly.yml`); a failed run is a finding to file, and its repro is
+in the run's uploaded results. CI does not shrink it: rerun its seed locally to get a
+minimal repro.
 
 **How it works**
 
