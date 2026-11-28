@@ -132,7 +132,17 @@ SWITCH_WS_WEIGHT = 2
 # Window-state class (forge-cnrc): raw Meta.Window state ops (NOT Forge commands) that make a
 # window leave/rejoin the tile tree (minimize) or trigger fullscreen float-demotion. Both states
 # are oracle-safe (skipped in the overlap check). See bridge.fuzzWindowState.
-WINSTATE_OPS = ["minimize", "unminimize", "fullscreen", "unfullscreen", "maximize", "unmaximize"]
+# stick/unstick pin a window to every workspace ("Always on Visible Workspace").
+WINSTATE_OPS = [
+    "minimize",
+    "unminimize",
+    "fullscreen",
+    "unfullscreen",
+    "maximize",
+    "unmaximize",
+    "stick",
+    "unstick",
+]
 # Trimmed from 8 (forge-cnrc depth review): minimize/fullscreen/maximize REMOVE windows from the
 # tiled tree, hollowing already-shallow trees — keep it exercised but less dominant.
 WINSTATE_WEIGHT = 4

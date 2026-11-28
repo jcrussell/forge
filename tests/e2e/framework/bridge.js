@@ -894,7 +894,9 @@
           const flags = is49 ? w.get_maximize_flags() : w.get_maximized();
           if (op === "maximize") is49 ? w.maximize() : w.maximize(Meta.MaximizeFlags.BOTH);
           else if (flags) is49 ? w.unmaximize() : w.unmaximize(Meta.MaximizeFlags.BOTH);
-        } else return JSON.stringify({ ok: false, reason: "unknown-op:" + op });
+        } else if (op === "stick") w.stick();
+        else if (op === "unstick") w.unstick();
+        else return JSON.stringify({ ok: false, reason: "unknown-op:" + op });
         return JSON.stringify({ ok: true, op });
       } catch (e) {
         return JSON.stringify({ ok: false, error: e.message });

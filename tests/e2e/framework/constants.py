@@ -80,9 +80,13 @@ DEFAULT_TEST_APP = "forge-test-window"
 
 # Apps the fuzzer spawns (Angle 2), with launch args and spawn weight. Two tiled classes give
 # class-scoped actions (FloatClassToggle) a class to leave alone; the dialog entry opens a tiled
-# parent plus a modal transient child, which Forge keeps out of the tile tree.
+# parent plus a modal transient child, which Forge keeps out of the tile tree. The min-size app
+# cannot take a slot narrower than its minimum (wider than a half-screen tile). The fixed app
+# cannot be resized at all, so Forge floats it unless a tile rule names its class.
 APP_PALETTE = {
     DEFAULT_TEST_APP: {"args": [], "weight": 6},
     "forge-test-window-b": {"args": [], "weight": 3},
     "forge-test-dialog": {"args": ["--dialog"], "weight": 1},
+    "forge-test-min-size": {"args": ["--min-size", "1100x500"], "weight": 1},
+    "forge-test-fixed": {"args": ["--fixed"], "weight": 1},
 }

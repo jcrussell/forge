@@ -15,6 +15,9 @@ what Forge's dialog float rule keys on, titled "<title> (dialog)". --dialog open
 one at startup; SIGUSR1 opens one later and SIGUSR2 closes it, so a test can
 open a dialog over a window that is already tiled.
 
+--min-size WxH gives the main window a minimum size and --fixed makes it
+non-resizable, for layouts whose slot the window cannot take.
+
 The process exits when its main window is closed.
 """
 
@@ -36,6 +39,8 @@ def main() -> int:
     parser.add_argument("--class", dest="wm_class", default="forge-test-window")
     parser.add_argument("--title", default="Forge Test Window")
     parser.add_argument("--dialog", action="store_true", help="open the dialog at startup")
+    parser.add_argument("--min-size", metavar="WxH", help="minimum size of the main window")
+    parser.add_argument("--fixed", action="store_true", help="make the main window non-resizable")
     args = parser.parse_args()
 
     # Must happen before GTK initializes the display connection.
@@ -45,6 +50,10 @@ def main() -> int:
     loop = GLib.MainLoop()
     main_window = Gtk.Window(title=args.title)
     main_window.set_default_size(*DEFAULT_SIZE)
+    if args.min_size:
+        main_window.set_size_request(*(int(n) for n in args.min_size.split("x")))
+    if args.fixed:
+        main_window.set_resizable(False)
     main_window.connect("close-request", lambda _w: loop.quit() or False)
     dialog = None
 
