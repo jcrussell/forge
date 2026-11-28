@@ -895,6 +895,16 @@ class ShellProxy:
         except (ValueError, TypeError):
             return {"violations": []}
 
+    def fuzz_frame_mismatch(self) -> dict:
+        """Return tiled windows whose Mutter frame is not at the slot Forge laid out.
+
+        {'violations': [{rule: 'frame-off-slot', detail, path}, ...], 'busy'}, or {'error'}
+        when the probe threw. While Forge has work pending, only {'busy': True}. See
+        bridge.fuzzFrameMismatch.
+        """
+        self._ensure_bridge()
+        return self.eval("globalThis._forgeTestBridge.fuzzFrameMismatch()")
+
     def fuzz_orphan_actors(self) -> dict:
         """Return orphaned Forge actors in window_group: {'violations', 'decorations', 'borders'}.
 

@@ -154,7 +154,23 @@ not a depth heuristic), nodeType + layout domain, no empty CON, no CON wrapping 
 CON, WINDOW nodes are leaves, no two WINDOW nodes share a `Meta.Window`, and tiled-sibling
 non-overlap under HSPLIT/VSPLIT. The overlap set comes from the shell's own
 `getTiledChildren` (an all-floated CON keeps a stale rect and is correctly excluded);
-STACKED/TABBED are skipped (their children share a rect by design). Beyond the tree,
+STACKED/TABBED are skipped (their children share a rect by design). A split's tiled
+children also cover it (`split-not-filled`): they sit end to end along the split axis from
+the container's origin, span the other axis and reach its far edge. `processSplit` lays
+slots out this way, so the rule guards that code against a regression rather than finding
+bugs in today's layouts.
+
+The tree's rects are then checked against the compositor (`bridge.fuzzFrameMismatch`):
+every window Forge tiles on the active workspace has its Mutter frame at the slot the
+render laid out (`frame-off-slot`), and that slot is inside the work area of the monitor
+the window is on (`slot-off-work-area`). A move lands on a later compositor turn, so a
+mismatch counts only once it has lasted `FRAME_LAND_TIMEOUT`; while Forge has work pending
+the probe reports only that it is busy, and the engine reads again. Windows with no exact target
+are skipped: minimized, fullscreen, maximized, fixed-size, and one held at a minimum size
+larger than its slot. Together the three rules mean the tiles fill the work area without
+overlapping, on screen and not just in the tree.
+
+Beyond the tree,
 `orphan-decoration` (`bridge.fuzzOrphanActors`) checks the actors Forge parents straight
 into `global.window_group`: every container decoration (`type "forge-deco"`) must be the
 `.decoration` of a CON still in the tree, and every focus/split border must be the

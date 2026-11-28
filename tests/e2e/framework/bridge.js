@@ -787,6 +787,43 @@
             }
           }
 
+          // Geometry: a split's tiled children cover it. They sit end to end along the split
+          // axis from the node's origin and each spans the other axis, so their slots leave
+          // no hole and none reaches outside the container. With frame-off-slot
+          // (fuzzFrameMismatch) this is "the tiles fill the work area".
+          if (SPLITS[n.layout] && n.rect) {
+            let tiled;
+            try {
+              tiled = r.getTiledChildren(children);
+            } catch (e) {
+              tiled = [];
+            }
+            const horizontal = n.layout === "HSPLIT";
+            const [pos, size, crossPos, crossSize] = horizontal
+              ? ["x", "width", "y", "height"]
+              : ["y", "height", "x", "width"];
+            let next = n.rect[pos];
+            for (let i = 0; i < tiled.length; i++) {
+              const rc = tiled[i].rect;
+              if (
+                !rc ||
+                rc[pos] !== next ||
+                rc[crossPos] !== n.rect[crossPos] ||
+                rc[crossSize] !== n.rect[crossSize] ||
+                (i === tiled.length - 1 && rc[pos] + rc[size] !== n.rect[pos] + n.rect[size])
+              ) {
+                const show = (q) => (q ? `${q.width}x${q.height}+${q.x}+${q.y}` : "none");
+                add(
+                  "split-not-filled",
+                  `child ${i} of ${tiled.length} at ${show(rc)} in ${n.layout} ${show(n.rect)}`,
+                  item.path
+                );
+                break;
+              }
+              next = rc[pos] + rc[size];
+            }
+          }
+
           for (let i = 0; i < children.length; i++) {
             stack.push({
               node: children[i],
@@ -1732,6 +1769,79 @@
       } catch (e) {
         // Never let the probe itself fail a session — a thrown probe is not a Forge bug.
         return JSON.stringify({ violations: [] });
+      }
+    },
+
+    // Frame oracle: a window Forge tiles on the active workspace has its Mutter frame at the
+    // slot the last render laid out (node.renderRect). The tree walk above only compares the
+    // tree's own rects, so a move that never reached the compositor, or a window something
+    // else moved afterwards, passes it.
+    //
+    // Windows with no exact target are skipped: minimized, fullscreen or maximized (Mutter owns
+    // the frame), fixed-size (not resizeable), and one whose minimum size is larger than its
+    // slot (Mutter commits the minimum; Mutter 50+ only, older shells expose no minimum, so a
+    // frame larger than its slot is skipped there). Reports nothing while tiling is off, and
+    // nothing but {busy:true} while Forge has work pending: the frames are not final yet, so
+    // the caller reads again. Re-readable (check_with_retry's transient guard applies).
+    // A frame at its slot is also checked against its monitor's work area (slot-off-work-area).
+    // Returns {violations:[{rule,detail,path}], busy}, or {error} when the probe itself threw.
+    fuzzFrameMismatch() {
+      try {
+        const ext = forgeExt();
+        const wm = ext?.extWm;
+        if (!wm || !wm.tree || !ext.settings?.get_boolean("tiling-mode-enabled")) {
+          return JSON.stringify({ violations: [], busy: false });
+        }
+        if (pendingState(wm).busy) return JSON.stringify({ violations: [], busy: true });
+        const violations = [];
+        for (const w of global.workspace_manager.get_active_workspace().list_windows()) {
+          const node = wm.findNodeWindow(w);
+          if (!node || !node.isTile() || node.grabMode) continue;
+          const slot = node.renderRect;
+          if (!slot || slot.width <= 0 || slot.height <= 0) continue;
+          if (w.minimized || w.is_fullscreen() || !w.resizeable) continue;
+          const maxFlags = w.get_maximize_flags || w.get_maximized;
+          if (maxFlags.call(w)) continue;
+          const frame = rect(w.get_frame_rect());
+          const show = (r) => `${r.width}x${r.height}+${r.x}+${r.y}`;
+          const report = (rule, detail) =>
+            violations.push({
+              rule,
+              detail: `window ${w.get_id()} (${w.get_wm_class()}) ${detail}`,
+              path: String(node.parentNode?.layout).toLowerCase(),
+            });
+          if (sameRect(frame, slot)) {
+            // At its slot: the slot itself must be inside the work area of the monitor the
+            // window is on, or the layout was computed for a stale or wrong monitor.
+            const area = w.get_work_area_current_monitor();
+            if (
+              slot.x < area.x ||
+              slot.y < area.y ||
+              slot.x + slot.width > area.x + area.width ||
+              slot.y + slot.height > area.y + area.height
+            ) {
+              report("slot-off-work-area", `slot ${show(slot)}, work area ${show(area)}`);
+            }
+            continue;
+          }
+          if (frame.width > slot.width || frame.height > slot.height) {
+            if (typeof w.get_min_size !== "function") continue;
+            const [hasMin, minW, minH] = w.get_min_size();
+            const client = w.frame_rect_to_client_rect(w.get_frame_rect());
+            const atLeast = (slotSize, min, extents) =>
+              Math.max(slotSize, hasMin && min > 0 ? min + extents : 0);
+            if (
+              frame.width === atLeast(slot.width, minW, frame.width - client.width) &&
+              frame.height === atLeast(slot.height, minH, frame.height - client.height)
+            ) {
+              continue;
+            }
+          }
+          report("frame-off-slot", `frame ${show(frame)}, slot ${show(slot)}`);
+        }
+        return JSON.stringify({ violations, busy: false });
+      } catch (e) {
+        return JSON.stringify({ error: String(e) });
       }
     },
 

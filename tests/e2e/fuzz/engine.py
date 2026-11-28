@@ -43,6 +43,11 @@ AUTHORITATIVE_RULES = frozenset(
 EXT_STATE_ACTIVE = 1
 EXT_STATE_INACTIVE = 2
 
+# How long a tiled window's frame may differ from its slot before it is a finding, and how
+# often to look again meanwhile.
+FRAME_LAND_TIMEOUT = 3.0
+FRAME_LAND_POLL = 0.1
+
 # Live gnome-shell stdout/stderr redirect inside the container
 # (docker/scripts/start-user-session.sh). NOT the e2e-results copy, which is only
 # written at teardown and is a truncated snapshot.
@@ -400,11 +405,48 @@ class FuzzEngine:
                 extra = ("; +%d more" % (len(oviol) - 1)) if len(oviol) > 1 else ""
                 return (v.get("rule", "orphan-decoration"), v.get("detail", "") + extra)
 
+        # 2e. frames: every tiled window's Mutter frame is at the slot the render laid out.
+        # A move lands on a later compositor turn (on Wayland once the app has drawn the new
+        # size), so a mismatch only counts if it outlasts FRAME_LAND_TIMEOUT, and a busy
+        # Forge is read again rather than taken as clean.
+        hit = self._frames_off_slot()
+        if hit:
+            return hit
+
         # 3. log scan — thrown exceptions on the live shell log since the last step.
         errs = self.log.new_errors()
         if errs:
             return ("shell-log-error", errs[0])
         return None
+
+    def _frames_off_slot(self):
+        """Return a frame-off-slot finding once the frames have had time to land, else None.
+
+        While Forge has work pending the probe only reports busy, so look again until the
+        deadline; still busy then means the frames never settled and this step is not judged.
+        """
+        deadline = time.time() + FRAME_LAND_TIMEOUT
+        while True:
+            try:
+                res = self.shell.fuzz_frame_mismatch()
+            except ShellProxyError:
+                return None
+            # A probe that threw or returned garbage has checked nothing; reading that as
+            # clean would turn this rule off for the rest of the session.
+            if not isinstance(res, dict):
+                return ("frame-probe-error", "unexpected result %r" % (res,))
+            if "error" in res:
+                return ("frame-probe-error", str(res["error"]))
+            violations = res.get("violations") or []
+            if not violations and not res.get("busy"):
+                return None
+            if time.time() >= deadline:
+                if not violations:
+                    return None
+                v = violations[0]
+                extra = ("; +%d more" % (len(violations) - 1)) if len(violations) > 1 else ""
+                return (v["rule"], "%s [%s]%s" % (v["detail"], v["path"], extra))
+            time.sleep(FRAME_LAND_POLL)
 
     def check_with_retry(self):
         """Check once; re-readable hits get a settle+recheck transient guard.
